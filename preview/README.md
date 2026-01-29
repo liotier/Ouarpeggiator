@@ -125,6 +125,17 @@ Chords are specified as JSON arrays of MIDI note numbers:
 
 This project is an evolution of the [Akai MPC Chord Progression Generator](https://liotier.github.io/AkaiMPC/AkaiMPCChordProgressionGenerator/), specifically recycling and extending its Keyboard tab functionality.
 
+## WebMIDI Targets
+
+No hardware synth? Use these browser-based WebMIDI tools to test Ouarpeggiator:
+
+### Monitor
+- [MIDI Monitor](https://www.midimonitor.com/) - Visualize MIDI messages in real-time
+
+### Synthesizers
+- [FM Synthesizer](https://notes.ameo.design/fm.html) - Browser-based FM synthesis
+- [DX7 Synth JS](https://mmontag.github.io/dx7-synth-js/) - Yamaha DX7 emulation
+
 ## License
 
 This is free and unencumbered software released into the public domain. See [LICENSE](LICENSE) for details.
