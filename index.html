@@ -23,20 +23,47 @@
     </header>
 
     <main>
-        <!-- MIDI Configuration -->
-        <section id="midi-config" class="config-panel">
-            <label>
-                MIDI Input:
-                <select id="midi-input">
-                    <option value="">Select input...</option>
-                </select>
-            </label>
-            <label>
-                MIDI Output:
-                <select id="midi-output">
-                    <option value="">Select output...</option>
-                </select>
-            </label>
+        <!-- Audio/MIDI Configuration -->
+        <section id="audio-midi-config" class="config-panel">
+            <div class="config-row">
+                <label>
+                    Output:
+                    <select id="output-mode">
+                        <option value="midi">MIDI</option>
+                        <option value="audio">Web Audio (Built-in Synth)</option>
+                        <option value="both">Both</option>
+                    </select>
+                </label>
+            </div>
+            <div id="midi-config" class="config-row">
+                <label>
+                    MIDI Input:
+                    <select id="midi-input">
+                        <option value="">Select input...</option>
+                    </select>
+                </label>
+                <label>
+                    MIDI Output:
+                    <select id="midi-output">
+                        <option value="">Select output...</option>
+                    </select>
+                </label>
+            </div>
+            <div id="audio-config" class="config-row" style="display: none;">
+                <label>
+                    Waveform:
+                    <select id="synth-waveform">
+                        <option value="triangle">Triangle</option>
+                        <option value="sine">Sine</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="square">Square</option>
+                    </select>
+                </label>
+                <label>
+                    Volume: <span id="synth-volume-value">50</span>%
+                    <input type="range" id="synth-volume" min="0" max="100" value="50">
+                </label>
+            </div>
         </section>
 
         <!-- Pattern Section -->
@@ -164,15 +191,101 @@
             </div>
         </details>
 
-        <!-- Chord Progression Section -->
+        <!-- Chord Progression Generator Section -->
         <details open>
             <summary>Chord Progression</summary>
             <div class="control-group">
+                <!-- Key and Mode Selection -->
+                <div class="generator-row">
+                    <label>
+                        Key:
+                        <select id="key-select">
+                            <option value="0">C</option>
+                            <option value="1">C♯/D♭</option>
+                            <option value="2">D</option>
+                            <option value="3">D♯/E♭</option>
+                            <option value="4">E</option>
+                            <option value="5">F</option>
+                            <option value="6">F♯/G♭</option>
+                            <option value="7">G</option>
+                            <option value="8">G♯/A♭</option>
+                            <option value="9">A</option>
+                            <option value="10">A♯/B♭</option>
+                            <option value="11">B</option>
+                        </select>
+                    </label>
+                    <label>
+                        Mode:
+                        <select id="mode-select">
+                            <optgroup label="Western Modes">
+                                <option value="Major" selected>Major (Ionian)</option>
+                                <option value="Minor">Minor (Aeolian)</option>
+                                <option value="Dorian">Dorian</option>
+                                <option value="Phrygian">Phrygian</option>
+                                <option value="Lydian">Lydian</option>
+                                <option value="Mixolydian">Mixolydian</option>
+                                <option value="Locrian">Locrian</option>
+                            </optgroup>
+                            <optgroup label="Extended Minor">
+                                <option value="Harmonic Minor">Harmonic Minor</option>
+                                <option value="Melodic Minor">Melodic Minor</option>
+                            </optgroup>
+                            <optgroup label="Pentatonic & Blues">
+                                <option value="Pentatonic Major">Pentatonic Major</option>
+                                <option value="Pentatonic Minor">Pentatonic Minor</option>
+                                <option value="Blues">Blues</option>
+                            </optgroup>
+                            <optgroup label="Symmetric">
+                                <option value="Whole Tone">Whole Tone</option>
+                                <option value="Diminished (H-W)">Diminished (H-W)</option>
+                                <option value="Diminished (W-H)">Diminished (W-H)</option>
+                            </optgroup>
+                            <optgroup label="Jazz">
+                                <option value="Bebop Dominant">Bebop Dominant</option>
+                                <option value="Altered">Altered</option>
+                            </optgroup>
+                            <optgroup label="World - Maqamat">
+                                <option value="Hijaz">Hijaz</option>
+                                <option value="Bayati">Bayati</option>
+                                <option value="Nahawand">Nahawand</option>
+                            </optgroup>
+                            <optgroup label="World - Indian">
+                                <option value="Bhairav">Bhairav</option>
+                                <option value="Yaman">Yaman</option>
+                                <option value="Kafi">Kafi</option>
+                            </optgroup>
+                            <optgroup label="World - Other">
+                                <option value="Hungarian Minor">Hungarian Minor</option>
+                                <option value="Double Harmonic">Double Harmonic</option>
+                                <option value="Japanese">Japanese</option>
+                            </optgroup>
+                        </select>
+                    </label>
+                </div>
+
+                <!-- Progression Template Selection -->
                 <label>
-                    Chord Data (JSON array of MIDI note arrays):
-                    <textarea id="chord-input" rows="4" placeholder='[[60,64,67],[57,60,64],[65,69,72],[62,65,69]]'>[[60,64,67],[57,60,64],[65,69,72],[62,65,69]]</textarea>
+                    Progression Template:
+                    <select id="progression-category">
+                        <option value="Pop/Rock">Pop/Rock</option>
+                        <option value="Blues/Soul">Blues/Soul</option>
+                        <option value="Jazz/Functional">Jazz/Functional</option>
+                        <option value="Modal">Modal</option>
+                        <option value="Modal Interchange">Modal Interchange</option>
+                        <option value="Classical">Classical</option>
+                        <option value="Contemporary">Contemporary</option>
+                    </select>
                 </label>
-                <button id="load-chords" class="action-btn">Load Chords</button>
+                <label>
+                    <select id="progression-select">
+                        <!-- Populated dynamically -->
+                    </select>
+                </label>
+
+                <div class="button-group">
+                    <button id="generate-progression" class="action-btn">Generate Progression</button>
+                    <button id="preview-progression" class="preview-btn">Preview</button>
+                </div>
 
                 <div id="chord-status" class="chord-status">
                     Current: <span id="current-chord-display">Cmaj (1/4)</span>
@@ -184,13 +297,23 @@
                 </div>
 
                 <p class="help-text">
-                    Click a pad to jump to that chord. Colors indicate chord type:
+                    Click a pad to preview/jump to that chord. Colors indicate chord type:
                     <span class="color-legend major">Major</span>
                     <span class="color-legend minor">Minor</span>
                     <span class="color-legend dominant">Dominant</span>
                     <span class="color-legend diminished">Dim</span>
                     <span class="color-legend augmented">Aug</span>
                 </p>
+
+                <!-- Advanced: Manual JSON Input -->
+                <details class="nested-details">
+                    <summary>Advanced: Manual Input</summary>
+                    <label>
+                        Chord Data (JSON array of MIDI note arrays):
+                        <textarea id="chord-input" rows="3" placeholder='[[60,64,67],[57,60,64],[65,69,72],[62,65,69]]'></textarea>
+                    </label>
+                    <button id="load-chords" class="action-btn small">Load JSON</button>
+                </details>
             </div>
         </details>
     </main>
