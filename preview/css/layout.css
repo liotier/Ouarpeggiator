@@ -69,18 +69,47 @@ main {
 }
 
 /* ============================================================================
-   MIDI Config Panel (Full Width)
+   Audio/MIDI Config Panel (Full Width)
    ============================================================================ */
 
-#midi-config {
+#audio-midi-config {
     grid-column: 1 / -1;
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
     padding: 1rem 1.5rem;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.config-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.config-row label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.config-row select {
+    min-width: 180px;
+}
+
+.config-row input[type="range"] {
+    width: 120px;
+    margin: 0 0.5rem;
+}
+
+#midi-config {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 #midi-config label {
@@ -92,6 +121,61 @@ main {
 
 #midi-config select {
     min-width: 200px;
+}
+
+/* Generator Controls */
+.generator-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.generator-row label {
+    flex: 1;
+    min-width: 140px;
+}
+
+.generator-row select {
+    margin-top: 0.25rem;
+}
+
+/* Nested details for advanced options */
+.nested-details {
+    margin-top: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.nested-details summary {
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    background: transparent;
+}
+
+.nested-details .control-group {
+    padding: 1rem;
+}
+
+.nested-details textarea {
+    min-height: 60px;
+}
+
+/* Preview button */
+.preview-btn {
+    background: #27ae60;
+    color: white;
+    border-color: #27ae60;
+}
+
+.preview-btn:hover:not(:disabled) {
+    background: #229954;
+}
+
+/* Small action button */
+.action-btn.small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.85rem;
 }
 
 /* ============================================================================

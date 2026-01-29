@@ -2,7 +2,7 @@
  * Ouarpeggiator - Main Application Module
  *
  * Entry point that initializes the application, manages state,
- * and coordinates between MIDI, arpeggiator, and UI modules.
+ * and coordinates between MIDI, audio, arpeggiator, and UI modules.
  *
  * French phonetic spelling of "warp" + arpeggiator - referencing
  * time manipulation and phase distortion through Euclidean rhythms.
@@ -12,19 +12,27 @@ import { euclidean, rotatePattern } from './euclidean.js';
 import * as MIDI from './midi.js';
 import * as Arpeggiator from './arpeggiator.js';
 import * as UI from './ui.js';
+import * as MusicTheory from './modules/musicTheory.js';
+import * as Audio from './modules/audio.js';
 
 // ============================================================================
 // Application State
 // ============================================================================
 
 const appState = {
+    // Output mode
+    outputMode: 'midi',  // 'midi' | 'audio' | 'both'
+
+    // Chord progression generator settings
+    generator: {
+        key: 0,           // Key offset (0-11)
+        mode: 'Major',    // Mode name
+        category: 'Pop/Rock',
+        progressionIndex: 0,
+    },
+
     // Chord progression data
-    chordProgression: [
-        [60, 64, 67],     // C major
-        [57, 60, 64],     // A minor
-        [65, 69, 72],     // F major
-        [62, 65, 69],     // D minor
-    ],
+    chordProgression: [],  // Array of chord objects with notes
     currentChordIndex: 0,
 
     // Euclidean pattern parameters
@@ -32,30 +40,30 @@ const appState = {
         hits: 7,
         steps: 16,
         rotation: 0,
-        pattern: [],      // Computed boolean array
+        pattern: [],
     },
-    octaveSpread: 1,      // How many octaves to span (1-4)
+    octaveSpread: 1,
 
     // Timing
     clock: {
-        mode: 'master',   // 'master' | 'slave'
+        mode: 'master',
         bpm: 120,
         isPlaying: false,
-        tickCount: 0,     // For bar counting (24 PPQN)
-        lastTickTime: 0,  // For clock loss detection in slave mode
+        tickCount: 0,
+        lastTickTime: 0,
     },
-    barsPerChord: 4,      // Bars before advancing to next chord
-    humanization: 0,      // Timing offset in milliseconds
+    barsPerChord: 4,
+    humanization: 0,
 
     // Variation parameters
-    harmonicVariation: 0.0,   // Probability of note substitution (0-1)
-    rhythmicVariation: 0.0,   // Probability of rest insertion (0-1)
-    voiceLeading: 'smooth',   // 'smooth' | 'far' | 'none'
-    lastPlayedNote: null,     // For voice leading calculations
+    harmonicVariation: 0.0,
+    rhythmicVariation: 0.0,
+    voiceLeading: 'smooth',
+    lastPlayedNote: null,
 
     // Velocity configuration
     velocity: {
-        mode: 'fixed',        // 'fixed' | 'random' | 'curve'
+        mode: 'fixed',
         fixed: 100,
         randomMin: 60,
         randomMax: 110,
@@ -67,7 +75,7 @@ const appState = {
     // Gate configuration
     gate: {
         mode: 'fixed',
-        fixed: 0.8,           // Percentage of step duration
+        fixed: 0.8,
         randomMin: 0.5,
         randomMax: 0.9,
         curveType: 'linear-ascending',
@@ -76,9 +84,129 @@ const appState = {
     },
 
     // Runtime state
-    euclideanStepIndex: 0,    // Current position in pattern
-    scheduledNotes: [],       // Active notes for cleanup
+    euclideanStepIndex: 0,
+    scheduledNotes: [],
 };
+
+// ============================================================================
+// Chord Progression Generation
+// ============================================================================
+
+/**
+ * Generate a chord progression based on current generator settings
+ */
+function generateProgression() {
+    const { key, mode, category, progressionIndex } = appState.generator;
+
+    // Get progression template
+    const categoryProgressions = MusicTheory.progressions[category];
+    if (!categoryProgressions || categoryProgressions.length === 0) {
+        console.warn('No progressions found for category:', category);
+        return;
+    }
+
+    const template = categoryProgressions[progressionIndex] || categoryProgressions[0];
+    const scaleDegrees = MusicTheory.getScaleDegrees(mode);
+
+    // Generate chords from Roman numerals
+    const chords = MusicTheory.generateProgressionChords(
+        template.chords,
+        key,
+        scaleDegrees,
+        mode,
+        4  // Base octave
+    );
+
+    // Optimize voice leading
+    const optimizedChords = MusicTheory.optimizeVoiceLeading(chords);
+
+    // Update state
+    appState.chordProgression = optimizedChords.map(chord => chord.notes);
+    appState.currentChordIndex = 0;
+
+    // Update UI
+    UI.updatePadDisplay(appState);
+    UI.updateChordStatus(appState);
+
+    // Update JSON input with generated data
+    const chordInput = document.getElementById('chord-input');
+    if (chordInput) {
+        chordInput.value = JSON.stringify(appState.chordProgression);
+    }
+
+    console.log(`Generated progression: ${template.name} in ${MusicTheory.keys[key]} ${mode}`);
+}
+
+/**
+ * Preview the current chord progression
+ */
+function previewProgression() {
+    if (!appState.chordProgression.length) {
+        generateProgression();
+    }
+
+    // Initialize audio if needed
+    if (!Audio.isAudioAvailable()) {
+        Audio.initAudio();
+    }
+
+    // Play each chord with a delay
+    appState.chordProgression.forEach((notes, index) => {
+        setTimeout(() => {
+            // Play via audio
+            if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+                Audio.playChord(notes, 80, 400);
+            }
+
+            // Play via MIDI
+            if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+                notes.forEach(note => {
+                    MIDI.sendNoteOn(note, 80);
+                    setTimeout(() => MIDI.sendNoteOff(note), 350);
+                });
+            }
+
+            // Highlight current chord
+            appState.currentChordIndex = index;
+            UI.updatePadDisplay(appState);
+            UI.updateChordStatus(appState);
+        }, index * 500);
+    });
+
+    // Reset to first chord after preview
+    setTimeout(() => {
+        appState.currentChordIndex = 0;
+        UI.updatePadDisplay(appState);
+        UI.updateChordStatus(appState);
+    }, appState.chordProgression.length * 500 + 200);
+}
+
+/**
+ * Preview a single chord
+ */
+function previewChord(chordIndex) {
+    if (chordIndex >= appState.chordProgression.length) return;
+
+    const notes = appState.chordProgression[chordIndex];
+
+    // Initialize audio if needed
+    if (!Audio.isAudioAvailable()) {
+        Audio.initAudio();
+    }
+
+    // Play via audio
+    if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+        Audio.playChord(notes, 80, 400);
+    }
+
+    // Play via MIDI
+    if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+        notes.forEach(note => {
+            MIDI.sendNoteOn(note, 80);
+            setTimeout(() => MIDI.sendNoteOff(note), 350);
+        });
+    }
+}
 
 // ============================================================================
 // Master Clock Management
@@ -87,23 +215,25 @@ const appState = {
 let masterClockInterval = null;
 let clockLossCheckInterval = null;
 
-/**
- * Start the master clock
- */
 function startMasterClock() {
     if (masterClockInterval) return;
 
-    // Calculate tick interval: 24 PPQN (pulses per quarter note)
+    // Initialize audio if using audio output
+    if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+        if (!Audio.isAudioAvailable()) {
+            Audio.initAudio();
+        }
+        Audio.resumeAudio();
+    }
+
     const tickInterval = 60000 / (appState.clock.bpm * 24);
 
-    // Send MIDI Start
     MIDI.sendStart();
 
     appState.clock.isPlaying = true;
     appState.clock.tickCount = 0;
     appState.euclideanStepIndex = 0;
 
-    // Regenerate pattern to ensure it's current
     regeneratePattern();
 
     UI.updateTransportButtons(true);
@@ -117,21 +247,16 @@ function startMasterClock() {
     console.log(`Master clock started at ${appState.clock.bpm} BPM`);
 }
 
-/**
- * Stop the master clock
- */
 function stopMasterClock() {
     if (masterClockInterval) {
         clearInterval(masterClockInterval);
         masterClockInterval = null;
     }
 
-    // Send MIDI Stop
     MIDI.sendStop();
 
     appState.clock.isPlaying = false;
 
-    // Cancel all scheduled notes
     cancelAllScheduledNotes();
 
     UI.updateTransportButtons(false);
@@ -140,9 +265,6 @@ function stopMasterClock() {
     console.log('Master clock stopped');
 }
 
-/**
- * Update master clock tempo (restart if playing)
- */
 function updateMasterClockTempo() {
     if (appState.clock.mode === 'master' && appState.clock.isPlaying) {
         stopMasterClock();
@@ -154,17 +276,11 @@ function updateMasterClockTempo() {
 // Slave Clock Management
 // ============================================================================
 
-/**
- * Handle incoming MIDI clock tick (slave mode)
- */
 function handleIncomingClockTick() {
     appState.clock.lastTickTime = performance.now();
     handleClockTick();
 }
 
-/**
- * Handle transport messages from external clock
- */
 function handleTransportMessage(message) {
     switch (message) {
         case 'start':
@@ -174,7 +290,6 @@ function handleTransportMessage(message) {
             regeneratePattern();
             UI.updateTransportButtons(true);
             UI.updateClockStatus('synced');
-            console.log('External clock: Start received');
             break;
 
         case 'stop':
@@ -182,40 +297,29 @@ function handleTransportMessage(message) {
             cancelAllScheduledNotes();
             UI.updateTransportButtons(false);
             UI.updateClockStatus('stopped');
-            console.log('External clock: Stop received');
             break;
 
         case 'continue':
             appState.clock.isPlaying = true;
             UI.updateTransportButtons(true);
             UI.updateClockStatus('synced');
-            console.log('External clock: Continue received');
             break;
     }
 }
 
-/**
- * Start clock loss detection (slave mode)
- */
 function startClockLossDetection() {
     if (clockLossCheckInterval) return;
 
     clockLossCheckInterval = setInterval(() => {
         if (appState.clock.mode === 'slave' && appState.clock.isPlaying) {
             const timeSinceLastTick = performance.now() - appState.clock.lastTickTime;
-
-            // If no clock for 100ms, consider it lost
             if (timeSinceLastTick > 100) {
-                console.warn('MIDI clock lost - freezing state');
                 UI.updateClockStatus('lost');
             }
         }
     }, 50);
 }
 
-/**
- * Stop clock loss detection
- */
 function stopClockLossDetection() {
     if (clockLossCheckInterval) {
         clearInterval(clockLossCheckInterval);
@@ -224,84 +328,73 @@ function stopClockLossDetection() {
 }
 
 // ============================================================================
-// Unified Clock Tick Handler
+// Clock Tick Handler
 // ============================================================================
 
-/**
- * Handle a clock tick (24 PPQN)
- * Called by both master and slave clock sources
- */
 function handleClockTick() {
     if (!appState.clock.isPlaying) return;
 
     appState.clock.tickCount++;
 
-    // Check for chord advancement
     const chordChanged = Arpeggiator.checkChordAdvancement(appState);
     if (chordChanged) {
         UI.updatePadDisplay(appState);
         UI.updateChordStatus(appState);
     }
 
-    // Calculate ticks per Euclidean step
-    // Pattern spans one bar: 96 ticks / steps
     const ticksPerStep = Arpeggiator.calculateTicksPerStep(appState.euclidean.steps);
 
-    // Check if it's time for a new step
     if (appState.clock.tickCount % ticksPerStep === 0) {
         executeStep();
     }
 }
 
-/**
- * Execute one step of the arpeggiator
- */
 function executeStep() {
-    // Select note (may return null for rest)
     const note = Arpeggiator.selectNote(appState);
 
     if (note !== null) {
-        // Calculate velocity and gate
         const velocity = Arpeggiator.calculateVelocity(appState);
         const stepDuration = Arpeggiator.calculateStepDuration(
             appState.clock.bpm,
             appState.euclidean.steps
         );
         const gateLength = Arpeggiator.calculateGateLength(appState, stepDuration);
-
-        // Calculate humanization offset
         const humanizationOffset = Arpeggiator.calculateHumanization(appState.humanization);
 
-        // Schedule note with humanization
         const delay = Math.max(0, humanizationOffset);
 
         setTimeout(() => {
             if (!appState.clock.isPlaying) return;
 
-            // Send note on
-            MIDI.sendNoteOn(note, velocity);
+            // Play via MIDI
+            if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+                MIDI.sendNoteOn(note, velocity);
+            }
+
+            // Play via Audio
+            if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+                Audio.playNote(note, velocity, gateLength);
+            }
+
             appState.lastPlayedNote = note;
 
-            // Schedule note off
-            const noteOffHandle = setTimeout(() => {
-                MIDI.sendNoteOff(note);
-                appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
-            }, gateLength);
+            // Schedule note off for MIDI
+            if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+                const noteOffHandle = setTimeout(() => {
+                    MIDI.sendNoteOff(note);
+                    appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
+                }, gateLength);
 
-            appState.scheduledNotes.push({ note, handle: noteOffHandle });
+                appState.scheduledNotes.push({ note, handle: noteOffHandle });
+            }
         }, delay);
     }
 
-    // Update UI to show current step
     UI.highlightCurrentStep(appState);
 
-    // Advance to next step
     appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
 }
 
-/**
- * Cancel all scheduled notes (on stop)
- */
 function cancelAllScheduledNotes() {
     appState.scheduledNotes.forEach(scheduled => {
         clearTimeout(scheduled.handle);
@@ -309,17 +402,14 @@ function cancelAllScheduledNotes() {
     });
     appState.scheduledNotes = [];
 
-    // Also use MIDI's stopAllNotes for safety
     MIDI.stopAllNotes();
+    Audio.stopAllNotes();
 }
 
 // ============================================================================
 // Pattern Management
 // ============================================================================
 
-/**
- * Regenerate Euclidean pattern from current parameters
- */
 function regeneratePattern() {
     const basePattern = euclidean(appState.euclidean.hits, appState.euclidean.steps);
     appState.euclidean.pattern = rotatePattern(basePattern, appState.euclidean.rotation);
@@ -332,18 +422,14 @@ function regeneratePattern() {
 
 const uiCallbacks = {
     onPatternChange: (state) => {
-        console.log(`Pattern changed: ${state.euclidean.hits}/${state.euclidean.steps}, rotation: ${state.euclidean.rotation}`);
+        console.log(`Pattern: ${state.euclidean.hits}/${state.euclidean.steps}`);
     },
 
     onClockModeChange: (state) => {
-        console.log(`Clock mode changed to: ${state.clock.mode}`);
-
-        // Stop current clock if playing
         if (state.clock.isPlaying) {
             stopMasterClock();
         }
 
-        // Set up appropriate clock handling
         if (state.clock.mode === 'slave') {
             MIDI.setClockCallback(handleIncomingClockTick);
             MIDI.setTransportCallback(handleTransportMessage);
@@ -374,31 +460,131 @@ const uiCallbacks = {
     },
 
     onChordsChange: (state) => {
-        console.log(`Chord progression updated: ${state.chordProgression.length} chords`);
+        console.log(`Chord progression: ${state.chordProgression.length} chords`);
     },
 
     onInputSelect: (deviceId) => {
-        const success = MIDI.selectInputDevice(deviceId);
-        if (success && deviceId) {
-            UI.showNotification('MIDI input connected', 'success');
-        }
+        MIDI.selectInputDevice(deviceId);
     },
 
     onOutputSelect: (deviceId) => {
-        const success = MIDI.selectOutputDevice(deviceId);
-        if (success && deviceId) {
-            UI.showNotification('MIDI output connected', 'success');
-        }
+        MIDI.selectOutputDevice(deviceId);
+    },
+
+    onChordClick: (chordIndex) => {
+        previewChord(chordIndex);
+        appState.currentChordIndex = chordIndex;
+        UI.updatePadDisplay(appState);
+        UI.updateChordStatus(appState);
     },
 };
+
+// ============================================================================
+// Generator UI Bindings
+// ============================================================================
+
+function bindGeneratorControls() {
+    const keySelect = document.getElementById('key-select');
+    const modeSelect = document.getElementById('mode-select');
+    const categorySelect = document.getElementById('progression-category');
+    const progressionSelect = document.getElementById('progression-select');
+    const generateBtn = document.getElementById('generate-progression');
+    const previewBtn = document.getElementById('preview-progression');
+    const outputModeSelect = document.getElementById('output-mode');
+
+    // Populate progression select based on category
+    function populateProgressions() {
+        const category = categorySelect.value;
+        const progs = MusicTheory.progressions[category] || [];
+
+        progressionSelect.innerHTML = '';
+        progs.forEach((prog, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = prog.name;
+            progressionSelect.appendChild(option);
+        });
+
+        appState.generator.category = category;
+        appState.generator.progressionIndex = 0;
+    }
+
+    if (keySelect) {
+        keySelect.addEventListener('change', (e) => {
+            appState.generator.key = parseInt(e.target.value);
+        });
+    }
+
+    if (modeSelect) {
+        modeSelect.addEventListener('change', (e) => {
+            appState.generator.mode = e.target.value;
+        });
+    }
+
+    if (categorySelect) {
+        categorySelect.addEventListener('change', populateProgressions);
+        populateProgressions(); // Initial population
+    }
+
+    if (progressionSelect) {
+        progressionSelect.addEventListener('change', (e) => {
+            appState.generator.progressionIndex = parseInt(e.target.value);
+        });
+    }
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', generateProgression);
+    }
+
+    if (previewBtn) {
+        previewBtn.addEventListener('click', previewProgression);
+    }
+
+    // Output mode handling
+    if (outputModeSelect) {
+        outputModeSelect.addEventListener('change', (e) => {
+            appState.outputMode = e.target.value;
+
+            const midiConfig = document.getElementById('midi-config');
+            const audioConfig = document.getElementById('audio-config');
+
+            if (midiConfig) {
+                midiConfig.style.display = (e.target.value === 'midi' || e.target.value === 'both') ? 'flex' : 'none';
+            }
+            if (audioConfig) {
+                audioConfig.style.display = (e.target.value === 'audio' || e.target.value === 'both') ? 'flex' : 'none';
+            }
+
+            // Initialize audio if needed
+            if (e.target.value === 'audio' || e.target.value === 'both') {
+                Audio.initAudio();
+            }
+        });
+    }
+
+    // Audio controls
+    const waveformSelect = document.getElementById('synth-waveform');
+    const volumeSlider = document.getElementById('synth-volume');
+
+    if (waveformSelect) {
+        waveformSelect.addEventListener('change', (e) => {
+            Audio.setWaveform(e.target.value);
+        });
+    }
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            const volume = parseInt(e.target.value) / 100;
+            Audio.setMasterVolume(volume);
+            document.getElementById('synth-volume-value').textContent = e.target.value;
+        });
+    }
+}
 
 // ============================================================================
 // Initialization
 // ============================================================================
 
-/**
- * Initialize the application
- */
 async function initialize() {
     console.log('Ouarpeggiator initializing...');
 
@@ -410,26 +596,34 @@ async function initialize() {
         const access = await MIDI.initMIDI();
 
         if (access) {
-            // Populate device selectors
             UI.populateMIDIDevices(
                 MIDI.getInputDevices(),
                 MIDI.getOutputDevices()
             );
-
-            // Bind device selection handlers
             UI.bindMIDIDeviceSelectors(uiCallbacks);
-
-            UI.showNotification('WebMIDI initialized', 'info');
-        } else {
-            UI.showNotification('WebMIDI initialization failed', 'error');
         }
     } else {
-        UI.showNotification('WebMIDI not supported in this browser', 'error');
-        console.warn('WebMIDI not supported');
+        console.warn('WebMIDI not supported - using Web Audio only');
+        appState.outputMode = 'audio';
+
+        const outputModeSelect = document.getElementById('output-mode');
+        if (outputModeSelect) {
+            outputModeSelect.value = 'audio';
+            outputModeSelect.dispatchEvent(new Event('change'));
+        }
     }
+
+    // Initialize Audio (lazily - will activate on first use)
+    // Audio.initAudio(); // Commented - will init on user interaction
+
+    // Bind generator controls
+    bindGeneratorControls();
 
     // Initialize UI
     UI.initializeUI(appState, uiCallbacks);
+
+    // Generate initial progression
+    generateProgression();
 
     console.log('Ouarpeggiator ready');
 }
@@ -438,18 +632,21 @@ async function initialize() {
 // Start Application
 // ============================================================================
 
-// Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {
     initialize();
 }
 
-// Expose state for debugging in browser console
+// Expose for debugging
 window.ouarpeggiatorState = appState;
 window.ouarpeggiatorDebug = {
     startMasterClock,
     stopMasterClock,
     executeStep,
     regeneratePattern,
+    generateProgression,
+    previewProgression,
+    MusicTheory,
+    Audio,
 };
