@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ouarpeggiator - Euclidean rhythm arpeggiator for chord progressions. Generate evolving melodic patterns using Bjorklund's algorithm.">
+    <meta name="keywords" content="arpeggiator, euclidean rhythm, midi, chord progression, music, synthesizer">
+    <meta name="author" content="Jean-Marc Liotier">
+
+    <title>Ouarpeggiator - Euclidean Chord Arpeggiator</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎹</text></svg>">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <header>
+        <h1>Ouarpeggiator</h1>
+        <div id="clock-status" class="status disconnected">Clock: Disconnected</div>
+    </header>
+
+    <main>
+        <!-- MIDI Configuration -->
+        <section id="midi-config" class="config-panel">
+            <label>
+                MIDI Input:
+                <select id="midi-input">
+                    <option value="">Select input...</option>
+                </select>
+            </label>
+            <label>
+                MIDI Output:
+                <select id="midi-output">
+                    <option value="">Select output...</option>
+                </select>
+            </label>
+        </section>
+
+        <!-- Pattern Section -->
+        <details open>
+            <summary>Pattern</summary>
+            <div class="control-group">
+                <label>
+                    Hits (k): <span id="hits-value">7</span>
+                    <input type="range" id="hits-slider" min="1" max="32" value="7">
+                </label>
+                <label>
+                    Steps (n): <span id="steps-value">16</span>
+                    <input type="range" id="steps-slider" min="1" max="32" value="16">
+                </label>
+                <label>
+                    Rotation: <span id="rotation-value">0</span>
+                    <input type="range" id="rotation-slider" min="0" max="31" value="0">
+                </label>
+                <label>
+                    Octave Spread: <span id="octave-value">1</span>
+                    <input type="range" id="octave-spread" min="1" max="4" value="1">
+                </label>
+                <div id="pattern-display" class="pattern-viz"></div>
+                <div id="pattern-string" class="pattern-string"></div>
+            </div>
+        </details>
+
+        <!-- Timing Section -->
+        <details open>
+            <summary>Timing</summary>
+            <div class="control-group">
+                <label class="toggle-label">
+                    <input type="checkbox" id="clock-mode-toggle">
+                    <span class="toggle-text">Clock Mode: <span id="clock-mode-label">Master</span></span>
+                </label>
+
+                <div id="bpm-control">
+                    <label>
+                        BPM: <span id="bpm-value">120</span>
+                        <input type="range" id="bpm-slider" min="40" max="240" value="120">
+                    </label>
+                </div>
+
+                <div id="transport" class="button-group">
+                    <button id="start-button" class="transport-btn">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <polygon points="5,3 19,12 5,21"/>
+                        </svg>
+                        Start
+                    </button>
+                    <button id="stop-button" class="transport-btn" disabled>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <rect x="4" y="4" width="16" height="16"/>
+                        </svg>
+                        Stop
+                    </button>
+                </div>
+
+                <label>Bars per Chord:</label>
+                <div class="button-group" id="bars-per-chord-group">
+                    <button class="bars-btn" data-value="1">1</button>
+                    <button class="bars-btn" data-value="2">2</button>
+                    <button class="bars-btn active" data-value="4">4</button>
+                    <button class="bars-btn" data-value="8">8</button>
+                </div>
+
+                <label>
+                    Humanization: <span id="humanization-value">0</span> ms
+                    <input type="range" id="humanization" min="0" max="50" value="0">
+                </label>
+            </div>
+        </details>
+
+        <!-- Variation Section -->
+        <details>
+            <summary>Variation</summary>
+            <div class="control-group">
+                <label>
+                    Harmonic Variation: <span id="harmonic-value">0.00</span>
+                    <input type="range" id="harmonic-variation" min="0" max="1" step="0.01" value="0">
+                </label>
+                <p class="help-text">Probability of substituting notes from other chords in the progression</p>
+
+                <label>
+                    Rhythmic Variation: <span id="rhythmic-value">0.00</span>
+                    <input type="range" id="rhythmic-variation" min="0" max="1" step="0.01" value="0">
+                </label>
+                <p class="help-text">Probability of converting hits to rests</p>
+
+                <label>Voice Leading:</label>
+                <div class="button-group" id="voice-leading-group">
+                    <button class="voice-btn active" data-value="smooth">Smooth</button>
+                    <button class="voice-btn" data-value="far">Far</button>
+                    <button class="voice-btn" data-value="none">None</button>
+                </div>
+                <p class="help-text">How the arpeggiator transitions between chords</p>
+            </div>
+        </details>
+
+        <!-- Output Section -->
+        <details>
+            <summary>Output</summary>
+            <div class="control-group">
+                <h4>Velocity</h4>
+                <label>
+                    Mode:
+                    <select id="velocity-mode">
+                        <option value="fixed">Fixed</option>
+                        <option value="random">Random</option>
+                        <option value="curve">Curve</option>
+                    </select>
+                </label>
+                <div id="velocity-controls" class="dynamic-controls"></div>
+
+                <h4>Gate Length</h4>
+                <label>
+                    Mode:
+                    <select id="gate-mode">
+                        <option value="fixed">Fixed</option>
+                        <option value="random">Random</option>
+                        <option value="curve">Curve</option>
+                    </select>
+                </label>
+                <div id="gate-controls" class="dynamic-controls"></div>
+            </div>
+        </details>
+
+        <!-- Chord Progression Section -->
+        <details open>
+            <summary>Chord Progression</summary>
+            <div class="control-group">
+                <label>
+                    Chord Data (JSON array of MIDI note arrays):
+                    <textarea id="chord-input" rows="4" placeholder='[[60,64,67],[57,60,64],[65,69,72],[62,65,69]]'>[[60,64,67],[57,60,64],[65,69,72],[62,65,69]]</textarea>
+                </label>
+                <button id="load-chords" class="action-btn">Load Chords</button>
+
+                <div id="chord-status" class="chord-status">
+                    Current: <span id="current-chord-display">Cmaj (1/4)</span>
+                </div>
+
+                <!-- 4x4 Pad Display (MPC-style) -->
+                <div id="pad-display" class="pad-grid">
+                    <!-- Pads generated dynamically -->
+                </div>
+
+                <p class="help-text">
+                    Click a pad to jump to that chord. Colors indicate chord type:
+                    <span class="color-legend major">Major</span>
+                    <span class="color-legend minor">Minor</span>
+                    <span class="color-legend dominant">Dominant</span>
+                    <span class="color-legend diminished">Dim</span>
+                    <span class="color-legend augmented">Aug</span>
+                </p>
+            </div>
+        </details>
+    </main>
+
+    <footer>
+        <p>
+            <strong>Ouarpeggiator</strong> |
+            WebMIDI Required |
+            <a href="https://github.com/liotier/Ouarpeggiator" target="_blank" rel="noopener">GitHub</a>
+        </p>
+        <p class="subtitle">
+            Euclidean rhythm arpeggiator for chord progressions
+        </p>
+    </footer>
+
+    <!-- Application Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
