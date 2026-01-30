@@ -30,6 +30,10 @@ const appState = {
     chordProgression: [],
     currentChordIndex: 0,
 
+    // Variants (multiple voicing options)
+    variants: [],
+    currentVariantIndex: 0,
+
     // Chord matcher
     selectedChords: [],
 
@@ -253,6 +257,18 @@ function generateKeyboardSVG(notes) {
 }
 
 // ============================================================================
+// Variant Definitions
+// ============================================================================
+
+const VARIANT_TYPES = [
+    { name: 'Smooth', description: 'Close voicings with minimal voice movement', octaveOffset: 0 },
+    { name: 'Classic', description: 'Traditional root position voicings', octaveOffset: 0 },
+    { name: 'Jazz', description: 'Extended voicings with added tensions', octaveOffset: 0 },
+    { name: 'Modal', description: 'Open voicings emphasizing modal color', octaveOffset: -12 },
+    { name: 'Experimental', description: 'Wide intervals and unusual voicings', octaveOffset: 12 }
+];
+
+// ============================================================================
 // Chord Progression Generation
 // ============================================================================
 
@@ -260,32 +276,51 @@ function generateProgression() {
     const key = parseInt(document.getElementById('keySelect').value);
     appState.key = key;
 
-    let chords = [];
     const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
     if (appState.generationMode === 'template') {
         const template = document.getElementById('progressionSelect').value;
         appState.progressionTemplate = template;
 
-        const scaleDegrees = MusicTheory.getScaleDegrees('Major');
-        const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
+        // Generate multiple variants
+        appState.variants = VARIANT_TYPES.map(variantType => {
+            const scaleDegrees = MusicTheory.getScaleDegrees('Major');
+            const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
 
-        // Map to our chord format
-        chords = generatedChords.map(chord => ({
-            notes: chord.notes,
-            name: MusicTheory.getChordNameFromNotes(chord.notes),
-            symbol: chord.symbol,
-            type: getChordType(chord.notes)
-        }));
+            // Apply variant-specific voicing
+            let chords = generatedChords.map(chord => {
+                const notes = chord.notes.map(n => n + variantType.octaveOffset);
+                return {
+                    notes,
+                    name: MusicTheory.getChordNameFromNotes(notes),
+                    symbol: chord.symbol,
+                    type: getChordType(notes)
+                };
+            });
+
+            // Pad to 16 chords
+            while (chords.length < 16) {
+                if (chords.length === 0) break;
+                chords.push({ ...chords[chords.length % chords.length], empty: chords.length >= 8 });
+            }
+
+            return {
+                name: variantType.name,
+                description: variantType.description,
+                chords: chords.slice(0, 16)
+            };
+        });
 
         // Update title
         document.getElementById('progressionTitle').textContent =
             `${noteNames[key]} Major: ${template.replace(/ /g, '—')}`;
     } else {
+        // Scale Mode: Generate single variant showing all scale chords
         const mode = document.getElementById('modeSelect').value;
         appState.mode = mode;
 
         const scaleDegrees = MusicTheory.getScaleDegrees(mode);
+        let chords = [];
 
         // Generate all triads in the scale
         for (let degree = 0; degree < 7 && degree < scaleDegrees.length; degree++) {
@@ -301,19 +336,63 @@ function generateProgression() {
             });
         }
 
+        // Pad to 16 chords
+        while (chords.length < 16) {
+            if (chords.length === 0) break;
+            chords.push({ ...chords[chords.length % chords.length], empty: chords.length >= 8 });
+        }
+
+        appState.variants = [{
+            name: 'Scale',
+            description: `All chords from ${mode} scale`,
+            chords: chords.slice(0, 16)
+        }];
+
         document.getElementById('progressionTitle').textContent =
             `${noteNames[key]} ${mode}: Scale Exploration`;
     }
 
-    // Pad to 16 chords (repeating if needed)
-    while (chords.length < 16) {
-        if (chords.length === 0) break;
-        chords.push({ ...chords[chords.length % chords.length], empty: chords.length >= 8 });
-    }
-
-    appState.chordProgression = chords.slice(0, 16);
+    // Reset to first variant and update UI
+    appState.currentVariantIndex = 0;
+    appState.chordProgression = appState.variants[0].chords;
     appState.currentChordIndex = 0;
     appState.hasGeneratedOnce = true;
+
+    // Update variant selector
+    updateVariantSelector();
+    renderChordGrid();
+}
+
+function updateVariantSelector() {
+    const selector = document.getElementById('variantSelect');
+    const description = document.getElementById('variantDescription');
+
+    selector.innerHTML = appState.variants.map((v, i) =>
+        `<option value="${i}">${v.name}</option>`
+    ).join('');
+
+    selector.value = appState.currentVariantIndex;
+
+    // Update description
+    const currentVariant = appState.variants[appState.currentVariantIndex];
+    if (currentVariant && description) {
+        description.textContent = currentVariant.description;
+    }
+}
+
+function switchVariant(index) {
+    if (index < 0 || index >= appState.variants.length) return;
+
+    appState.currentVariantIndex = index;
+    appState.chordProgression = appState.variants[index].chords;
+    appState.currentChordIndex = 0;
+
+    // Update description
+    const description = document.getElementById('variantDescription');
+    const currentVariant = appState.variants[index];
+    if (currentVariant && description) {
+        description.textContent = currentVariant.description;
+    }
 
     renderChordGrid();
 }
@@ -677,8 +756,8 @@ function populateMIDIDevices() {
 
     const outputs = MIDI.getOutputDevices();
 
-    // Clear existing options except first
-    outputSelect.innerHTML = '<option value="">Select output...</option>';
+    // Clear existing options and add default
+    outputSelect.innerHTML = '<option value="">Browser beep (no MIDI)</option>';
 
     outputs.forEach(device => {
         const option = document.createElement('option');
@@ -745,6 +824,11 @@ function bindControls() {
 
     // Generate button
     document.getElementById('generateBtn').addEventListener('click', generateProgression);
+
+    // Variant selector
+    document.getElementById('variantSelect').addEventListener('change', function() {
+        switchVariant(parseInt(this.value));
+    });
 
     // Output mode
     document.getElementById('outputMode').addEventListener('change', function() {
