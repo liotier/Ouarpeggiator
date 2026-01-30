@@ -62,7 +62,24 @@ const appState = {
     // Runtime
     euclideanStepIndex: 0,
     scheduledNotes: [],
+
+    // Generation tracking
+    hasGeneratedOnce: false,
 };
+
+// Timing constants
+const TIMING = {
+    SPARKLE_DURATION: 600,
+};
+
+// Trigger sparkle animation on Generate button
+function triggerSparkle() {
+    const btn = document.getElementById('generateBtn');
+    if (btn) {
+        btn.classList.add('sparkle');
+        setTimeout(() => btn.classList.remove('sparkle'), TIMING.SPARKLE_DURATION);
+    }
+}
 
 // ============================================================================
 // Chord Matcher
@@ -296,6 +313,7 @@ function generateProgression() {
 
     appState.chordProgression = chords.slice(0, 16);
     appState.currentChordIndex = 0;
+    appState.hasGeneratedOnce = true;
 
     renderChordGrid();
 }
@@ -679,11 +697,50 @@ function populateMIDIDevices() {
 function bindControls() {
     // Generation mode toggle
     document.getElementById('paletteModeRadio').addEventListener('change', function() {
-        if (this.checked) switchGenerationMode('template');
+        if (this.checked) {
+            switchGenerationMode('template');
+            if (appState.hasGeneratedOnce) {
+                triggerSparkle();
+                generateProgression();
+            }
+        }
     });
 
     document.getElementById('scaleModeRadio').addEventListener('change', function() {
-        if (this.checked) switchGenerationMode('scale');
+        if (this.checked) {
+            switchGenerationMode('scale');
+            if (appState.hasGeneratedOnce) {
+                triggerSparkle();
+                generateProgression();
+            }
+        }
+    });
+
+    // Key select - auto-regenerate on change
+    document.getElementById('keySelect').addEventListener('change', function() {
+        appState.key = parseInt(this.value);
+        if (appState.hasGeneratedOnce) {
+            triggerSparkle();
+            generateProgression();
+        }
+    });
+
+    // Progression select - auto-regenerate on change
+    document.getElementById('progressionSelect').addEventListener('change', function() {
+        appState.progressionTemplate = this.value;
+        if (appState.hasGeneratedOnce) {
+            triggerSparkle();
+            generateProgression();
+        }
+    });
+
+    // Mode select - auto-regenerate on change
+    document.getElementById('modeSelect').addEventListener('change', function() {
+        appState.mode = this.value;
+        if (appState.hasGeneratedOnce) {
+            triggerSparkle();
+            generateProgression();
+        }
     });
 
     // Generate button
