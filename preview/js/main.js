@@ -303,48 +303,150 @@ const CHORD_ROLE_TOOLTIPS = {
 // Chord Progression Generation
 // ============================================================================
 
+// Chord descriptions based on function/degree
+const CHORD_DESCRIPTIONS = {
+    'I': 'Tonic - the home chord, gives resolution and stability.',
+    'i': 'Tonic - the home chord, gives resolution and stability.',
+    'II': 'Secondary dominant - tonicizes V, very common to strengthen cadence.',
+    'ii': 'Supertonic - predominant chord, prepares motion to V.',
+    'ii7': 'Supertonic 7th - predominant chord, often leading to V.',
+    'iii': 'Mediant - weaker predominant or color chord, connects I and IV/vi.',
+    'iii7': 'Mediant 7th - extends predominant function.',
+    'III': 'Mediant major - borrowed from parallel major.',
+    'IV': 'Subdominant - predominant chord, prepares motion to V.',
+    'iv': 'Subdominant minor - borrowed chord, adds melancholy color.',
+    'IVM7': 'Subdominant maj7 - rich predominant function.',
+    'V': 'Dominant - creates tension that resolves to I.',
+    'V7': 'Dominant 7th - creates tension that resolves to I.',
+    'v': 'Minor dominant - modal, weaker resolution.',
+    'VI': 'Submediant major - borrowed, bright surprise.',
+    'vi': 'Submediant - relative minor, often used for deceptive cadences.',
+    'vi7': 'Submediant 7th - extended tonic function.',
+    'VII': 'Harmonic color - adds variety and interest to the progression.',
+    'vii°': 'Leading tone - diminished chord, pulls strongly to I.',
+    '♭II': 'Borrowed flat-II (Neapolitan), strong predominant, prepares V.',
+    '♭II7': 'Tritone sub - jazz substitution for V7.',
+    '♭III': 'Borrowed from Mixolydian, gives rock/blues flavor, often moves to I or V.',
+    '♭VI': 'Borrowed flat-VI, dramatic color, often moves to V.',
+    '♭VII': 'Borrowed from Mixolydian, gives rock/blues flavor, often moves to I or V.',
+    '♯iv°': 'Passing diminished - chromatic connector between IV and V.',
+    '♯I°': 'Passing diminished - chromatic passing chord.',
+    '♯II°': 'Passing diminished - chromatic connector.'
+};
+
+function getChordDescription(symbol) {
+    if (!symbol) return '';
+
+    // Try exact match
+    if (CHORD_DESCRIPTIONS[symbol]) {
+        return CHORD_DESCRIPTIONS[symbol];
+    }
+
+    // Try base symbol (strip extensions)
+    const baseSymbol = symbol.replace(/[0-9]+|M7|m7|maj7|°7|ø7/g, '');
+    if (CHORD_DESCRIPTIONS[baseSymbol]) {
+        return CHORD_DESCRIPTIONS[baseSymbol];
+    }
+
+    // Try simplified version
+    const simplified = symbol.replace(/7|maj|min|°|ø|\+/g, '');
+    if (CHORD_DESCRIPTIONS[simplified]) {
+        return CHORD_DESCRIPTIONS[simplified];
+    }
+
+    return '';
+}
+
 function generateProgression() {
     const key = parseInt(document.getElementById('keySelect').value);
     appState.key = key;
 
     const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+    const keyName = noteNames[key];
 
     if (appState.generationMode === 'template') {
-        const template = document.getElementById('progressionSelect').value;
-        appState.progressionTemplate = template;
+        const templateRaw = document.getElementById('progressionSelect').value;
+        appState.progressionTemplate = templateRaw;
+
+        // Convert em-dashes to spaces for parsing
+        const template = templateRaw.replace(/—/g, ' ').replace(/-/g, ' ');
+
+        // Get selected option text for the name
+        const selectEl = document.getElementById('progressionSelect');
+        const selectedOption = selectEl.options[selectEl.selectedIndex];
+        const optionText = selectedOption ? selectedOption.textContent : templateRaw;
+
+        // Extract name from option text (e.g., "ii—V—I—vi (Jazz Standard)" -> "Jazz Standard")
+        const nameMatch = optionText.match(/\(([^)]+)\)/);
+        const progressionName = nameMatch ? nameMatch[1] : '';
 
         // Generate multiple variants
         appState.variants = VARIANT_TYPES.map(variantType => {
             const scaleDegrees = MusicTheory.getScaleDegrees('Major');
             const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
 
+            // Optimize voice leading for smooth variant
+            let optimizedChords = generatedChords;
+            if (variantType.name === 'Smooth') {
+                optimizedChords = MusicTheory.optimizeVoiceLeading(generatedChords);
+            }
+
             // Apply variant-specific voicing
-            let chords = generatedChords.map(chord => {
+            let chords = optimizedChords.map(chord => {
                 const notes = chord.notes.map(n => n + variantType.octaveOffset);
                 return {
                     notes,
                     name: MusicTheory.getChordNameFromNotes(notes),
                     symbol: chord.symbol,
-                    type: getChordType(notes)
+                    type: getChordType(notes),
+                    description: getChordDescription(chord.symbol)
                 };
             });
 
-            // Pad to 16 chords
+            const baseChordCount = chords.length;
+
+            // Extrapolate to 16 chords using related harmony
             while (chords.length < 16) {
                 if (chords.length === 0) break;
-                chords.push({ ...chords[chords.length % chords.length], empty: chords.length >= 8 });
+
+                // Use modular index to cycle through chords with variations
+                const sourceIndex = (chords.length - baseChordCount) % baseChordCount;
+                const sourceChord = chords[sourceIndex];
+
+                // Add variety to extrapolated chords
+                const invertedNotes = [...sourceChord.notes];
+                // Apply different inversions for variety
+                if (chords.length % 2 === 0 && invertedNotes.length >= 3) {
+                    invertedNotes[0] += 12; // First inversion
+                    invertedNotes.sort((a, b) => a - b);
+                }
+
+                chords.push({
+                    notes: invertedNotes,
+                    name: MusicTheory.getChordNameFromNotes(invertedNotes),
+                    symbol: sourceChord.symbol,
+                    type: sourceChord.type,
+                    description: sourceChord.description,
+                    extrapolated: true
+                });
             }
 
             return {
                 name: variantType.name,
                 description: variantType.description,
-                chords: chords.slice(0, 16)
+                chords: chords.slice(0, 16),
+                baseChordCount
             };
         });
 
-        // Update title
+        // Update title in CPG format: Key_progression_Variant
+        const variantName = VARIANT_TYPES[0].name;
+        const progressionDisplay = templateRaw.replace(/—/g, '-');
         document.getElementById('progressionTitle').textContent =
-            `${noteNames[key]} Major: ${template.replace(/ /g, '—')}`;
+            `${keyName}_${progressionDisplay}_${variantName}`;
+
+        // Store the progression name for display
+        appState.progressionName = progressionName;
     } else {
         // Scale Mode: Generate single variant showing all scale chords
         const mode = document.getElementById('modeSelect').value;
@@ -353,34 +455,62 @@ function generateProgression() {
         const scaleDegrees = MusicTheory.getScaleDegrees(mode);
         let chords = [];
 
+        const modeSymbols = {
+            'Major': ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'],
+            'Minor': ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'],
+            'Dorian': ['i', 'ii', 'III', 'IV', 'v', 'vi°', 'VII'],
+            'Phrygian': ['i', 'II', 'III', 'iv', 'v°', 'VI', 'vii'],
+            'Lydian': ['I', 'II', 'iii', '♯iv°', 'V', 'vi', 'vii'],
+            'Mixolydian': ['I', 'ii', 'iii°', 'IV', 'v', 'vi', 'VII'],
+            'Locrian': ['i°', 'II', 'iii', 'iv', 'V', 'VI', 'vii']
+        };
+
+        const symbols = modeSymbols[mode] || modeSymbols['Major'];
+
         // Generate all triads in the scale
         for (let degree = 0; degree < 7 && degree < scaleDegrees.length; degree++) {
             const rootNote = 60 + key + scaleDegrees[degree];
             const quality = MusicTheory.getChordQualityForMode(degree, mode);
             const notes = MusicTheory.buildChordRaw(rootNote, quality);
+            const symbol = symbols[degree];
 
             chords.push({
                 notes,
                 name: MusicTheory.getChordNameFromNotes(notes),
-                symbol: ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'][degree],
-                type: quality === 'maj' ? 'major' : quality === 'min' ? 'minor' : quality
+                symbol: symbol,
+                type: quality === 'maj' ? 'major' : quality === 'min' ? 'minor' : quality,
+                description: getChordDescription(symbol)
             });
         }
 
-        // Pad to 16 chords
+        // Pad to 16 chords with octave variations
+        const baseChordCount = chords.length;
         while (chords.length < 16) {
             if (chords.length === 0) break;
-            chords.push({ ...chords[chords.length % chords.length], empty: chords.length >= 8 });
+            const sourceIndex = (chords.length - baseChordCount) % baseChordCount;
+            const sourceChord = chords[sourceIndex];
+
+            const invertedNotes = sourceChord.notes.map(n => n + (chords.length >= 14 ? 12 : 0));
+
+            chords.push({
+                notes: invertedNotes,
+                name: MusicTheory.getChordNameFromNotes(invertedNotes),
+                symbol: sourceChord.symbol,
+                type: sourceChord.type,
+                description: sourceChord.description,
+                extrapolated: true
+            });
         }
 
         appState.variants = [{
             name: 'Scale',
             description: `All chords from ${mode} scale`,
-            chords: chords.slice(0, 16)
+            chords: chords.slice(0, 16),
+            baseChordCount
         }];
 
         document.getElementById('progressionTitle').textContent =
-            `${noteNames[key]} ${mode}: Scale Exploration`;
+            `${keyName}_${mode}_Scale`;
     }
 
     // Reset to first variant and update UI
@@ -404,10 +534,28 @@ function updateVariantSelector() {
 
     selector.value = appState.currentVariantIndex;
 
-    // Update description
+    // Update description and title
     const currentVariant = appState.variants[appState.currentVariantIndex];
     if (currentVariant && description) {
         description.textContent = currentVariant.description;
+    }
+
+    // Update title with current variant name
+    updateProgressionTitle();
+}
+
+function updateProgressionTitle() {
+    const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+    const keyName = noteNames[appState.key];
+    const currentVariant = appState.variants[appState.currentVariantIndex];
+
+    if (appState.generationMode === 'template') {
+        const progressionDisplay = appState.progressionTemplate.replace(/—/g, '-');
+        document.getElementById('progressionTitle').textContent =
+            `${keyName}_${progressionDisplay}_${currentVariant.name}`;
+    } else {
+        document.getElementById('progressionTitle').textContent =
+            `${keyName}_${appState.mode}_${currentVariant.name}`;
     }
 }
 
@@ -424,6 +572,9 @@ function switchVariant(index) {
     if (currentVariant && description) {
         description.textContent = currentVariant.description;
     }
+
+    // Update title with new variant name
+    updateProgressionTitle();
 
     renderChordGrid();
 }
@@ -450,49 +601,53 @@ function renderChordGrid() {
     const grid = document.getElementById('chordGrid');
     grid.innerHTML = '';
 
-    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
     appState.chordProgression.forEach((chord, index) => {
         const pad = document.createElement('div');
         pad.className = 'chord-pad';
         pad.dataset.index = index;
 
-        if (chord.empty) {
-            pad.classList.add('empty');
+        if (chord.extrapolated) {
+            pad.classList.add('extrapolated');
         }
 
         if (index === appState.currentChordIndex && appState.isPlaying) {
             pad.classList.add('current');
         }
 
-        // Get note names for display
-        const chordNoteNames = chord.notes ? chord.notes.map(n => noteNames[n % 12]).join(' ') : '';
-
-        // Get quality label
+        // Get quality label and determine color class
         const qualityLabel = getQualityLabel(chord.type);
+        const qualityClass = getQualityClass(chord.type);
 
-        // Get chord role tooltip
-        const roleTooltip = getChordRoleTooltip(chord.symbol);
-        if (roleTooltip) {
-            pad.setAttribute('data-tooltip', roleTooltip);
-        }
+        // Get note names with octave for display (e.g., "G3 B3 D4 F4")
+        const chordNoteNamesWithOctave = chord.notes
+            ? chord.notes.map(n => MusicTheory.getNoteName(n, false, true)).join(' ')
+            : '';
 
+        // Get chord description
+        const description = chord.description || getChordDescription(chord.symbol) || '';
+
+        // CPG-style layout:
+        // Top row: chord name (left) | description (right)
+        // Middle row: quality + roman numeral (left, colored) | notes with octave (right)
+        // Bottom: keyboard SVG
         pad.innerHTML = `
-            <div class="chord-pad-content">
-                <div class="chord-info">
-                    <div class="chord-name">${chord.name || '—'}</div>
-                    <div class="chord-quality">${qualityLabel}</div>
-                    <div class="chord-roman">${chord.symbol || ''}</div>
-                </div>
-                <span class="pad-number">Pad ${index + 1}</span>
+            <div class="chord-pad-header">
+                <span class="chord-name">${chord.name || '—'}</span>
+                <span class="chord-description">${description}</span>
             </div>
-            <div class="chord-notes">${chordNoteNames}</div>
+            <div class="chord-pad-middle">
+                <div class="chord-function ${qualityClass}">
+                    <span class="chord-quality">${qualityLabel}</span>
+                    <span class="chord-roman">${chord.symbol || ''}</span>
+                </div>
+                <span class="chord-notes">${chordNoteNamesWithOctave}</span>
+            </div>
             <div class="chord-keyboard">${chord.notes ? generateKeyboardSVG(chord.notes) : ''}</div>
         `;
 
         // Click to play chord and show proximity coloring
         pad.addEventListener('click', () => {
-            if (!chord.empty && chord.notes) {
+            if (chord.notes) {
                 playChordWithFeedback(index, pad);
                 showChordProximity(index);
             }
@@ -500,6 +655,18 @@ function renderChordGrid() {
 
         grid.appendChild(pad);
     });
+}
+
+function getQualityClass(type) {
+    const classes = {
+        'major': 'quality-major',
+        'minor': 'quality-minor',
+        'dominant': 'quality-dominant',
+        'diminished': 'quality-diminished',
+        'augmented': 'quality-augmented',
+        'suspended': 'quality-suspended'
+    };
+    return classes[type] || 'quality-major';
 }
 
 function getChordRoleTooltip(symbol) {
