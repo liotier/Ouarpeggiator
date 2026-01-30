@@ -70,26 +70,25 @@ const appState = {
 
 function toggleChordMatcher() {
     const matcher = document.getElementById('chordMatcher');
-    matcher.classList.toggle('collapsed');
+    matcher.classList.toggle('expanded');
 }
 
 // Expose globally for onclick
 window.toggleChordMatcher = toggleChordMatcher;
 
-function addChordToMatcher() {
+function addChordRequirement() {
     const noteSelect = document.getElementById('chordNote');
     const qualitySelect = document.getElementById('chordQuality');
 
     if (!noteSelect.value || !qualitySelect.value) return;
 
-    const note = parseInt(noteSelect.value);
+    const note = noteSelect.value;
     const quality = qualitySelect.value;
-    const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
     const chord = {
         note,
         quality,
-        name: noteNames[note] + (quality === 'maj' ? '' : quality)
+        name: note + (quality === 'major' ? '' : quality)
     };
 
     appState.selectedChords.push(chord);
@@ -101,37 +100,48 @@ function addChordToMatcher() {
     qualitySelect.value = '';
 }
 
-function removeChordFromMatcher(index) {
+// Expose globally for onclick
+window.addChordRequirement = addChordRequirement;
+
+function removeChordRequirement(index) {
     appState.selectedChords.splice(index, 1);
     renderSelectedChords();
     updateSuggestions();
 }
 
-function clearChordMatcher() {
+// Expose globally for onclick
+window.removeChordRequirement = removeChordRequirement;
+
+function clearChordRequirements() {
     appState.selectedChords = [];
     renderSelectedChords();
     updateSuggestions();
 }
 
+// Expose globally for onclick
+window.clearChordRequirements = clearChordRequirements;
+
 function renderSelectedChords() {
     const container = document.getElementById('selectedChords');
     container.innerHTML = appState.selectedChords.map((chord, i) =>
-        `<span class="chord-tag">${chord.name}<span class="remove" onclick="removeChordFromMatcher(${i})">×</span></span>`
+        `<span class="chord-tag">${chord.name}<button onclick="removeChordRequirement(${i})">×</button></span>`
     ).join('');
 }
 
-window.removeChordFromMatcher = removeChordFromMatcher;
-
 function updateSuggestions() {
     const container = document.getElementById('suggestionList');
+    const suggestionsContainer = document.getElementById('keyModeSuggestions');
+
     if (appState.selectedChords.length === 0) {
-        container.innerHTML = '<span class="text-muted">Add chords to see compatible keys</span>';
+        suggestionsContainer.style.display = 'none';
         return;
     }
 
+    suggestionsContainer.style.display = 'block';
+
     // Simple suggestion logic - find keys that contain all selected chords
     const suggestions = [];
-    const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
     for (let key = 0; key < 12; key++) {
         ['Major', 'Minor'].forEach(mode => {
@@ -144,8 +154,8 @@ function updateSuggestions() {
     }
 
     container.innerHTML = suggestions.slice(0, 8).map(s =>
-        `<span class="suggestion-item" onclick="applySuggestion(${s.key}, '${s.mode}')">${s.name}</span>`
-    ).join('');
+        `<span class="suggestion-item compatible" onclick="applySuggestion(${s.key}, '${s.mode}')">${s.name}</span>`
+    ).join(' ');
 }
 
 function applySuggestion(key, mode) {
@@ -171,12 +181,58 @@ function switchGenerationMode(mode) {
     const scaleContainer = document.getElementById('scaleModeContainer');
 
     if (mode === 'template') {
-        paletteContainer.style.display = 'block';
-        scaleContainer.style.display = 'none';
+        paletteContainer.classList.add('active');
+        scaleContainer.classList.remove('active');
     } else {
-        paletteContainer.style.display = 'none';
-        scaleContainer.style.display = 'block';
+        paletteContainer.classList.remove('active');
+        scaleContainer.classList.add('active');
     }
+}
+
+// ============================================================================
+// Keyboard SVG Generation (from Chord Progression Generator)
+// ============================================================================
+
+function generateKeyboardSVG(notes) {
+    if (!notes || notes.length === 0) return '';
+
+    // Determine octave range to display - start at the lowest note's octave
+    const minNote = Math.min(...notes);
+    const startOctave = Math.floor(minNote / 12);
+    const startNote = startOctave * 12;
+
+    // Create set of active notes (absolute, not modulo)
+    const activeNotes = new Set(notes);
+
+    // Two octaves = 14 white keys
+    const whiteKeyPattern = [0, 2, 4, 5, 7, 9, 11];
+    const blackKeyPattern = [1, 3, 6, 8, 10];
+
+    let svg = '<svg viewBox="0 0 196 35" xmlns="http://www.w3.org/2000/svg">';
+
+    // Draw two octaves of white keys
+    for (let octave = 0; octave < 2; octave++) {
+        whiteKeyPattern.forEach((note, i) => {
+            const x = (octave * 7 + i) * 14;
+            const absoluteNote = startNote + (octave * 12) + note;
+            const active = activeNotes.has(absoluteNote);
+            svg += `<rect x="${x}" y="0" width="13" height="35" fill="${active ? '#f59e0b' : 'white'}" stroke="#333" stroke-width="1"/>`;
+        });
+    }
+
+    // Draw two octaves of black keys
+    const whiteKeyIndices = [0, 1, 3, 4, 5];
+    for (let octave = 0; octave < 2; octave++) {
+        blackKeyPattern.forEach((note, i) => {
+            const x = (octave * 7 + whiteKeyIndices[i]) * 14 + 8.5;
+            const absoluteNote = startNote + (octave * 12) + note;
+            const active = activeNotes.has(absoluteNote);
+            svg += `<rect x="${x}" y="0" width="10" height="21" fill="${active ? '#dc2626' : '#333'}" stroke="#000" stroke-width="1"/>`;
+        });
+    }
+
+    svg += '</svg>';
+    return svg;
 }
 
 // ============================================================================
@@ -266,33 +322,86 @@ function renderChordGrid() {
     const grid = document.getElementById('chordGrid');
     grid.innerHTML = '';
 
+    const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
     appState.chordProgression.forEach((chord, index) => {
         const pad = document.createElement('div');
-        pad.className = `chord-pad ${chord.type || 'major'}`;
+        pad.className = 'chord-pad';
 
         if (chord.empty) {
             pad.classList.add('empty');
         }
 
-        if (index === appState.currentChordIndex) {
+        if (index === appState.currentChordIndex && appState.isPlaying) {
             pad.classList.add('current');
         }
 
+        // Get note names for display
+        const chordNoteNames = chord.notes ? chord.notes.map(n => noteNames[n % 12]).join(' ') : '';
+
+        // Get quality label
+        const qualityLabel = getQualityLabel(chord.type);
+
         pad.innerHTML = `
-            <div class="chord-name">${chord.name || '—'}</div>
-            <div class="chord-roman">${chord.symbol || ''}</div>
+            <div class="chord-pad-content">
+                <div class="chord-info">
+                    <div class="chord-name">${chord.name || '—'}</div>
+                    <div class="chord-quality">${qualityLabel}</div>
+                    <div class="chord-roman">${chord.symbol || ''}</div>
+                </div>
+                <span class="pad-number">Pad ${index + 1}</span>
+            </div>
+            <div class="chord-notes">${chordNoteNames}</div>
+            <div class="chord-keyboard">${chord.notes ? generateKeyboardSVG(chord.notes) : ''}</div>
         `;
 
+        // Click to play chord (works whether arpeggiator is running or not)
         pad.addEventListener('click', () => {
             if (!chord.empty && chord.notes) {
-                previewChord(index);
-                appState.currentChordIndex = index;
-                renderChordGrid();
+                playChordWithFeedback(index, pad);
             }
         });
 
         grid.appendChild(pad);
     });
+}
+
+function getQualityLabel(type) {
+    const labels = {
+        'major': 'Major',
+        'minor': 'Minor',
+        'dominant': 'Dominant 7',
+        'diminished': 'Diminished',
+        'augmented': 'Augmented',
+        'suspended': 'Suspended'
+    };
+    return labels[type] || 'Major';
+}
+
+function playChordWithFeedback(index, padElement) {
+    const chord = appState.chordProgression[index];
+    if (!chord || !chord.notes) return;
+
+    // Visual feedback
+    padElement.classList.add('playing');
+    setTimeout(() => padElement.classList.remove('playing'), 300);
+
+    // Initialize audio if needed
+    if (!Audio.isAudioAvailable()) {
+        Audio.initAudio();
+    }
+
+    // Play sound
+    if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+        Audio.playChord(chord.notes, 80, 400);
+    }
+
+    if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+        chord.notes.forEach(note => {
+            MIDI.sendNoteOn(note, 80);
+            setTimeout(() => MIDI.sendNoteOff(note), 350);
+        });
+    }
 }
 
 function previewChord(index) {
@@ -579,10 +688,6 @@ function bindControls() {
 
     // Generate button
     document.getElementById('generateBtn').addEventListener('click', generateProgression);
-
-    // Chord matcher
-    document.getElementById('addChordBtn').addEventListener('click', addChordToMatcher);
-    document.getElementById('clearChordsBtn').addEventListener('click', clearChordMatcher);
 
     // Output mode
     document.getElementById('outputMode').addEventListener('change', function() {

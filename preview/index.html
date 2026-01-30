@@ -15,163 +15,187 @@
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body data-context="keyboard">
     <div class="app">
         <!-- Header -->
-        <header class="header">
-            <h1>Ouarpeggiator</h1>
-            <p class="subtitle">Euclidean Rhythm Arpeggiator for Chord Progressions</p>
-        </header>
+        <div class="header">
+            <div>
+                <h1>Ouarpeggiator</h1>
+                <p class="subtitle">Euclidean Rhythm Arpeggiator for Chord Progressions</p>
+            </div>
+        </div>
 
-        <!-- Chord Matcher Section -->
-        <section id="chordMatcher" class="chord-matcher">
+        <!-- Chord Matcher: Filters keys for both Progression Palette and Scale modes -->
+        <div class="chord-matcher" id="chordMatcher">
             <div class="chord-matcher-header" onclick="toggleChordMatcher()">
-                <h3>Chord Matcher</h3>
-                <span class="toggle-indicator">▼</span>
+                <h3>🎹 Chord Matcher</h3>
+                <span class="optional-badge">Optional</span>
+                <svg class="expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
             </div>
             <div class="chord-matcher-content">
-                <div class="chord-matcher-controls">
+                <p class="chord-matcher-description">
+                    Found a sample with great chords? Enter them here to find compatible keys and modes for your production.
+                </p>
+                <div class="chord-input-row">
                     <select id="chordNote">
                         <option value="">Note...</option>
-                        <option value="0">C</option>
-                        <option value="1">C♯/D♭</option>
-                        <option value="2">D</option>
-                        <option value="3">D♯/E♭</option>
-                        <option value="4">E</option>
-                        <option value="5">F</option>
-                        <option value="6">F♯/G♭</option>
-                        <option value="7">G</option>
-                        <option value="8">G♯/A♭</option>
-                        <option value="9">A</option>
-                        <option value="10">A♯/B♭</option>
-                        <option value="11">B</option>
+                        <option value="C">C</option>
+                        <option value="C#">C#/D♭</option>
+                        <option value="D">D</option>
+                        <option value="D#">D#/E♭</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F#/G♭</option>
+                        <option value="G">G</option>
+                        <option value="G#">G#/A♭</option>
+                        <option value="A">A</option>
+                        <option value="A#">A#/B♭</option>
+                        <option value="B">B</option>
                     </select>
                     <select id="chordQuality">
                         <option value="">Quality...</option>
-                        <option value="maj">Major</option>
-                        <option value="min">Minor</option>
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
                         <option value="dim">Diminished</option>
                         <option value="aug">Augmented</option>
+                        <option value="sus2">Sus2</option>
+                        <option value="sus4">Sus4</option>
                         <option value="7">Dominant 7</option>
                         <option value="maj7">Major 7</option>
-                        <option value="min7">Minor 7</option>
+                        <option value="m7">Minor 7</option>
                     </select>
-                    <button id="addChordBtn" class="btn btn-secondary">Add Chord</button>
-                    <button id="clearChordsBtn" class="btn btn-outline">Clear All</button>
+                    <button onclick="addChordRequirement()">Add Chord</button>
+                    <button onclick="clearChordRequirements()">Clear All</button>
                 </div>
-                <div id="selectedChords" class="selected-chords"></div>
-                <div id="keyModeSuggestions" class="suggestions-container">
-                    <div id="suggestionList" class="suggestion-list"></div>
+                <div class="selected-chords" id="selectedChords"></div>
+                <div class="key-mode-suggestions" id="keyModeSuggestions" style="display: none;">
+                    <div class="suggestion-label">Compatible Keys & Modes:</div>
+                    <div class="suggestion-list" id="suggestionList"></div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Main Controls -->
-        <section class="controls">
-            <!-- Generation Mode Toggle -->
-            <div class="control-row mode-toggle">
-                <label class="radio-label">
-                    <input type="radio" name="generationMode" id="paletteModeRadio" checked>
-                    <span>Progression Palette Mode</span>
-                </label>
-                <label class="radio-label">
-                    <input type="radio" name="generationMode" id="scaleModeRadio">
-                    <span>Scale Exploration Mode</span>
-                </label>
-            </div>
+        <div class="controls">
+            <!-- Top Row: Mode Toggle + Key Selector -->
+            <div class="controls-top-row">
+                <div class="generation-mode-toggle">
+                    <label class="mode-option" id="paletteModeLabel">
+                        <input type="radio" name="generationMode" value="template" id="paletteModeRadio" checked>
+                        <span>Progression Palette Mode</span>
+                    </label>
+                    <label class="mode-option" id="scaleModeLabel">
+                        <input type="radio" name="generationMode" value="scale" id="scaleModeRadio">
+                        <span>Scale Mode</span>
+                    </label>
+                </div>
 
-            <!-- Key and Mode/Progression Selection -->
-            <div class="control-row">
-                <div class="control-group">
-                    <label for="keySelect">Key</label>
+                <div class="filter-group">
+                    <label>Key</label>
                     <select id="keySelect">
                         <option value="0">C</option>
-                        <option value="1">C♯/D♭</option>
+                        <option value="1">C#/D♭</option>
                         <option value="2">D</option>
-                        <option value="3">D♯/E♭</option>
+                        <option value="3">D#/E♭</option>
                         <option value="4">E</option>
                         <option value="5">F</option>
-                        <option value="6">F♯/G♭</option>
+                        <option value="6">F#/G♭</option>
                         <option value="7">G</option>
-                        <option value="8">G♯/A♭</option>
+                        <option value="8">G#/A♭</option>
                         <option value="9">A</option>
-                        <option value="10">A♯/B♭</option>
+                        <option value="10">A#/B♭</option>
                         <option value="11">B</option>
                     </select>
                 </div>
+            </div>
 
-                <div id="paletteModeContainer" class="control-group">
-                    <label for="progressionSelect">Progression</label>
-                    <select id="progressionSelect">
-                        <optgroup label="Pop/Rock">
-                            <option value="I V vi IV">I—V—vi—IV (Axis)</option>
-                            <option value="I IV V IV">I—IV—V—IV</option>
-                            <option value="I vi IV V">I—vi—IV—V (50s)</option>
-                            <option value="vi IV I V">vi—IV—I—V</option>
-                        </optgroup>
-                        <optgroup label="Blues/Soul">
-                            <option value="I I I I IV IV I I V IV I V">12-Bar Blues</option>
-                            <option value="i i i i iv iv i i V iv i V">Minor Blues</option>
-                        </optgroup>
-                        <optgroup label="Jazz">
-                            <option value="ii7 V7 Imaj7">ii—V—I</option>
-                            <option value="Imaj7 vi7 ii7 V7">I—vi—ii—V (Rhythm Changes)</option>
-                            <option value="iii7 vi7 ii7 V7">iii—vi—ii—V</option>
-                        </optgroup>
-                        <optgroup label="Modal">
-                            <option value="i7 IV7">Dorian Vamp</option>
-                            <option value="I7 bVII">Mixolydian Vamp</option>
-                            <option value="i bII">Phrygian Vamp</option>
-                        </optgroup>
-                        <optgroup label="Classical">
-                            <option value="I V vi iii IV I IV V">Pachelbel Canon</option>
-                            <option value="i VII VI V">Andalusian Cadence</option>
-                        </optgroup>
-                    </select>
+            <!-- Middle Row: Mode Containers Side by Side -->
+            <div class="mode-containers-row">
+                <!-- Progression Palette Mode Container -->
+                <div class="mode-container palette-mode-container active" id="paletteModeContainer">
+                    <div class="mode-container-header">Progression Palette Mode</div>
+                    <div class="filter-group">
+                        <label>Progression Palette</label>
+                        <select id="progressionSelect">
+                            <optgroup label="Pop/Rock">
+                                <option value="I V vi IV">I—V—vi—IV (Axis)</option>
+                                <option value="I IV V IV">I—IV—V—IV</option>
+                                <option value="I vi IV V">I—vi—IV—V (50s)</option>
+                                <option value="vi IV I V">vi—IV—I—V</option>
+                            </optgroup>
+                            <optgroup label="Blues/Soul">
+                                <option value="I I I I IV IV I I V IV I V">12-Bar Blues</option>
+                                <option value="i i i i iv iv i i V iv i V">Minor Blues</option>
+                            </optgroup>
+                            <optgroup label="Jazz">
+                                <option value="ii7 V7 Imaj7">ii—V—I</option>
+                                <option value="Imaj7 vi7 ii7 V7">I—vi—ii—V (Rhythm Changes)</option>
+                                <option value="iii7 vi7 ii7 V7">iii—vi—ii—V</option>
+                            </optgroup>
+                            <optgroup label="Modal">
+                                <option value="i7 IV7">Dorian Vamp</option>
+                                <option value="I7 bVII">Mixolydian Vamp</option>
+                                <option value="i bII">Phrygian Vamp</option>
+                            </optgroup>
+                            <optgroup label="Classical">
+                                <option value="I V vi iii IV I IV V">Pachelbel Canon</option>
+                                <option value="i VII VI V">Andalusian Cadence</option>
+                            </optgroup>
+                        </select>
+                    </div>
                 </div>
 
-                <div id="scaleModeContainer" class="control-group" style="display: none;">
-                    <label for="modeSelect">Mode</label>
-                    <select id="modeSelect">
-                        <optgroup label="Western Modes">
-                            <option value="Major">Major (Ionian)</option>
-                            <option value="Minor">Minor (Aeolian)</option>
-                            <option value="Dorian">Dorian</option>
-                            <option value="Phrygian">Phrygian</option>
-                            <option value="Lydian">Lydian</option>
-                            <option value="Mixolydian">Mixolydian</option>
-                            <option value="Locrian">Locrian</option>
-                        </optgroup>
-                        <optgroup label="Extended Minor">
-                            <option value="Harmonic Minor">Harmonic Minor</option>
-                            <option value="Melodic Minor">Melodic Minor</option>
-                        </optgroup>
-                        <optgroup label="Pentatonic & Blues">
-                            <option value="Pentatonic Major">Pentatonic Major</option>
-                            <option value="Pentatonic Minor">Pentatonic Minor</option>
-                            <option value="Blues">Blues</option>
-                        </optgroup>
-                    </select>
+                <!-- Scale Mode Container -->
+                <div class="mode-container scale-mode-container" id="scaleModeContainer">
+                    <div class="mode-container-header">Scale Mode</div>
+                    <div class="filter-group">
+                        <label>Mode/Scale</label>
+                        <select id="modeSelect">
+                            <optgroup label="Western Modes">
+                                <option value="Major">Major (Ionian)</option>
+                                <option value="Minor">Minor (Aeolian)</option>
+                                <option value="Dorian">Dorian</option>
+                                <option value="Phrygian">Phrygian</option>
+                                <option value="Lydian">Lydian</option>
+                                <option value="Mixolydian">Mixolydian</option>
+                                <option value="Locrian">Locrian</option>
+                            </optgroup>
+                            <optgroup label="Extended Minor">
+                                <option value="Harmonic Minor">Harmonic Minor</option>
+                                <option value="Melodic Minor">Melodic Minor</option>
+                            </optgroup>
+                            <optgroup label="Pentatonic & Blues">
+                                <option value="Pentatonic Major">Pentatonic Major</option>
+                                <option value="Pentatonic Minor">Pentatonic Minor</option>
+                                <option value="Blues">Blues</option>
+                            </optgroup>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <!-- Generate Button -->
-            <div class="control-row">
-                <button id="generateBtn" class="btn btn-primary btn-large">Generate Progression</button>
+            <!-- Bottom Row: Generate Button -->
+            <div class="controls-bottom-row">
+                <button class="primary" id="generateBtn">Generate Progression</button>
             </div>
-        </section>
+        </div>
 
         <!-- Chord Progression Display -->
-        <section id="progressionsContainer" class="progressions">
+        <div id="progressionsContainer" class="progressions">
             <div class="progression-card">
                 <div class="progression-header">
-                    <span id="progressionTitle" class="progression-name">C Major: I—V—vi—IV</span>
+                    <div class="progression-info">
+                        <div class="progression-title-row">
+                            <span id="progressionTitle" class="progression-title">C Major: I—V—vi—IV</span>
+                        </div>
+                    </div>
                 </div>
-                <div id="chordGrid" class="chord-grid context-keyboard">
+                <div id="chordGrid" class="chord-grid">
                     <!-- 16 pads populated dynamically -->
                 </div>
             </div>
-        </section>
+        </div>
 
         <!-- Arpeggiator Section -->
         <section class="arpeggiator-section">
@@ -179,22 +203,22 @@
 
             <!-- Output Configuration -->
             <div class="control-row">
-                <div class="control-group">
-                    <label for="outputMode">Output</label>
+                <div class="filter-group">
+                    <label>Output</label>
                     <select id="outputMode">
-                        <option value="audio">Web Audio (Built-in Synth)</option>
+                        <option value="audio">Built-in simple tones</option>
                         <option value="midi">MIDI</option>
                         <option value="both">Both</option>
                     </select>
                 </div>
-                <div id="midiOutputConfig" class="control-group" style="display: none;">
-                    <label for="midiOutputSelect">MIDI Output</label>
+                <div id="midiOutputConfig" class="filter-group" style="display: none;">
+                    <label>MIDI Output</label>
                     <select id="midiOutputSelect">
                         <option value="">Select output...</option>
                     </select>
                 </div>
-                <div id="audioConfig" class="control-group">
-                    <label for="synthWaveform">Waveform</label>
+                <div id="audioConfig" class="filter-group">
+                    <label>Waveform</label>
                     <select id="synthWaveform">
                         <option value="triangle">Triangle</option>
                         <option value="sine">Sine</option>
@@ -206,20 +230,20 @@
 
             <!-- Pattern Controls -->
             <div class="control-row">
-                <div class="control-group">
-                    <label for="hitsSlider">Hits: <span id="hitsValue">7</span></label>
+                <div class="filter-group">
+                    <label>Hits: <span id="hitsValue">7</span></label>
                     <input type="range" id="hitsSlider" min="1" max="32" value="7">
                 </div>
-                <div class="control-group">
-                    <label for="stepsSlider">Steps: <span id="stepsValue">16</span></label>
+                <div class="filter-group">
+                    <label>Steps: <span id="stepsValue">16</span></label>
                     <input type="range" id="stepsSlider" min="1" max="32" value="16">
                 </div>
-                <div class="control-group">
-                    <label for="rotationSlider">Rotation: <span id="rotationValue">0</span></label>
+                <div class="filter-group">
+                    <label>Rotation: <span id="rotationValue">0</span></label>
                     <input type="range" id="rotationSlider" min="0" max="31" value="0">
                 </div>
-                <div class="control-group">
-                    <label for="octaveSpread">Octave Spread: <span id="octaveValue">1</span></label>
+                <div class="filter-group">
+                    <label>Octave Spread: <span id="octaveValue">1</span></label>
                     <input type="range" id="octaveSpread" min="1" max="4" value="1">
                 </div>
             </div>
@@ -229,34 +253,34 @@
 
             <!-- Timing Controls -->
             <div class="control-row">
-                <div class="control-group">
-                    <label for="bpmSlider">BPM: <span id="bpmValue">120</span></label>
+                <div class="filter-group">
+                    <label>BPM: <span id="bpmValue">120</span></label>
                     <input type="range" id="bpmSlider" min="40" max="240" value="120">
                 </div>
-                <div class="control-group">
+                <div class="filter-group">
                     <label>Bars per Chord</label>
                     <div class="button-group">
-                        <button class="btn bars-btn" data-value="1">1</button>
-                        <button class="btn bars-btn" data-value="2">2</button>
-                        <button class="btn bars-btn active" data-value="4">4</button>
-                        <button class="btn bars-btn" data-value="8">8</button>
+                        <button class="bars-btn" data-value="1">1</button>
+                        <button class="bars-btn" data-value="2">2</button>
+                        <button class="bars-btn active" data-value="4">4</button>
+                        <button class="bars-btn" data-value="8">8</button>
                     </div>
                 </div>
-                <div class="control-group">
-                    <label for="humanization">Humanize: <span id="humanizationValue">0</span>ms</label>
+                <div class="filter-group">
+                    <label>Humanize: <span id="humanizationValue">0</span>ms</label>
                     <input type="range" id="humanization" min="0" max="50" value="0">
                 </div>
             </div>
 
             <!-- Transport -->
             <div class="control-row transport">
-                <button id="startBtn" class="btn btn-primary btn-large">
+                <button class="primary" id="startBtn">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                         <polygon points="5,3 19,12 5,21"/>
                     </svg>
                     Start
                 </button>
-                <button id="stopBtn" class="btn btn-secondary btn-large" disabled>
+                <button id="stopBtn" disabled>
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                         <rect x="4" y="4" width="16" height="16"/>
                     </svg>
@@ -269,20 +293,20 @@
             <details class="variation-section">
                 <summary>Variation</summary>
                 <div class="control-row">
-                    <div class="control-group">
-                        <label for="harmonicVariation">Harmonic: <span id="harmonicValue">0%</span></label>
+                    <div class="filter-group">
+                        <label>Harmonic: <span id="harmonicValue">0%</span></label>
                         <input type="range" id="harmonicVariation" min="0" max="100" value="0">
                     </div>
-                    <div class="control-group">
-                        <label for="rhythmicVariation">Rhythmic: <span id="rhythmicValue">0%</span></label>
+                    <div class="filter-group">
+                        <label>Rhythmic: <span id="rhythmicValue">0%</span></label>
                         <input type="range" id="rhythmicVariation" min="0" max="100" value="0">
                     </div>
-                    <div class="control-group">
+                    <div class="filter-group">
                         <label>Voice Leading</label>
                         <div class="button-group">
-                            <button class="btn voice-btn active" data-value="smooth">Smooth</button>
-                            <button class="btn voice-btn" data-value="far">Far</button>
-                            <button class="btn voice-btn" data-value="none">None</button>
+                            <button class="voice-btn active" data-value="smooth">Smooth</button>
+                            <button class="voice-btn" data-value="far">Far</button>
+                            <button class="voice-btn" data-value="none">None</button>
                         </div>
                     </div>
                 </div>
@@ -292,8 +316,8 @@
             <details class="output-section">
                 <summary>Velocity & Gate</summary>
                 <div class="control-row">
-                    <div class="control-group">
-                        <label for="velocityMode">Velocity Mode</label>
+                    <div class="filter-group">
+                        <label>Velocity Mode</label>
                         <select id="velocityMode">
                             <option value="fixed">Fixed</option>
                             <option value="random">Random</option>
@@ -303,8 +327,8 @@
                     <div id="velocityControls" class="dynamic-controls"></div>
                 </div>
                 <div class="control-row">
-                    <div class="control-group">
-                        <label for="gateMode">Gate Mode</label>
+                    <div class="filter-group">
+                        <label>Gate Mode</label>
                         <select id="gateMode">
                             <option value="fixed">Fixed</option>
                             <option value="random">Random</option>
@@ -317,7 +341,7 @@
         </section>
 
         <!-- Footer -->
-        <footer class="footer">
+        <footer>
             <p>
                 <a href="https://github.com/liotier/Ouarpeggiator" target="_blank" rel="noopener">GitHub</a> |
                 Based on <a href="https://liotier.github.io/AkaiMPC/AkaiMPCChordProgressionGenerator/" target="_blank" rel="noopener">Akai MPC Chord Progression Generator</a>
