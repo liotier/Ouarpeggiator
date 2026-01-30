@@ -310,8 +310,60 @@ h1 {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 16px;
-    align-items: end;
+    align-items: center;
     margin-top: 8px;
+}
+
+/* MIDI Selector */
+.midi-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--pad-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.midi-selector label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.midi-selector select {
+    min-width: 180px;
+}
+
+/* Variant Selector */
+.variant-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.variant-selector label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.variant-selector select {
+    min-width: 120px;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+.progression-meta {
+    margin-top: 8px;
+}
+
+.variant-description {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
 }
 
 .controls {
