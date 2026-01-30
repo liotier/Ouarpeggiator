@@ -380,62 +380,129 @@ function generateProgression() {
         const nameMatch = optionText.match(/\(([^)]+)\)/);
         const progressionName = nameMatch ? nameMatch[1] : '';
 
-        // Generate multiple variants
+        // Generate multiple variants using CPG algorithm
         appState.variants = VARIANT_TYPES.map(variantType => {
             const scaleDegrees = MusicTheory.getScaleDegrees('Major');
             const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
 
-            // Optimize voice leading for smooth variant
-            let optimizedChords = generatedChords;
-            if (variantType.name === 'Smooth') {
-                optimizedChords = MusicTheory.optimizeVoiceLeading(generatedChords);
+            // Apply CPG voice leading optimization based on variant type
+            let voicedProgression = generatedChords;
+            switch (variantType.name) {
+                case 'Smooth':
+                    voicedProgression = MusicTheory.optimizeSmoothVoiceLeading(generatedChords);
+                    break;
+                case 'Classic':
+                    voicedProgression = MusicTheory.optimizeVoiceLeading(generatedChords);
+                    break;
+                case 'Jazz':
+                    voicedProgression = MusicTheory.applyVoicingStyle(generatedChords, 'close');
+                    voicedProgression = MusicTheory.optimizeVoiceLeading(voicedProgression);
+                    break;
+                case 'Modal':
+                    voicedProgression = MusicTheory.applyVoicingStyle(generatedChords, 'open');
+                    break;
+                case 'Experimental':
+                    voicedProgression = MusicTheory.applyVoicingStyle(generatedChords, 'spread');
+                    break;
+                default:
+                    voicedProgression = MusicTheory.optimizeVoiceLeading(generatedChords);
             }
 
-            // Apply variant-specific voicing
-            let chords = optimizedChords.map(chord => {
+            // Apply variant-specific octave offset and build chord objects
+            let chords = voicedProgression.map(chord => {
                 const notes = chord.notes.map(n => n + variantType.octaveOffset);
                 return {
                     notes,
                     name: MusicTheory.getChordNameFromNotes(notes),
                     symbol: chord.symbol,
                     type: getChordType(notes),
-                    description: getChordDescription(chord.symbol)
+                    description: getChordDescription(chord.symbol),
+                    isProgressionChord: true
                 };
             });
 
-            const baseChordCount = chords.length;
+            const originalProgressionLength = chords.length;
 
-            // Extrapolate to 16 chords using related harmony
-            while (chords.length < 16) {
-                if (chords.length === 0) break;
+            // CPG-style Row 1-3 filling with duplicate collapsing
+            // Build complete chord queue from progression
+            const allChords = [...chords];
+            let chordQueueIndex = 0;
 
-                // Use modular index to cycle through chords with variations
-                const sourceIndex = (chords.length - baseChordCount) % baseChordCount;
-                const sourceChord = chords[sourceIndex];
+            const getNextChord = () => {
+                if (chordQueueIndex < allChords.length) {
+                    return allChords[chordQueueIndex++];
+                }
+                // Cycle through if needed
+                if (allChords.length > 0) {
+                    chordQueueIndex = 0;
+                    return allChords[chordQueueIndex++];
+                }
+                return null;
+            };
 
-                // Add variety to extrapolated chords
-                const invertedNotes = [...sourceChord.notes];
-                // Apply different inversions for variety
-                if (chords.length % 2 === 0 && invertedNotes.length >= 3) {
-                    invertedNotes[0] += 12; // First inversion
-                    invertedNotes.sort((a, b) => a - b);
+            // Fill first 12 pads (rows 1-3) with duplicate collapsing per row
+            const rows1to3 = [];
+            for (let row = 0; row < 3; row++) {
+                const rowPads = [];
+                let previousSymbol = null;
+
+                while (rowPads.length < 4) {
+                    const chord = getNextChord();
+                    if (!chord) break;
+
+                    // Collapse contiguous duplicates within the row
+                    if (chord.symbol !== previousSymbol || rowPads.length === 0) {
+                        rowPads.push({...chord});
+                        previousSymbol = chord.symbol;
+                    }
+                    // If duplicate, skip and get next chord
                 }
 
-                chords.push({
-                    notes: invertedNotes,
-                    name: MusicTheory.getChordNameFromNotes(invertedNotes),
-                    symbol: sourceChord.symbol,
-                    type: sourceChord.type,
-                    description: sourceChord.description,
-                    extrapolated: true
-                });
+                rows1to3.push(...rowPads);
             }
+
+            // Ensure we have at least 12 chords for rows 1-3
+            while (rows1to3.length < 12) {
+                const chord = getNextChord();
+                if (!chord) break;
+                rows1to3.push({...chord, extrapolated: true});
+            }
+
+            // CPG-style Row 4: Dynamic generation with secondary dominants, borrowed chords, etc.
+            const row4Chords = MusicTheory.selectDynamicRow4Chords(
+                rows1to3,
+                key,
+                scaleDegrees,
+                variantType.name
+            );
+
+            // Convert Row 4 candidates to chord format
+            const row4 = row4Chords.map(candidate => ({
+                notes: candidate.notes,
+                name: candidate.chordName,
+                symbol: candidate.romanNumeral,
+                type: candidate.chordType === 'dom7' ? 'dominant' :
+                      candidate.chordType === 'minor' ? 'minor' :
+                      candidate.chordType === 'minor7' ? 'minor' :
+                      candidate.chordType === 'diminished' ? 'diminished' :
+                      candidate.chordType === 'augmented' ? 'augmented' : 'major',
+                description: getChordDescription(candidate.romanNumeral),
+                extrapolated: true
+            }));
+
+            // Combine all 16 pads
+            const finalChords = [...rows1to3.slice(0, 12), ...row4.slice(0, 4)];
+
+            // Mark which chords are from original progression
+            finalChords.forEach((chord, idx) => {
+                chord.isProgressionChord = idx < originalProgressionLength;
+            });
 
             return {
                 name: variantType.name,
                 description: variantType.description,
-                chords: chords.slice(0, 16),
-                baseChordCount
+                chords: finalChords.slice(0, 16),
+                baseChordCount: originalProgressionLength
             };
         });
 
@@ -601,18 +668,38 @@ function renderChordGrid() {
     const grid = document.getElementById('chordGrid');
     grid.innerHTML = '';
 
+    // Find tonic chord for voice leading analysis
+    const tonicChord = appState.chordProgression.find(p =>
+        p.symbol && p.symbol.toUpperCase().startsWith('I') && !p.symbol.includes('V')
+    ) || appState.chordProgression[0];
+
     appState.chordProgression.forEach((chord, index) => {
         const pad = document.createElement('div');
-        pad.className = 'chord-pad';
-        pad.dataset.index = index;
+        const padId = index + 1; // PAD numbers are 1-indexed
 
-        if (chord.extrapolated) {
-            pad.classList.add('extrapolated');
+        // Determine voice leading class relative to tonic
+        let voiceLeadingClass = '';
+        if (tonicChord && chord.notes && tonicChord.notes && index !== 0) {
+            const vlAnalysis = MusicTheory.analyzeVoiceLeading(tonicChord.notes, chord.notes);
+            if (vlAnalysis) {
+                if (vlAnalysis.smoothness >= 4) {
+                    voiceLeadingClass = 'vl-smooth';
+                } else if (vlAnalysis.smoothness >= 2) {
+                    voiceLeadingClass = 'vl-moderate';
+                } else {
+                    voiceLeadingClass = 'vl-leap';
+                }
+            }
         }
 
-        if (index === appState.currentChordIndex && appState.isPlaying) {
-            pad.classList.add('current');
-        }
+        // Build class list
+        const classes = ['chord-pad'];
+        if (chord.isProgressionChord) classes.push('progression-chord');
+        if (chord.extrapolated) classes.push('extrapolated');
+        if (voiceLeadingClass) classes.push(voiceLeadingClass);
+        if (index === appState.currentChordIndex && appState.isPlaying) classes.push('current');
+
+        pad.className = classes.join(' ');
 
         // Get quality label and determine color class
         const qualityLabel = getQualityLabel(chord.type);
@@ -623,24 +710,38 @@ function renderChordGrid() {
             ? chord.notes.map(n => MusicTheory.getNoteName(n, false, true)).join(' ')
             : '';
 
-        // Get chord description
-        const description = chord.description || getChordDescription(chord.symbol) || '';
+        // Get chord role tooltip
+        const roleText = getChordRoleTooltip(chord.symbol) || getChordDescription(chord.symbol) || '';
 
-        // CPG-style layout:
-        // Top row: chord name (left) | description (right)
-        // Middle row: quality + roman numeral (left, colored) | notes with octave (right)
-        // Bottom: keyboard SVG
+        // Get inversion notation
+        const inversionNotation = chord.notes
+            ? MusicTheory.getInversionNotation(chord.notes, chord.type, chord.name, chord.symbol)
+            : '';
+        const displayName = (chord.name || '—') + inversionNotation;
+
+        // Set data attributes (CPG-compatible)
+        pad.dataset.notes = chord.notes ? chord.notes.join(',') : '';
+        pad.dataset.roman = chord.symbol || '';
+        pad.dataset.quality = qualityLabel;
+        pad.dataset.role = roleText.replace(/"/g, '&quot;');
+        pad.dataset.padId = padId;
+        pad.dataset.originalVlClass = voiceLeadingClass;
+
+        // CPG-style two-column layout
         pad.innerHTML = `
-            <div class="chord-pad-header">
-                <span class="chord-name">${chord.name || '—'}</span>
-                <span class="chord-description">${description}</span>
-            </div>
-            <div class="chord-pad-middle">
-                <div class="chord-function ${qualityClass}">
-                    <span class="chord-quality">${qualityLabel}</span>
-                    <span class="chord-roman">${chord.symbol || ''}</span>
+            <div class="chord-text-column">
+                <div class="chord-pad-content">
+                    <div class="chord-info">
+                        <div class="chord-name">${displayName}</div>
+                    </div>
+                    <div class="pad-number">PAD ${padId}</div>
                 </div>
-                <span class="chord-notes">${chordNoteNamesWithOctave}</span>
+                <div class="chord-quality ${qualityClass}">${qualityLabel}</div>
+                <div class="chord-roman">${chord.symbol || ''}</div>
+            </div>
+            <div class="chord-info-column">
+                <div class="chord-role">${roleText}</div>
+                <div class="chord-notes">${chordNoteNamesWithOctave}</div>
             </div>
             <div class="chord-keyboard">${chord.notes ? generateKeyboardSVG(chord.notes) : ''}</div>
         `;
@@ -694,7 +795,7 @@ function showChordProximity(referenceIndex) {
 
     pads.forEach((pad, index) => {
         // Clear previous proximity classes
-        pad.classList.remove('vl-smooth', 'vl-moderate', 'vl-dramatic', 'vl-reference');
+        pad.classList.remove('vl-smooth', 'vl-moderate', 'vl-leap', 'vl-reference');
 
         if (index === referenceIndex) {
             pad.classList.add('vl-reference');
@@ -712,7 +813,7 @@ function showChordProximity(referenceIndex) {
         } else if (distance <= 8) {
             pad.classList.add('vl-moderate');
         } else {
-            pad.classList.add('vl-dramatic');
+            pad.classList.add('vl-leap');
         }
     });
 }

@@ -375,21 +375,9 @@ h1 {
     color: var(--muted);
 }
 
-/* Chord proximity coloring */
-.chord-pad.vl-smooth {
-    border-left: 4px solid #10b981;
-}
-
-.chord-pad.vl-moderate {
-    border-left: 4px solid #f59e0b;
-}
-
-.chord-pad.vl-dramatic {
-    border-left: 4px solid #ef4444;
-}
-
+/* Chord proximity coloring (for click feedback) */
 .chord-pad.vl-reference {
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--accent) !important;
     background: #dbeafe;
 }
 
@@ -664,8 +652,8 @@ button:disabled {
     overflow: hidden;
     min-height: 140px;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .chord-pad:hover {
@@ -695,43 +683,49 @@ button:disabled {
     100% { transform: scale(1); }
 }
 
-/* CPG-style pad header: chord name left, description right */
-.chord-pad-header {
+/* CPG-style two-column pad layout */
+.chord-text-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.chord-info-column {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: right;
+    max-width: 45%;
+}
+
+.chord-pad-content {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
-    margin-bottom: 8px;
+}
+
+.chord-info {
+    flex: 1;
+    min-width: 0;
 }
 
 .chord-name {
     font-size: 18px;
     font-weight: 700;
     color: var(--fg);
-    flex-shrink: 0;
+    word-break: break-word;
 }
 
-.chord-description {
-    font-size: 11px;
+.pad-number {
+    font-size: 10px;
     color: var(--muted);
-    text-align: right;
-    line-height: 1.3;
-    flex: 1;
-    min-width: 0;
-}
-
-/* CPG-style middle row: quality+roman left (colored), notes right */
-.chord-pad-middle {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
-}
-
-.chord-function {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .chord-quality {
@@ -744,35 +738,11 @@ button:disabled {
     font-weight: 600;
 }
 
-/* Quality color classes */
-.quality-major .chord-quality,
-.quality-major .chord-roman {
-    color: #059669; /* green for major */
-}
-
-.quality-minor .chord-quality,
-.quality-minor .chord-roman {
-    color: #2563eb; /* blue for minor */
-}
-
-.quality-dominant .chord-quality,
-.quality-dominant .chord-roman {
-    color: #dc2626; /* red for dominant */
-}
-
-.quality-diminished .chord-quality,
-.quality-diminished .chord-roman {
-    color: #7c3aed; /* purple for diminished */
-}
-
-.quality-augmented .chord-quality,
-.quality-augmented .chord-roman {
-    color: #ea580c; /* orange for augmented */
-}
-
-.quality-suspended .chord-quality,
-.quality-suspended .chord-roman {
-    color: #0891b2; /* cyan for suspended */
+.chord-role {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.3;
+    text-align: right;
 }
 
 .chord-notes {
@@ -780,7 +750,49 @@ button:disabled {
     color: var(--muted);
     font-family: 'Monaco', 'Consolas', monospace;
     text-align: right;
-    align-self: flex-end;
+}
+
+/* Quality color classes - match CPG exactly */
+.quality-major {
+    color: #059669; /* green for major */
+}
+
+.quality-minor {
+    color: #2563eb; /* blue for minor */
+}
+
+.quality-dominant {
+    color: #dc2626; /* red for dominant */
+}
+
+.quality-diminished {
+    color: #7c3aed; /* purple for diminished */
+}
+
+.quality-augmented {
+    color: #ea580c; /* orange for augmented */
+}
+
+.quality-suspended {
+    color: #0891b2; /* cyan for suspended */
+}
+
+/* Progression chord marker */
+.chord-pad.progression-chord {
+    border-left: 3px solid var(--accent);
+}
+
+/* Voice leading classes - CPG compatible */
+.chord-pad.vl-smooth {
+    border-left: 4px solid #10b981 !important;
+}
+
+.chord-pad.vl-moderate {
+    border-left: 4px solid #f59e0b !important;
+}
+
+.chord-pad.vl-leap {
+    border-left: 4px solid #ef4444 !important;
 }
 
 /* Keyboard Diagram */
@@ -788,11 +800,17 @@ button:disabled {
     width: 100%;
     height: 40px;
     margin-top: auto;
+    flex-basis: 100%;
 }
 
 .chord-keyboard svg {
     width: 100%;
     height: 100%;
+}
+
+/* Ensure keyboard appears at bottom of pad */
+.chord-pad {
+    align-content: flex-start;
 }
 
 /* ============================================================================
