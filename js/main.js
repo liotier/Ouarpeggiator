@@ -24,7 +24,7 @@ const appState = {
     progressionTemplate: 'I V vi IV',
 
     // Output mode
-    outputMode: 'audio',  // 'midi' | 'audio' | 'both'
+    outputMode: 'audio',  // 'audio' | 'midi'
 
     // Chord progression (16 pads)
     chordProgression: [],
@@ -261,12 +261,43 @@ function generateKeyboardSVG(notes) {
 // ============================================================================
 
 const VARIANT_TYPES = [
-    { name: 'Smooth', description: 'Close voicings with minimal voice movement', octaveOffset: 0 },
-    { name: 'Classic', description: 'Traditional root position voicings', octaveOffset: 0 },
-    { name: 'Jazz', description: 'Extended voicings with added tensions', octaveOffset: 0 },
-    { name: 'Modal', description: 'Open voicings emphasizing modal color', octaveOffset: -12 },
-    { name: 'Experimental', description: 'Wide intervals and unusual voicings', octaveOffset: 12 }
+    { name: 'Smooth', description: 'Smooth variant: Maximizes common tones, step-wise motion, and contrary motion. Retains the voicings that have the smoothest transitions between chords.', octaveOffset: 0 },
+    { name: 'Classic', description: 'Classic variant: Traditional root position voicings with standard voice leading. Clear, familiar harmonic progressions.', octaveOffset: 0 },
+    { name: 'Jazz', description: 'Jazz variant: Extended voicings with added tensions (9ths, 11ths, 13ths). Rich harmonic color for sophisticated arrangements.', octaveOffset: 0 },
+    { name: 'Modal', description: 'Modal variant: Open voicings in lower register emphasizing modal color tones. Spacious, atmospheric textures.', octaveOffset: -12 },
+    { name: 'Experimental', description: 'Experimental variant: Wide intervals, unusual inversions, and unconventional voicings. For adventurous harmonic exploration.', octaveOffset: 12 }
 ];
+
+// Chord role tooltips based on Roman numeral
+const CHORD_ROLE_TOOLTIPS = {
+    'I': 'Tonic - home base, resolution point',
+    'i': 'Tonic minor - home base in minor key',
+    'II': 'Supertonic major - borrowed chord, bright color',
+    'ii': 'Supertonic - pre-dominant, leads to V',
+    'ii7': 'Supertonic 7th - classic jazz pre-dominant',
+    'III': 'Mediant major - borrowed from parallel major',
+    'iii': 'Mediant - tonic substitute, softer resolution',
+    'iii7': 'Mediant 7th - tonic function with extension',
+    'IV': 'Subdominant - pre-dominant, plagal motion',
+    'iv': 'Subdominant minor - borrowed chord, melancholy',
+    'IVM7': 'Subdominant maj7 - rich pre-dominant',
+    'V': 'Dominant - tension, leads to tonic',
+    'V7': 'Dominant 7th - stronger pull to tonic',
+    'v': 'Minor dominant - modal, weaker resolution',
+    'VI': 'Submediant major - borrowed, bright surprise',
+    'vi': 'Submediant - relative minor, tonic substitute',
+    'vi7': 'Submediant 7th - extended tonic function',
+    'VII': 'Subtonic - modal, one step below tonic',
+    'vii°': 'Leading-tone - diminished chord, pulls strongly to I',
+    '♭II': 'Neapolitan - chromatic pre-dominant',
+    '♭II7': 'Tritone sub - jazz substitution for V7',
+    '♭III': 'Flat mediant - borrowed from minor',
+    '♭VI': 'Flat submediant - borrowed, dramatic',
+    '♭VII': 'Flat subtonic - borrowed, rock cadence',
+    '♯iv°': 'Raised subdominant dim - passing chord',
+    '♯I°': 'Raised tonic dim - chromatic passing',
+    '♯II°': 'Raised supertonic dim - chromatic passing'
+};
 
 // ============================================================================
 // Chord Progression Generation
@@ -424,6 +455,7 @@ function renderChordGrid() {
     appState.chordProgression.forEach((chord, index) => {
         const pad = document.createElement('div');
         pad.className = 'chord-pad';
+        pad.dataset.index = index;
 
         if (chord.empty) {
             pad.classList.add('empty');
@@ -439,6 +471,12 @@ function renderChordGrid() {
         // Get quality label
         const qualityLabel = getQualityLabel(chord.type);
 
+        // Get chord role tooltip
+        const roleTooltip = getChordRoleTooltip(chord.symbol);
+        if (roleTooltip) {
+            pad.setAttribute('data-tooltip', roleTooltip);
+        }
+
         pad.innerHTML = `
             <div class="chord-pad-content">
                 <div class="chord-info">
@@ -452,15 +490,85 @@ function renderChordGrid() {
             <div class="chord-keyboard">${chord.notes ? generateKeyboardSVG(chord.notes) : ''}</div>
         `;
 
-        // Click to play chord (works whether arpeggiator is running or not)
+        // Click to play chord and show proximity coloring
         pad.addEventListener('click', () => {
             if (!chord.empty && chord.notes) {
                 playChordWithFeedback(index, pad);
+                showChordProximity(index);
             }
         });
 
         grid.appendChild(pad);
     });
+}
+
+function getChordRoleTooltip(symbol) {
+    if (!symbol) return null;
+
+    // Try exact match first
+    if (CHORD_ROLE_TOOLTIPS[symbol]) {
+        return CHORD_ROLE_TOOLTIPS[symbol];
+    }
+
+    // Try base symbol (strip extensions like 7, M7, etc.)
+    const baseSymbol = symbol.replace(/[0-9]+|M7|m7|maj7|°7|ø7/g, '');
+    if (CHORD_ROLE_TOOLTIPS[baseSymbol]) {
+        return CHORD_ROLE_TOOLTIPS[baseSymbol];
+    }
+
+    return null;
+}
+
+function showChordProximity(referenceIndex) {
+    const referenceChord = appState.chordProgression[referenceIndex];
+    if (!referenceChord || !referenceChord.notes) return;
+
+    const pads = document.querySelectorAll('.chord-pad');
+
+    pads.forEach((pad, index) => {
+        // Clear previous proximity classes
+        pad.classList.remove('vl-smooth', 'vl-moderate', 'vl-dramatic', 'vl-reference');
+
+        if (index === referenceIndex) {
+            pad.classList.add('vl-reference');
+            return;
+        }
+
+        const chord = appState.chordProgression[index];
+        if (!chord || !chord.notes) return;
+
+        // Calculate voice leading distance
+        const distance = calculateVoiceLeadingDistance(referenceChord.notes, chord.notes);
+
+        if (distance <= 4) {
+            pad.classList.add('vl-smooth');
+        } else if (distance <= 8) {
+            pad.classList.add('vl-moderate');
+        } else {
+            pad.classList.add('vl-dramatic');
+        }
+    });
+}
+
+function calculateVoiceLeadingDistance(notes1, notes2) {
+    if (!notes1 || !notes2) return 999;
+
+    // Sum of minimum semitone distances between voices
+    let totalDistance = 0;
+    const len = Math.min(notes1.length, notes2.length);
+
+    for (let i = 0; i < len; i++) {
+        // Find closest note in notes2 to notes1[i]
+        let minDist = 999;
+        for (const note2 of notes2) {
+            const dist = Math.abs((notes1[i] % 12) - (note2 % 12));
+            const wrappedDist = Math.min(dist, 12 - dist);
+            minDist = Math.min(minDist, wrappedDist);
+        }
+        totalDistance += minDist;
+    }
+
+    return totalDistance;
 }
 
 function getQualityLabel(type) {
@@ -489,11 +597,9 @@ function playChordWithFeedback(index, padElement) {
     }
 
     // Play sound
-    if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+    if (appState.outputMode === 'audio') {
         Audio.playChord(chord.notes, 80, 400);
-    }
-
-    if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+    } else if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
         chord.notes.forEach(note => {
             MIDI.sendNoteOn(note, 80);
             setTimeout(() => MIDI.sendNoteOff(note), 350);
@@ -510,11 +616,9 @@ function previewChord(index) {
         Audio.initAudio();
     }
 
-    if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+    if (appState.outputMode === 'audio') {
         Audio.playChord(chord.notes, 80, 400);
-    }
-
-    if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+    } else if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
         chord.notes.forEach(note => {
             MIDI.sendNoteOn(note, 80);
             setTimeout(() => MIDI.sendNoteOff(note), 350);
@@ -555,8 +659,8 @@ let masterClockInterval = null;
 function startPlayback() {
     if (appState.isPlaying) return;
 
-    // Initialize audio
-    if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
+    // Initialize audio if browser tone is selected
+    if (appState.outputMode === 'audio') {
         if (!Audio.isAudioAvailable()) {
             Audio.initAudio();
         }
@@ -702,24 +806,19 @@ function executeStep() {
         if (!appState.isPlaying) return;
 
         // Play note
-        if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+        if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
             MIDI.sendNoteOn(note, velocity);
-        }
-
-        if (appState.outputMode === 'audio' || appState.outputMode === 'both') {
-            Audio.playNote(note, velocity, gateLength);
-        }
-
-        appState.lastPlayedNote = note;
-
-        // Schedule note off for MIDI
-        if ((appState.outputMode === 'midi' || appState.outputMode === 'both') && MIDI.hasOutputDevice()) {
+            // Schedule note off for MIDI
             const handle = setTimeout(() => {
                 MIDI.sendNoteOff(note);
                 appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
             }, gateLength);
             appState.scheduledNotes.push({ note, handle });
+        } else if (appState.outputMode === 'audio') {
+            Audio.playNote(note, velocity, gateLength);
         }
+
+        appState.lastPlayedNote = note;
     }, Math.max(0, humanOffset));
 
     appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
@@ -751,20 +850,29 @@ async function initializeMIDI() {
 }
 
 function populateMIDIDevices() {
-    const outputSelect = document.getElementById('midiOutputSelect');
+    const outputSelect = document.getElementById('outputMode');
     if (!outputSelect) return;
 
     const outputs = MIDI.getOutputDevices();
 
-    // Clear existing options and add default
-    outputSelect.innerHTML = '<option value="">Browser beep (no MIDI)</option>';
+    // Preserve current selection
+    const currentValue = outputSelect.value;
 
+    // Clear and add Browser tone as first option
+    outputSelect.innerHTML = '<option value="audio">Browser tone</option>';
+
+    // Add MIDI devices
     outputs.forEach(device => {
         const option = document.createElement('option');
-        option.value = device.id;
+        option.value = `midi:${device.id}`;
         option.textContent = device.name;
         outputSelect.appendChild(option);
     });
+
+    // Restore selection if still valid
+    if (currentValue && Array.from(outputSelect.options).some(o => o.value === currentValue)) {
+        outputSelect.value = currentValue;
+    }
 
     console.log(`Found ${outputs.length} MIDI output devices`);
 }
@@ -830,24 +938,24 @@ function bindControls() {
         switchVariant(parseInt(this.value));
     });
 
-    // Output mode
+    // Output mode - now directly includes MIDI devices
     document.getElementById('outputMode').addEventListener('change', function() {
-        appState.outputMode = this.value;
-
-        const midiConfig = document.getElementById('midiOutputConfig');
+        const value = this.value;
         const audioConfig = document.getElementById('audioConfig');
 
-        midiConfig.style.display = (this.value === 'midi' || this.value === 'both') ? 'block' : 'none';
-        audioConfig.style.display = (this.value === 'audio' || this.value === 'both') ? 'block' : 'none';
-
-        if (this.value === 'audio' || this.value === 'both') {
+        if (value === 'audio') {
+            // Browser tone selected
+            appState.outputMode = 'audio';
+            MIDI.selectOutputDevice(''); // Deselect MIDI device
+            audioConfig.style.display = 'block';
             Audio.initAudio();
+        } else if (value.startsWith('midi:')) {
+            // MIDI device selected
+            const deviceId = value.substring(5);
+            appState.outputMode = 'midi';
+            MIDI.selectOutputDevice(deviceId);
+            audioConfig.style.display = 'none';
         }
-    });
-
-    // MIDI output select
-    document.getElementById('midiOutputSelect').addEventListener('change', function() {
-        MIDI.selectOutputDevice(this.value);
     });
 
     // Synth waveform
