@@ -172,7 +172,7 @@
                                 <option value="♭VI—iv—I">♭VI—iv—I</option>
                             </optgroup>
                             <optgroup label="Classical/Modal">
-                                <option value="I—IV—vii°—iii—vi—ii—V—I">I—IV—vii°—iii—vi—ii—V—I (Circle)</option>
+                                <option value="I—IV—vii°—iii—vi—ii—V—I">I—IV—vii°—iii—vi—ii—V—I (Circle of Fifths)</option>
                                 <option value="I—V—vi—iii—IV—I—IV—V">I—V—vi—iii—IV—I—IV—V (Pachelbel)</option>
                                 <option value="i—♭VII—♭VI—V">i—♭VII—♭VI—V (Andalusian)</option>
                                 <option value="i—♭VII—i—V">i—♭VII—i—V</option>
@@ -296,15 +296,9 @@
                 </div>
             </div>
 
-            <!-- Bottom Row: Generate Button + MIDI Output -->
+            <!-- Bottom Row: Generate Button -->
             <div class="controls-bottom-row">
                 <button class="primary" id="generateBtn" title="Generate 16-pad chord palette with multiple voicing variants">Generate Progression</button>
-                <div class="midi-selector" id="midiSelector">
-                    <label for="midiOutputSelect">MIDI Output:</label>
-                    <select id="midiOutputSelect" title="Select MIDI output device for chord preview">
-                        <option value="">Browser beep (no MIDI)</option>
-                    </select>
-                </div>
             </div>
         </div>
 
@@ -325,6 +319,9 @@
                         <div class="progression-meta">
                             <span id="variantDescription" class="variant-description"></span>
                         </div>
+                        <div class="progression-hint">
+                            <span class="hint-text">Chords 1-8 from progression, 9-16 extrapolated. Colors show chord distance from selected chord.</span>
+                        </div>
                     </div>
                 </div>
                 <div id="chordGrid" class="chord-grid">
@@ -341,16 +338,9 @@
             <div class="control-row">
                 <div class="filter-group">
                     <label>Output</label>
-                    <select id="outputMode">
-                        <option value="audio">Built-in simple tones</option>
-                        <option value="midi">MIDI</option>
-                        <option value="both">Both</option>
-                    </select>
-                </div>
-                <div id="midiOutputConfig" class="filter-group" style="display: none;">
-                    <label>MIDI Output</label>
-                    <select id="midiOutputSelect">
-                        <option value="">Select output...</option>
+                    <select id="outputMode" title="Select audio output for chord preview and arpeggiator">
+                        <option value="audio">Browser tone</option>
+                        <!-- MIDI devices populated dynamically -->
                     </select>
                 </div>
                 <div id="audioConfig" class="filter-group">

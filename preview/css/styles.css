@@ -366,6 +366,54 @@ h1 {
     font-style: italic;
 }
 
+.progression-hint {
+    margin-top: 8px;
+}
+
+.hint-text {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* Chord proximity coloring */
+.chord-pad.vl-smooth {
+    border-left: 4px solid #10b981;
+}
+
+.chord-pad.vl-moderate {
+    border-left: 4px solid #f59e0b;
+}
+
+.chord-pad.vl-dramatic {
+    border-left: 4px solid #ef4444;
+}
+
+.chord-pad.vl-reference {
+    border-left: 4px solid var(--accent);
+    background: #dbeafe;
+}
+
+/* Chord tooltip */
+.chord-pad[data-tooltip] {
+    position: relative;
+}
+
+.chord-pad[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+}
+
 .controls {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
