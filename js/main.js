@@ -506,12 +506,6 @@ function generateProgression() {
             };
         });
 
-        // Update title in CPG format: Key_progression_Variant
-        const variantName = VARIANT_TYPES[0].name;
-        const progressionDisplay = templateRaw.replace(/—/g, '-');
-        document.getElementById('progressionTitle').textContent =
-            `${keyName}_${progressionDisplay}_${variantName}`;
-
         // Store the progression name for display
         appState.progressionName = progressionName;
     } else {
@@ -575,9 +569,6 @@ function generateProgression() {
             chords: chords.slice(0, 16),
             baseChordCount
         }];
-
-        document.getElementById('progressionTitle').textContent =
-            `${keyName}_${mode}_Scale`;
     }
 
     // Reset to first variant and update UI
@@ -601,29 +592,96 @@ function updateVariantSelector() {
 
     selector.value = appState.currentVariantIndex;
 
-    // Update description and title
+    // Update description
     const currentVariant = appState.variants[appState.currentVariantIndex];
     if (currentVariant && description) {
         description.textContent = currentVariant.description;
     }
 
-    // Update title with current variant name
-    updateProgressionTitle();
+    // Update cadence analysis
+    updateCadenceAnalysis();
 }
 
-function updateProgressionTitle() {
-    const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
-    const keyName = noteNames[appState.key];
-    const currentVariant = appState.variants[appState.currentVariantIndex];
+// Cadence analysis tooltips
+const CADENCE_TOOLTIPS = {
+    'authentic': 'V→I: Strong resolution, conclusive feeling. The dominant chord resolves to tonic.',
+    'perfect-authentic': 'V→I with both chords in root position and tonic in soprano. Strongest cadence.',
+    'half': 'Any chord→V: Creates tension, sounds incomplete. Often used at phrase midpoints.',
+    'plagal': 'IV→I: "Amen" cadence. Softer resolution than authentic.',
+    'deceptive': 'V→vi: Expected resolution avoided. Creates surprise and continuation.',
+    'imperfect': 'V→I with inversion or non-tonic soprano. Weaker than perfect authentic.',
+};
 
-    if (appState.generationMode === 'template') {
-        const progressionDisplay = appState.progressionTemplate.replace(/—/g, '-');
-        document.getElementById('progressionTitle').textContent =
-            `${keyName}_${progressionDisplay}_${currentVariant.name}`;
-    } else {
-        document.getElementById('progressionTitle').textContent =
-            `${keyName}_${appState.mode}_${currentVariant.name}`;
+function analyzeCadences(chords) {
+    const cadences = [];
+    if (!chords || chords.length < 2) return cadences;
+
+    for (let i = 0; i < chords.length - 1; i++) {
+        const current = chords[i];
+        const next = chords[i + 1];
+        if (!current.symbol || !next.symbol) continue;
+
+        const currSymbol = current.symbol.toUpperCase().replace(/[0-9]/g, '');
+        const nextSymbol = next.symbol.toUpperCase().replace(/[0-9]/g, '');
+
+        // Authentic cadence: V → I
+        if (currSymbol === 'V' && nextSymbol === 'I') {
+            cadences.push({
+                type: 'authentic',
+                icon: '✓',
+                label: 'Authentic (V→I)',
+                position: i
+            });
+        }
+        // Half cadence: any → V
+        else if (nextSymbol === 'V' && currSymbol !== 'V') {
+            cadences.push({
+                type: 'half',
+                icon: '⏸️',
+                label: `Half (${current.symbol}→V)`,
+                position: i
+            });
+        }
+        // Plagal cadence: IV → I
+        else if (currSymbol === 'IV' && nextSymbol === 'I') {
+            cadences.push({
+                type: 'plagal',
+                icon: '🙏',
+                label: 'Plagal (IV→I)',
+                position: i
+            });
+        }
+        // Deceptive cadence: V → vi
+        else if (currSymbol === 'V' && nextSymbol === 'VI') {
+            cadences.push({
+                type: 'deceptive',
+                icon: '↪️',
+                label: 'Deceptive (V→vi)',
+                position: i
+            });
+        }
     }
+
+    return cadences;
+}
+
+function updateCadenceAnalysis() {
+    const container = document.getElementById('cadenceAnalysis');
+    if (!container) return;
+
+    const cadences = analyzeCadences(appState.chordProgression);
+
+    if (cadences.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = cadences.map(c => {
+        const tooltip = CADENCE_TOOLTIPS[c.type] || '';
+        return `<span class="cadence-tag ${c.type}" title="${tooltip}">
+            <span class="cadence-icon">${c.icon}</span>${c.label}
+        </span>`;
+    }).join('');
 }
 
 function switchVariant(index) {
@@ -727,14 +785,13 @@ function renderChordGrid() {
         pad.dataset.padId = padId;
         pad.dataset.originalVlClass = voiceLeadingClass;
 
-        // CPG-style two-column layout
+        // CPG-style two-column layout (no PAD labels - legacy MPC terminology removed)
         pad.innerHTML = `
             <div class="chord-text-column">
                 <div class="chord-pad-content">
                     <div class="chord-info">
                         <div class="chord-name">${displayName}</div>
                     </div>
-                    <div class="pad-number">PAD ${padId}</div>
                 </div>
                 <div class="chord-quality ${qualityClass}">${qualityLabel}</div>
                 <div class="chord-roman">${chord.symbol || ''}</div>

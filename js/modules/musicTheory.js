@@ -77,13 +77,13 @@ export const modes = {
 
 export const progressions = {
     'Pop/Rock': [
-        { name: 'I—V—vi—IV (Axis)', chords: 'I V vi IV' },
-        { name: 'I—IV—V—IV', chords: 'I IV V IV' },
-        { name: 'I—vi—IV—V (50s)', chords: 'I vi IV V' },
-        { name: 'vi—IV—I—V', chords: 'vi IV I V' },
-        { name: 'I—V—vi—iii—IV', chords: 'I V vi iii IV' },
-        { name: 'I—IV—vi—V', chords: 'I IV vi V' },
-        { name: 'I—iii—IV—V', chords: 'I iii IV V' },
+        { name: 'I—V—vi—IV (Axis of Awesome)', chords: 'I V vi IV' },
+        { name: 'I—IV—V—IV (Mixolydian Rock)', chords: 'I IV V IV' },
+        { name: 'I—vi—IV—V (50s Doo-Wop)', chords: 'I vi IV V' },
+        { name: 'vi—IV—I—V (Sensitive)', chords: 'vi IV I V' },
+        { name: 'I—V—vi—iii—IV (Pop Punk)', chords: 'I V vi iii IV' },
+        { name: 'I—IV—vi—V (Worship)', chords: 'I IV vi V' },
+        { name: 'I—iii—IV—V (Soft Rock)', chords: 'I iii IV V' },
     ],
     'Blues/Soul': [
         { name: '12-Bar Blues', chords: 'I I I I IV IV I I V IV I V' },
