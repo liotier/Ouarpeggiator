@@ -601,92 +601,85 @@ function updateVariantSelector() {
     // Update cadence analysis
     updateCadenceAnalysis();
 }
+// CPG-style cadence detection: analyzes the progression template string's final two chords
+function detectCadence(progressionTemplate) {
+    if (!progressionTemplate) return null;
 
-// Cadence analysis tooltips
-const CADENCE_TOOLTIPS = {
-    'authentic': 'V→I: Strong resolution, conclusive feeling. The dominant chord resolves to tonic.',
-    'perfect-authentic': 'V→I with both chords in root position and tonic in soprano. Strongest cadence.',
-    'half': 'Any chord→V: Creates tension, sounds incomplete. Often used at phrase midpoints.',
-    'plagal': 'IV→I: "Amen" cadence. Softer resolution than authentic.',
-    'deceptive': 'V→vi: Expected resolution avoided. Creates surprise and continuation.',
-    'imperfect': 'V→I with inversion or non-tonic soprano. Weaker than perfect authentic.',
-};
+    const chords = progressionTemplate.split('—').map(c => c.trim());
+    if (chords.length < 2) return null;
 
-function analyzeCadences(chords) {
-    const cadences = [];
-    if (!chords || chords.length < 2) return cadences;
+    const lastTwo = chords.slice(-2);
+    const penultimate = lastTwo[0].toUpperCase().replace(/[0-9]/g, '').replace(/M$/, '');
+    const final = lastTwo[1].toUpperCase().replace(/[0-9]/g, '').replace(/M$/, '');
 
-    for (let i = 0; i < chords.length - 1; i++) {
-        const current = chords[i];
-        const next = chords[i + 1];
-        if (!current.symbol || !next.symbol) continue;
-
-        const currSymbol = current.symbol.toUpperCase().replace(/[0-9]/g, '');
-        const nextSymbol = next.symbol.toUpperCase().replace(/[0-9]/g, '');
-
-        // Authentic cadence: V → I
-        if (currSymbol === 'V' && nextSymbol === 'I') {
-            cadences.push({
-                type: 'authentic',
-                icon: '✓',
-                label: 'Authentic (V→I)',
-                position: i
-            });
-        }
-        // Half cadence: any → V
-        else if (nextSymbol === 'V' && currSymbol !== 'V') {
-            cadences.push({
-                type: 'half',
-                icon: '⏸️',
-                label: `Half (${current.symbol}→V)`,
-                position: i
-            });
-        }
-        // Plagal cadence: IV → I
-        else if (currSymbol === 'IV' && nextSymbol === 'I') {
-            cadences.push({
-                type: 'plagal',
-                icon: '🙏',
-                label: 'Plagal (IV→I)',
-                position: i
-            });
-        }
-        // Deceptive cadence: V → vi
-        else if (currSymbol === 'V' && nextSymbol === 'VI') {
-            cadences.push({
-                type: 'deceptive',
-                icon: '↪️',
-                label: 'Deceptive (V→vi)',
-                position: i
-            });
-        }
+    // Authentic cadence: V → I or V → i
+    if (penultimate === 'V' && (final === 'I' || final === 'i')) {
+        return {
+            type: 'authentic',
+            emoji: '🎯',
+            name: 'Authentic',
+            tooltip: 'Authentic cadence (V→I): The strongest resolution, dominant to tonic'
+        };
     }
 
-    return cadences;
+    // Plagal cadence: IV → I or iv → I
+    if ((penultimate === 'IV' || penultimate === 'iv') && final === 'I') {
+        return {
+            type: 'plagal',
+            emoji: '🙏',
+            name: 'Plagal',
+            tooltip: 'Plagal cadence (IV→I): The "Amen" cadence, subdominant to tonic'
+        };
+    }
+
+    // Deceptive cadence: V → vi
+    if (penultimate === 'V' && (final === 'VI' || final === 'vi')) {
+        return {
+            type: 'deceptive',
+            emoji: '😮',
+            name: 'Deceptive',
+            tooltip: 'Deceptive cadence (V→vi): Unexpected resolution to relative minor'
+        };
+    }
+
+    // Backdoor cadence: ♭VII → I
+    if (penultimate === '♭VII' && final === 'I') {
+        return {
+            type: 'backdoor',
+            emoji: '🚪',
+            name: 'Backdoor',
+            tooltip: 'Backdoor cadence (♭VII→I): Jazz resolution from borrowed chord'
+        };
+    }
+
+    // Half cadence: ends on V
+    if (final === 'V') {
+        return {
+            type: 'half',
+            emoji: '⏸️',
+            name: 'Half',
+            tooltip: 'Half cadence (→V): Unresolved, creates tension ending on dominant'
+        };
+    }
+
+    return null;
 }
 
 function updateCadenceAnalysis() {
     const container = document.getElementById('cadenceAnalysis');
     if (!container) return;
 
-    // Only analyze original progression chords, not extrapolated Row 4
-    const currentVariant = appState.variants[appState.currentVariantIndex];
-    const baseChordCount = currentVariant?.baseChordCount || appState.chordProgression.length;
-    const originalChords = appState.chordProgression.slice(0, baseChordCount);
+    // Use progression template string like CPG does
+    const cadence = detectCadence(appState.progressionName);
 
-    const cadences = analyzeCadences(originalChords);
-
-    if (cadences.length === 0) {
+    if (!cadence) {
         container.innerHTML = '';
         return;
     }
 
-    container.innerHTML = cadences.map(c => {
-        const tooltip = CADENCE_TOOLTIPS[c.type] || '';
-        return `<span class="cadence-tag ${c.type}" title="${tooltip}">
-            <span class="cadence-icon">${c.icon}</span>${c.label}
-        </span>`;
-    }).join('');
+    container.innerHTML = `<span class="cadence-tag ${cadence.type}" title="${cadence.tooltip}">
+        <span class="cadence-icon">${cadence.emoji}</span>${cadence.name}
+    </span>`;
 }
 
 function switchVariant(index) {
