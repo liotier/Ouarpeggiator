@@ -669,7 +669,12 @@ function updateCadenceAnalysis() {
     const container = document.getElementById('cadenceAnalysis');
     if (!container) return;
 
-    const cadences = analyzeCadences(appState.chordProgression);
+    // Only analyze original progression chords, not extrapolated Row 4
+    const currentVariant = appState.variants[appState.currentVariantIndex];
+    const baseChordCount = currentVariant?.baseChordCount || appState.chordProgression.length;
+    const originalChords = appState.chordProgression.slice(0, baseChordCount);
+
+    const cadences = analyzeCadences(originalChords);
 
     if (cadences.length === 0) {
         container.innerHTML = '';
