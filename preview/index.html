@@ -307,20 +307,17 @@
             <div class="progression-card">
                 <div class="progression-header">
                     <div class="progression-header-left">
-                        <h2 id="progressionTitle" class="progression-title">C_I-V-vi-IV_Smooth</h2>
-                        <div class="progression-subtitle">Smooth Voice Leading</div>
+                        <div class="variant-selector-inline">
+                            <label>Variant:</label>
+                            <select id="variantSelect" title="Switch between different voicing variants">
+                                <option value="0">Smooth</option>
+                            </select>
+                        </div>
+                        <span id="variantDescription" class="variant-description"></span>
                     </div>
                     <div class="progression-header-right">
-                        <span id="variantDescription" class="variant-description"></span>
-                        <span class="hint-text">Chords 1-8 from progression, 9-16 extrapolated. Colors of cards show chord distance from selected card.</span>
-                    </div>
-                </div>
-                <div class="progression-controls">
-                    <div class="variant-selector-centered">
-                        <label>Variant:</label>
-                        <select id="variantSelect" title="Switch between different voicing variants">
-                            <option value="0">Smooth</option>
-                        </select>
+                        <div id="cadenceAnalysis" class="cadence-analysis"></div>
+                        <span class="hint-text">Chords 1-8 from progression, 9-16 extrapolated. Colors show chord distance from selected.</span>
                     </div>
                 </div>
                 <div id="chordGrid" class="chord-grid">

@@ -561,24 +561,33 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     gap: 24px;
 }
 
 .progression-header-left {
-    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
-.progression-title {
-    font-size: 20px;
-    font-weight: 700;
-    margin: 0 0 4px 0;
-    color: var(--fg);
+.variant-selector-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.progression-subtitle {
-    font-size: 14px;
+.variant-selector-inline label {
+    font-size: 13px;
+    font-weight: 600;
     color: var(--muted);
+}
+
+.variant-selector-inline select {
+    min-width: 120px;
+    padding: 6px 10px;
+    font-size: 13px;
 }
 
 .progression-header-right {
@@ -587,6 +596,7 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    align-items: flex-end;
 }
 
 .variant-description {
@@ -602,32 +612,53 @@ button:disabled {
     font-style: italic;
 }
 
-.progression-controls {
+/* Cadence Analysis */
+.cadence-analysis {
+    font-size: 14px;
+    color: var(--fg);
     display: flex;
-    justify-content: center;
-    margin-bottom: 16px;
-}
-
-.variant-selector-centered {
-    display: flex;
-    align-items: center;
     gap: 8px;
-    padding: 8px 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.cadence-tag {
     background: var(--pad-bg);
-    border-radius: var(--radius);
     border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: help;
+    transition: background 0.2s;
 }
 
-.variant-selector-centered label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--muted);
+.cadence-tag:hover {
+    background: var(--pad-hover);
 }
 
-.variant-selector-centered select {
-    min-width: 120px;
-    padding: 6px 10px;
-    font-size: 13px;
+.cadence-tag .cadence-icon {
+    margin-right: 4px;
+}
+
+/* Cadence type colors */
+.cadence-tag.authentic {
+    border-color: #10b981;
+    color: #059669;
+}
+
+.cadence-tag.half {
+    border-color: #f59e0b;
+    color: #d97706;
+}
+
+.cadence-tag.plagal {
+    border-color: #3b82f6;
+    color: #2563eb;
+}
+
+.cadence-tag.deceptive {
+    border-color: #8b5cf6;
+    color: #7c3aed;
 }
 
 /* ============================================================================
