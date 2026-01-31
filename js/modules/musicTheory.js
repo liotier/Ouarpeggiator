@@ -86,11 +86,11 @@ export const progressions = {
         { name: 'I—iii—IV—V (Soft Rock)', chords: 'I iii IV V' },
     ],
     'Blues/Soul': [
-        { name: '12-Bar Blues', chords: 'I I I I IV IV I I V IV I V' },
-        { name: 'Quick Change Blues', chords: 'I IV I I IV IV I I V IV I V' },
-        { name: 'Minor Blues', chords: 'i i i i iv iv i i V iv i V' },
-        { name: 'Jazz Blues', chords: 'I7 IV7 I7 I7 IV7 IV7 I7 VI7 ii7 V7 I7 V7' },
-        { name: 'Soul/Gospel I—IV', chords: 'I IV I IV' },
+        { name: 'I—IV—V (12-Bar Blues)', chords: 'I I I I IV IV I I V IV I V' },
+        { name: 'I—IV—V (Quick Change Blues)', chords: 'I IV I I IV IV I I V IV I V' },
+        { name: 'i—iv—V (Minor Blues)', chords: 'i i i i iv iv i i V iv i V' },
+        { name: 'I7—IV7—V7 (Jazz Blues)', chords: 'I7 IV7 I7 I7 IV7 IV7 I7 VI7 ii7 V7 I7 V7' },
+        { name: 'I—IV (Soul/Gospel)', chords: 'I IV I IV' },
     ],
     'Jazz/Functional': [
         { name: 'ii—V—I', chords: 'ii7 V7 Imaj7' },
