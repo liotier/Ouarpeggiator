@@ -375,11 +375,7 @@ h1 {
     color: var(--muted);
 }
 
-/* Chord proximity coloring (for click feedback) */
-.chord-pad.vl-reference {
-    border-left: 4px solid var(--accent) !important;
-    background: #dbeafe;
-}
+/* Chord proximity coloring - handled by vl-reference in voice leading section */
 
 /* Chord tooltip */
 .chord-pad[data-tooltip] {
@@ -676,15 +672,15 @@ button:disabled {
     background: var(--pad-bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 12px;
+    padding: 5px;
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
-    min-height: 140px;
+    min-height: 100px;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    justify-content: flex-start;
 }
 
 .chord-pad:hover {
@@ -704,8 +700,14 @@ button:disabled {
     border-color: #f59e0b;
 }
 
+/* Progression chord styling - CPG style amber/gold */
+.chord-pad.progression-chord {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
 .chord-pad.extrapolated {
-    opacity: 0.85;
+    opacity: 0.9;
 }
 
 @keyframes pulse {
@@ -715,11 +717,18 @@ button:disabled {
 }
 
 /* CPG-style two-column pad layout */
+.chord-pad-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 1;
+}
+
 .chord-text-column {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     min-width: 0;
 }
 
@@ -727,57 +736,38 @@ button:disabled {
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     text-align: right;
-    max-width: 45%;
-}
-
-.chord-pad-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-}
-
-.chord-info {
-    flex: 1;
-    min-width: 0;
+    max-width: 50%;
+    justify-content: flex-start;
 }
 
 .chord-name {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--fg);
     word-break: break-word;
 }
 
-.pad-number {
-    font-size: 10px;
-    color: var(--muted);
-    font-weight: 600;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
 .chord-quality {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
 }
 
 .chord-roman {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
 }
 
 .chord-role {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--muted);
     line-height: 1.3;
     text-align: right;
 }
 
 .chord-notes {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--muted);
     font-family: 'Monaco', 'Consolas', monospace;
     text-align: right;
@@ -808,22 +798,36 @@ button:disabled {
     color: #0891b2; /* cyan for suspended */
 }
 
-/* Progression chord marker */
-.chord-pad.progression-chord {
-    border-left: 3px solid var(--accent);
-}
+/* Progression chord marker - handled by .progression-chord above with amber background */
 
-/* Voice leading classes - CPG compatible */
+/* Voice leading classes - CPG exact styling with gradients */
 .chord-pad.vl-smooth {
-    border-left: 4px solid #10b981 !important;
+    border-left: 3px solid #10b981;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.08) 0%, transparent 20%);
 }
 
 .chord-pad.vl-moderate {
-    border-left: 4px solid #f59e0b !important;
+    border-left: 3px solid #f59e0b;
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.08) 0%, transparent 20%);
 }
 
 .chord-pad.vl-leap {
-    border-left: 4px solid #ef4444 !important;
+    border-left: 3px solid #f97316;
+    background: linear-gradient(to right, rgba(249, 115, 22, 0.08) 0%, transparent 20%);
+}
+
+/* Reference chord when clicked - CPG style */
+.chord-pad.vl-reference {
+    border-left: 8px solid #3b82f6 !important;
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.06) 50%, transparent 100%) !important;
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+}
+
+/* Thicker VL borders when reference is shown */
+.chord-grid:has(.vl-reference) .chord-pad.vl-smooth,
+.chord-grid:has(.vl-reference) .chord-pad.vl-moderate,
+.chord-grid:has(.vl-reference) .chord-pad.vl-leap {
+    border-left-width: 6px;
 }
 
 /* Keyboard Diagram */
@@ -831,17 +835,11 @@ button:disabled {
     width: 100%;
     height: 40px;
     margin-top: auto;
-    flex-basis: 100%;
 }
 
 .chord-keyboard svg {
     width: 100%;
     height: 100%;
-}
-
-/* Ensure keyboard appears at bottom of pad */
-.chord-pad {
-    align-content: flex-start;
 }
 
 /* ============================================================================

@@ -787,18 +787,16 @@ function renderChordGrid() {
 
         // CPG-style two-column layout (no PAD labels - legacy MPC terminology removed)
         pad.innerHTML = `
-            <div class="chord-text-column">
-                <div class="chord-pad-content">
-                    <div class="chord-info">
-                        <div class="chord-name">${displayName}</div>
-                    </div>
+            <div class="chord-pad-row">
+                <div class="chord-text-column">
+                    <div class="chord-name">${displayName}</div>
+                    <div class="chord-quality ${qualityClass}">${qualityLabel}</div>
+                    <div class="chord-roman">${chord.symbol || ''}</div>
                 </div>
-                <div class="chord-quality ${qualityClass}">${qualityLabel}</div>
-                <div class="chord-roman">${chord.symbol || ''}</div>
-            </div>
-            <div class="chord-info-column">
-                <div class="chord-role">${roleText}</div>
-                <div class="chord-notes">${chordNoteNamesWithOctave}</div>
+                <div class="chord-info-column">
+                    <div class="chord-role">${roleText}</div>
+                    <div class="chord-notes">${chordNoteNamesWithOctave}</div>
+                </div>
             </div>
             <div class="chord-keyboard">${chord.notes ? generateKeyboardSVG(chord.notes) : ''}</div>
         `;
