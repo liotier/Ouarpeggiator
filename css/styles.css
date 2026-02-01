@@ -608,55 +608,6 @@ button:disabled {
     font-style: italic;
 }
 
-/* Cadence Analysis */
-.cadence-analysis {
-    font-size: 14px;
-    color: var(--fg);
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.cadence-tag {
-    background: var(--pad-bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 12px;
-    cursor: help;
-    transition: background 0.2s;
-}
-
-.cadence-tag:hover {
-    background: var(--pad-hover);
-}
-
-.cadence-tag .cadence-icon {
-    margin-right: 4px;
-}
-
-/* Cadence type colors */
-.cadence-tag.authentic {
-    border-color: #10b981;
-    color: #059669;
-}
-
-.cadence-tag.half {
-    border-color: #f59e0b;
-    color: #d97706;
-}
-
-.cadence-tag.plagal {
-    border-color: #3b82f6;
-    color: #2563eb;
-}
-
-.cadence-tag.deceptive {
-    border-color: #8b5cf6;
-    color: #7c3aed;
-}
-
 /* ============================================================================
    Chord Grid (4x4 pads)
    ============================================================================ */
