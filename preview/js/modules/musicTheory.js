@@ -1419,6 +1419,135 @@ export function selectDynamicRow4Chords(existingChords, keyOffset, scaleDegrees,
 }
 
 // ============================================================================
+// Harmonic Chord Selection
+// ============================================================================
+
+/**
+ * Count common tones between two chords
+ * @param {number[]} chord1Notes - MIDI notes of first chord
+ * @param {number[]} chord2Notes - MIDI notes of second chord
+ * @returns {number} Number of common pitch classes (0-12 range)
+ */
+export function countCommonTones(chord1Notes, chord2Notes) {
+    if (!chord1Notes || !chord2Notes) return 0;
+
+    // Convert to pitch classes (0-11)
+    const pitchClasses1 = new Set(chord1Notes.map(n => n % 12));
+    const pitchClasses2 = new Set(chord2Notes.map(n => n % 12));
+
+    let common = 0;
+    for (const pc of pitchClasses1) {
+        if (pitchClasses2.has(pc)) common++;
+    }
+    return common;
+}
+
+/**
+ * Check if root movement is by fourth or fifth (circle of fifths relationship)
+ * @param {number} root1 - Root note of first chord (MIDI)
+ * @param {number} root2 - Root note of second chord (MIDI)
+ * @returns {boolean} True if roots are a fourth or fifth apart
+ */
+export function isCircleOfFifthsMovement(root1, root2) {
+    const interval = Math.abs((root1 % 12) - (root2 % 12));
+    // 5 semitones = perfect fourth, 7 semitones = perfect fifth
+    return interval === 5 || interval === 7;
+}
+
+/**
+ * Calculate harmonic score for moving from one chord to another
+ * Higher score = more harmonically smooth transition
+ * @param {Object} currentChord - Current chord with notes array
+ * @param {Object} candidateChord - Candidate chord with notes array
+ * @returns {number} Score from 0 to 100
+ */
+export function calculateHarmonicScore(currentChord, candidateChord) {
+    if (!currentChord?.notes || !candidateChord?.notes) return 0;
+
+    const currentNotes = currentChord.notes;
+    const candidateNotes = candidateChord.notes;
+
+    // 1. Common tones (40% weight)
+    // Max possible common tones is min(chord1.length, chord2.length)
+    const maxCommon = Math.min(currentNotes.length, candidateNotes.length);
+    const commonTones = countCommonTones(currentNotes, candidateNotes);
+    const commonToneScore = maxCommon > 0 ? (commonTones / maxCommon) * 40 : 0;
+
+    // 2. Voice leading distance (40% weight)
+    // Lower distance = better. Normalize: 0 semitones = 40pts, 24+ semitones = 0pts
+    const vlDistance = calculateVoiceLeadingDistance(currentNotes, candidateNotes);
+    const vlScore = Math.max(0, 40 - (vlDistance * 40 / 24));
+
+    // 3. Circle of fifths movement (20% weight)
+    const currentRoot = currentNotes[0];
+    const candidateRoot = candidateNotes[0];
+    const circleScore = isCircleOfFifthsMovement(currentRoot, candidateRoot) ? 20 : 0;
+
+    return commonToneScore + vlScore + circleScore;
+}
+
+/**
+ * Select next chord from palette based on harmonic scoring
+ * @param {Object} currentChord - Current chord being played
+ * @param {Object[]} chordPalette - Array of all available chords (16 pads)
+ * @param {number} harmonicAdherence - 0-100, how strictly to follow harmonic rules
+ * @param {number} currentIndex - Index of current chord (to avoid repeating)
+ * @returns {number} Index of selected chord in palette
+ */
+export function selectNextChordHarmonically(currentChord, chordPalette, harmonicAdherence, currentIndex) {
+    if (!chordPalette || chordPalette.length === 0) return 0;
+    if (!currentChord) return Math.floor(Math.random() * chordPalette.length);
+
+    // Score all candidates (excluding current chord)
+    const scores = chordPalette.map((chord, idx) => ({
+        index: idx,
+        score: idx === currentIndex ? -1 : calculateHarmonicScore(currentChord, chord)
+    })).filter(s => s.score >= 0);
+
+    if (scores.length === 0) return (currentIndex + 1) % chordPalette.length;
+
+    // Sort by score descending
+    scores.sort((a, b) => b.score - a.score);
+
+    // Harmonic adherence controls selection
+    // 100% = always pick best, 0% = uniform random
+    if (harmonicAdherence >= 100) {
+        return scores[0].index;
+    }
+
+    if (harmonicAdherence <= 0) {
+        return scores[Math.floor(Math.random() * scores.length)].index;
+    }
+
+    // Convert scores to weighted probabilities
+    // Higher adherence = more weight to higher scores
+    const minScore = Math.min(...scores.map(s => s.score));
+    const maxScore = Math.max(...scores.map(s => s.score));
+    const scoreRange = maxScore - minScore || 1;
+
+    // Calculate weights: at high adherence, good scores get much higher weight
+    const weights = scores.map(s => {
+        const normalizedScore = (s.score - minScore) / scoreRange; // 0 to 1
+        // Exponential weighting based on adherence
+        const exponent = 1 + (harmonicAdherence / 25); // 1 to 5
+        return Math.pow(normalizedScore + 0.1, exponent); // +0.1 ensures non-zero weight
+    });
+
+    // Weighted random selection
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    let random = Math.random() * totalWeight;
+
+    for (let i = 0; i < scores.length; i++) {
+        random -= weights[i];
+        if (random <= 0) {
+            return scores[i].index;
+        }
+    }
+
+    return scores[0].index;
+}
+
+// ============================================================================
 // Exports Summary
 // ============================================================================
 
@@ -1450,4 +1579,9 @@ export default {
     analyzeExistingChords,
     generateRow4Candidates,
     selectDynamicRow4Chords,
+    // Harmonic chord selection
+    countCommonTones,
+    isCircleOfFifthsMovement,
+    calculateHarmonicScore,
+    selectNextChordHarmonically,
 };

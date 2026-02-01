@@ -53,11 +53,21 @@ const appState = {
     barsPerChord: 4,
     humanization: 0,
 
-    // Variation
+    // Playback mode
+    playbackMode: 'arpeggio',  // 'arpeggio' | 'stab'
+
+    // Chord variation
+    harmonicAdherence: 70,  // 0-100, how strictly to follow harmonic rules
+
+    // Note variation (arpeggio mode only)
     harmonicVariation: 0,
     rhythmicVariation: 0,
     voiceLeading: 'smooth',
     lastPlayedNote: null,
+
+    // Chord stab settings
+    strumSpeed: 0,  // 0-100ms delay between notes
+    strumDirection: 'up',  // 'up' | 'down' | 'alternating'
 
     // Velocity/Gate
     velocity: { mode: 'fixed', fixed: 100, randomMin: 60, randomMax: 110, curveType: 'linear-ascending', curveMin: 60, curveMax: 120 },
@@ -1052,7 +1062,17 @@ function handleClockTick() {
     const ticksPerChordChange = ticksPerBar * appState.barsPerChord;
 
     if (appState.tickCount > 0 && appState.tickCount % ticksPerChordChange === 0) {
-        appState.currentChordIndex = (appState.currentChordIndex + 1) % appState.chordProgression.length;
+        // Use harmonic selection to choose next chord
+        const currentChord = appState.chordProgression[appState.currentChordIndex];
+        const currentChordObj = { notes: currentChord?.notes || [] };
+        const paletteObjs = appState.chordProgression.map(c => ({ notes: c?.notes || [] }));
+
+        appState.currentChordIndex = MusicTheory.selectNextChordHarmonically(
+            currentChordObj,
+            paletteObjs,
+            appState.harmonicAdherence,
+            appState.currentChordIndex
+        );
         renderChordGrid();
     }
 
@@ -1081,28 +1101,11 @@ function executeStep() {
         return;
     }
 
-    // Apply rhythmic variation
+    // Apply rhythmic variation (both modes)
     if (appState.rhythmicVariation > 0 && Math.random() * 100 < appState.rhythmicVariation) {
         appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
         renderPattern();
         return;
-    }
-
-    // Select note
-    const chordSize = chord.notes.length;
-    const baseNoteIndex = appState.euclideanStepIndex % chordSize;
-    const octaveLayer = Math.floor(appState.euclideanStepIndex / chordSize) % appState.octaveSpread;
-    let note = chord.notes[baseNoteIndex] + (octaveLayer * 12);
-
-    // Apply harmonic variation
-    if (appState.harmonicVariation > 0 && Math.random() * 100 < appState.harmonicVariation) {
-        const allNotes = appState.chordProgression.filter(c => c.notes).flatMap(c => c.notes);
-        if (allNotes.length > 0) {
-            const substitute = allNotes[Math.floor(Math.random() * allNotes.length)];
-            while (substitute < note - 12) substitute += 12;
-            while (substitute > note + 12) substitute -= 12;
-            note = substitute;
-        }
     }
 
     // Calculate velocity
@@ -1123,27 +1126,93 @@ function executeStep() {
     // Humanization
     const humanOffset = (Math.random() - 0.5) * 2 * appState.humanization;
 
-    setTimeout(() => {
-        if (!appState.isPlaying) return;
-
-        // Play note
-        if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
-            MIDI.sendNoteOn(note, velocity);
-            // Schedule note off for MIDI
-            const handle = setTimeout(() => {
-                MIDI.sendNoteOff(note);
-                appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
-            }, gateLength);
-            appState.scheduledNotes.push({ note, handle });
-        } else if (appState.outputMode === 'audio') {
-            Audio.playNote(note, velocity, gateLength);
-        }
-
-        appState.lastPlayedNote = note;
-    }, Math.max(0, humanOffset));
+    if (appState.playbackMode === 'stab') {
+        // CHORD STAB MODE: Play all notes with optional strum
+        executeChordStab(chord.notes, velocity, gateLength, humanOffset);
+    } else {
+        // ARPEGGIO MODE: Play single note
+        executeArpeggioNote(chord, velocity, gateLength, humanOffset);
+    }
 
     appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
     renderPattern();
+}
+
+/**
+ * Execute a single arpeggio note
+ */
+function executeArpeggioNote(chord, velocity, gateLength, humanOffset) {
+    const chordSize = chord.notes.length;
+    const baseNoteIndex = appState.euclideanStepIndex % chordSize;
+    const octaveLayer = Math.floor(appState.euclideanStepIndex / chordSize) % appState.octaveSpread;
+    let note = chord.notes[baseNoteIndex] + (octaveLayer * 12);
+
+    // Apply harmonic variation (note substitution)
+    if (appState.harmonicVariation > 0 && Math.random() * 100 < appState.harmonicVariation) {
+        const allNotes = appState.chordProgression.filter(c => c.notes).flatMap(c => c.notes);
+        if (allNotes.length > 0) {
+            let substitute = allNotes[Math.floor(Math.random() * allNotes.length)];
+            while (substitute < note - 12) substitute += 12;
+            while (substitute > note + 12) substitute -= 12;
+            note = substitute;
+        }
+    }
+
+    setTimeout(() => {
+        if (!appState.isPlaying) return;
+        playNote(note, velocity, gateLength);
+        appState.lastPlayedNote = note;
+    }, Math.max(0, humanOffset));
+}
+
+/**
+ * Execute a chord stab (all notes, with optional strum delay)
+ */
+function executeChordStab(notes, velocity, gateLength, humanOffset) {
+    // Determine strum order
+    let orderedNotes = [...notes];
+    if (appState.strumDirection === 'down') {
+        orderedNotes.reverse();
+    } else if (appState.strumDirection === 'alternating') {
+        // Alternate based on step index
+        if (appState.euclideanStepIndex % 2 === 1) {
+            orderedNotes.reverse();
+        }
+    }
+
+    // Calculate delay between notes
+    const strumDelay = appState.strumSpeed / Math.max(1, orderedNotes.length - 1);
+
+    setTimeout(() => {
+        if (!appState.isPlaying) return;
+
+        orderedNotes.forEach((note, idx) => {
+            const noteDelay = idx * strumDelay;
+            setTimeout(() => {
+                if (!appState.isPlaying) return;
+                playNote(note, velocity, gateLength);
+            }, noteDelay);
+        });
+
+        // Track the root note as last played
+        appState.lastPlayedNote = orderedNotes[0];
+    }, Math.max(0, humanOffset));
+}
+
+/**
+ * Play a single note via MIDI or Audio
+ */
+function playNote(note, velocity, gateLength) {
+    if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
+        MIDI.sendNoteOn(note, velocity);
+        const handle = setTimeout(() => {
+            MIDI.sendNoteOff(note);
+            appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
+        }, gateLength);
+        appState.scheduledNotes.push({ note, handle });
+    } else if (appState.outputMode === 'audio') {
+        Audio.playNote(note, velocity, gateLength);
+    }
 }
 
 // ============================================================================
@@ -1338,10 +1407,45 @@ function bindControls() {
     document.getElementById('startBtn').addEventListener('click', startPlayback);
     document.getElementById('stopBtn').addEventListener('click', stopPlayback);
 
-    // Variation
+    // Playback Mode Toggle (Arpeggio/Chord Stab)
+    document.getElementById('arpeggioModeRadio').addEventListener('change', function() {
+        if (this.checked) {
+            appState.playbackMode = 'arpeggio';
+            updatePlaybackModeUI();
+        }
+    });
+
+    document.getElementById('stabModeRadio').addEventListener('change', function() {
+        if (this.checked) {
+            appState.playbackMode = 'stab';
+            updatePlaybackModeUI();
+        }
+    });
+
+    // Chord Variation - Harmonic Adherence
+    document.getElementById('harmonicAdherence').addEventListener('input', function() {
+        appState.harmonicAdherence = parseInt(this.value);
+        document.getElementById('harmonicAdherenceValue').textContent = this.value + '%';
+    });
+
+    // Note Variation
     document.getElementById('harmonicVariation').addEventListener('input', function() {
         appState.harmonicVariation = parseInt(this.value);
         document.getElementById('harmonicValue').textContent = this.value + '%';
+    });
+
+    // Strum controls (for Chord Stab mode)
+    document.getElementById('strumSpeed')?.addEventListener('input', function() {
+        appState.strumSpeed = parseInt(this.value);
+        document.getElementById('strumSpeedValue').textContent = this.value;
+    });
+
+    document.querySelectorAll('.strum-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.strum-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            appState.strumDirection = this.dataset.value;
+        });
     });
 
     document.getElementById('rhythmicVariation').addEventListener('input', function() {
@@ -1367,6 +1471,27 @@ function bindControls() {
         appState.gate.mode = this.value;
         renderGateControls();
     });
+}
+
+/**
+ * Update UI based on playback mode (arpeggio/stab)
+ */
+function updatePlaybackModeUI() {
+    const noteVariationSection = document.getElementById('noteVariationSection');
+    const stabControls = document.getElementById('stabControls');
+    const octaveSpreadGroup = document.getElementById('octaveSpreadGroup');
+
+    if (appState.playbackMode === 'stab') {
+        // Chord Stab mode: show strum controls, disable note-level variation
+        noteVariationSection?.classList.add('disabled');
+        if (stabControls) stabControls.style.display = 'flex';
+        if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '0.5';
+    } else {
+        // Arpeggio mode: hide strum controls, enable note-level variation
+        noteVariationSection?.classList.remove('disabled');
+        if (stabControls) stabControls.style.display = 'none';
+        if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
+    }
 }
 
 function renderVelocityControls() {

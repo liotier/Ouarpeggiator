@@ -329,6 +329,18 @@
         <section class="arpeggiator-section">
             <h2>Arpeggiator</h2>
 
+            <!-- Playback Mode Toggle -->
+            <div class="playback-mode-toggle">
+                <label class="mode-option" id="arpeggioModeLabel">
+                    <input type="radio" name="playbackMode" value="arpeggio" id="arpeggioModeRadio" checked>
+                    <span>Arpeggio Mode</span>
+                </label>
+                <label class="mode-option" id="stabModeLabel">
+                    <input type="radio" name="playbackMode" value="stab" id="stabModeRadio">
+                    <span>Chord Stab Mode</span>
+                </label>
+            </div>
+
             <!-- Output Configuration -->
             <div class="control-row">
                 <div class="filter-group">
@@ -363,7 +375,7 @@
                     <label>Rotation: <span id="rotationValue">0</span></label>
                     <input type="range" id="rotationSlider" min="0" max="31" value="0">
                 </div>
-                <div class="filter-group">
+                <div class="filter-group" id="octaveSpreadGroup">
                     <label>Octave Spread: <span id="octaveValue">1</span></label>
                     <input type="range" id="octaveSpread" min="1" max="4" value="1">
                 </div>
@@ -410,17 +422,28 @@
                 <div id="clockStatus" class="clock-status">Stopped</div>
             </div>
 
-            <!-- Variation Controls (Collapsible) -->
-            <details class="variation-section">
-                <summary>Variation</summary>
+            <!-- Chord Variation Controls (Collapsible) -->
+            <details class="variation-section chord-variation-section" open>
+                <summary>Chord Variation</summary>
                 <div class="control-row">
                     <div class="filter-group">
-                        <label>Harmonic: <span id="harmonicValue">0%</span></label>
-                        <input type="range" id="harmonicVariation" min="0" max="100" value="0">
+                        <label>Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
+                        <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
+                    </div>
+                </div>
+            </details>
+
+            <!-- Note Variation Controls (Collapsible) - Disabled in Chord Stab mode -->
+            <details class="variation-section note-variation-section" id="noteVariationSection">
+                <summary>Note Variation</summary>
+                <div class="control-row">
+                    <div class="filter-group">
+                        <label>Note Substitution: <span id="harmonicValue">0%</span></label>
+                        <input type="range" id="harmonicVariation" min="0" max="100" value="0" title="Probability of replacing a note with one from the progression pool">
                     </div>
                     <div class="filter-group">
-                        <label>Rhythmic: <span id="rhythmicValue">0%</span></label>
-                        <input type="range" id="rhythmicVariation" min="0" max="100" value="0">
+                        <label>Rhythmic Variation: <span id="rhythmicValue">0%</span></label>
+                        <input type="range" id="rhythmicVariation" min="0" max="100" value="0" title="Probability of inserting a rest instead of playing">
                     </div>
                     <div class="filter-group">
                         <label>Voice Leading</label>
@@ -428,6 +451,21 @@
                             <button class="voice-btn active" data-value="smooth">Smooth</button>
                             <button class="voice-btn" data-value="far">Far</button>
                             <button class="voice-btn" data-value="none">None</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Chord Stab specific controls (shown only in stab mode) -->
+                <div class="control-row stab-controls" id="stabControls" style="display: none;">
+                    <div class="filter-group">
+                        <label>Strum Speed: <span id="strumSpeedValue">0</span>ms</label>
+                        <input type="range" id="strumSpeed" min="0" max="100" value="0" title="Delay between notes in a chord stab. 0 = instant, 100 = spread arpeggio-like">
+                    </div>
+                    <div class="filter-group">
+                        <label>Strum Direction</label>
+                        <div class="button-group">
+                            <button class="strum-btn active" data-value="up">Up</button>
+                            <button class="strum-btn" data-value="down">Down</button>
+                            <button class="strum-btn" data-value="alternating">Alt</button>
                         </div>
                     </div>
                 </div>

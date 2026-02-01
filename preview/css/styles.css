@@ -947,6 +947,55 @@ button:disabled {
     color: var(--muted);
 }
 
+/* Playback Mode Toggle (Arpeggio/Chord Stab) */
+.playback-mode-toggle {
+    display: flex;
+    gap: 24px;
+    padding: 12px 16px;
+    background: white;
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    margin-bottom: 16px;
+}
+
+/* Strum controls in Chord Stab mode */
+.stab-controls {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: 8px;
+}
+
+.strum-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--pad-bg);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.strum-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+/* Note Variation disabled state (for Chord Stab mode) */
+.note-variation-section.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.note-variation-section.disabled summary {
+    color: var(--muted);
+}
+
+.note-variation-section.disabled summary::after {
+    content: " (Arpeggio mode only)";
+    font-size: 12px;
+    font-weight: normal;
+}
+
 /* Collapsible sections */
 .variation-section,
 .output-section {
