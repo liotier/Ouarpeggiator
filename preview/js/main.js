@@ -670,7 +670,7 @@ function updateCadenceAnalysis() {
     if (!container) return;
 
     // Use progression template string like CPG does
-    const cadence = detectCadence(appState.progressionName);
+    const cadence = detectCadence(appState.progressionTemplate);
 
     if (!cadence) {
         container.innerHTML = '';
