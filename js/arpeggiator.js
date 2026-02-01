@@ -7,7 +7,13 @@
  * The arpeggiator traverses chord progressions using Euclidean rhythm
  * patterns, selecting notes via positional mapping with optional
  * harmonic and rhythmic variations.
+ *
+ * Supports two playback modes:
+ * - Arpeggio: One note per Euclidean hit, cycling through chord tones
+ * - Chord Stab: All notes on each hit, with configurable strum speed
  */
+
+import MusicTheory from './modules/musicTheory.js';
 
 // ============================================================================
 // Note Selection
@@ -72,6 +78,66 @@ function selectSubstituteNote(state, originalNote) {
     // Remove duplicates and select randomly
     const uniqueOptions = [...new Set(transposedOptions)];
     return uniqueOptions[Math.floor(Math.random() * uniqueOptions.length)];
+}
+
+// ============================================================================
+// Chord Stab Mode
+// ============================================================================
+
+/**
+ * Get all notes to play for a chord stab
+ * Returns array of notes with timing offsets for strum effect
+ *
+ * @param {Object} state - Application state
+ * @returns {Array|null} - Array of {note, delay} objects, or null for rest
+ */
+function selectChordStab(state) {
+    const currentChord = state.chordProgression[state.currentChordIndex];
+    const pattern = state.euclidean.pattern;
+
+    // Check if current step is a hit in the Euclidean pattern
+    if (!pattern[state.euclideanStepIndex]) {
+        return null; // Rest - pattern says no hit here
+    }
+
+    // Apply rhythmic variation (probabilistic rest insertion)
+    if (state.rhythmicVariation > 0 && Math.random() < state.rhythmicVariation) {
+        return null; // Rest - variation removed this hit
+    }
+
+    // Get strum settings (defaults if not set)
+    const strumSpeed = state.strumSpeed ?? 0; // 0 = instant, up to 100ms between notes
+    const strumDirection = state.strumDirection ?? 'up'; // 'up', 'down', 'alternating'
+
+    // Determine actual direction for this stab
+    let direction = strumDirection;
+    if (strumDirection === 'alternating') {
+        // Alternate based on step index
+        direction = state.euclideanStepIndex % 2 === 0 ? 'up' : 'down';
+    }
+
+    // Build note array with delays
+    const notes = [...currentChord];
+    if (direction === 'down') {
+        notes.reverse();
+    }
+
+    // Calculate delay between each note
+    const delayPerNote = strumSpeed / Math.max(1, notes.length - 1);
+
+    return notes.map((note, idx) => ({
+        note: note,
+        delay: idx * delayPerNote
+    }));
+}
+
+/**
+ * Check if playback mode is chord stab
+ * @param {Object} state - Application state
+ * @returns {boolean}
+ */
+function isChordStabMode(state) {
+    return state.playbackMode === 'stab';
 }
 
 // ============================================================================
@@ -231,6 +297,7 @@ function applyCurve(progress, min, max, curveType) {
 
 /**
  * Check and advance to next chord based on bar count
+ * Uses harmonic scoring to select the next chord instead of sequential
  *
  * @param {Object} state - Application state
  * @returns {boolean} - True if chord changed
@@ -247,9 +314,20 @@ function checkChordAdvancement(state) {
         const previousChordIndex = state.currentChordIndex;
         const previousChord = state.chordProgression[previousChordIndex];
 
-        // Advance to next chord
-        state.currentChordIndex =
-            (state.currentChordIndex + 1) % state.chordProgression.length;
+        // Use harmonic selection instead of sequential
+        // harmonicAdherence: 0 = random, 100 = always pick harmonically best
+        const harmonicAdherence = state.harmonicAdherence ?? 70; // Default 70%
+
+        // Build chord objects for harmonic scoring
+        const currentChordObj = { notes: previousChord };
+        const paletteObjs = state.chordProgression.map(notes => ({ notes }));
+
+        state.currentChordIndex = MusicTheory.selectNextChordHarmonically(
+            currentChordObj,
+            paletteObjs,
+            harmonicAdherence,
+            previousChordIndex
+        );
 
         const newChord = state.chordProgression[state.currentChordIndex];
 
@@ -492,6 +570,10 @@ export {
     // Note selection
     selectNote,
     selectSubstituteNote,
+
+    // Chord stab mode
+    selectChordStab,
+    isChordStabMode,
 
     // Velocity and gate
     calculateVelocity,
