@@ -434,7 +434,7 @@ function generateProgression() {
 
             const originalProgressionLength = chords.length;
 
-            // CPG-style Row 1-3 filling with duplicate collapsing
+            // CPG-style Row 1-3 filling with duplicate collapsing (two-pass algorithm)
             // Build complete chord queue from progression
             const allChords = [...chords];
             let chordQueueIndex = 0;
@@ -451,35 +451,57 @@ function generateProgression() {
                 return null;
             };
 
-            // Fill first 12 pads (rows 1-3) with duplicate collapsing per row
+            // First pass: Fill all 12 slots unconditionally
+            const initialPads = [];
+            for (let i = 0; i < 12; i++) {
+                const chord = getNextChord();
+                if (!chord) break;
+
+                initialPads.push({
+                    chord,
+                    isProgressionChord: i < originalProgressionLength
+                });
+            }
+
+            // Second pass: Collapse contiguous duplicates per row and refill
             const rows1to3 = [];
             for (let row = 0; row < 3; row++) {
+                const rowStart = row * 4;
+                const rowEnd = rowStart + 4;
                 const rowPads = [];
-                let previousSymbol = null;
-                let attempts = 0;
-                const maxAttempts = allChords.length * 2; // Prevent infinite loop
 
-                while (rowPads.length < 4 && attempts < maxAttempts) {
-                    const chord = getNextChord();
-                    if (!chord) break;
-                    attempts++;
+                // Collapse duplicates in this row
+                for (let i = rowStart; i < rowEnd && i < initialPads.length; i++) {
+                    const current = initialPads[i];
+                    const previous = rowPads.length > 0 ? rowPads[rowPads.length - 1] : null;
 
-                    // Collapse contiguous duplicates within the row
-                    if (chord.symbol !== previousSymbol || rowPads.length === 0) {
-                        rowPads.push({...chord});
-                        previousSymbol = chord.symbol;
+                    // Skip if same chord symbol as previous in this row
+                    if (previous && previous.chord.symbol === current.chord.symbol) {
+                        continue; // Skip duplicate
                     }
-                    // If duplicate, skip and get next chord
+
+                    rowPads.push(current);
                 }
 
-                // If we couldn't fill the row with unique chords, pad with duplicates
-                while (rowPads.length < 4 && allChords.length > 0) {
-                    const chord = getNextChord();
-                    if (!chord) break;
-                    rowPads.push({...chord});
+                // Refill row to 4 pads with next available chords
+                while (rowPads.length < 4) {
+                    const nextChord = getNextChord();
+                    if (!nextChord) break;
+
+                    rowPads.push({
+                        chord: nextChord,
+                        isProgressionChord: false // Refilled slots are extrapolated
+                    });
                 }
 
-                rows1to3.push(...rowPads);
+                // Extract chords and mark as extrapolated if needed
+                rowPads.forEach(padData => {
+                    const chord = {...padData.chord};
+                    if (!padData.isProgressionChord) {
+                        chord.extrapolated = true;
+                    }
+                    rows1to3.push(chord);
+                });
             }
 
             // Ensure we have at least 12 chords for rows 1-3
