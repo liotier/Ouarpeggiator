@@ -830,41 +830,30 @@ button:disabled {
     min-width: 150px;
 }
 
-/* Pattern Display */
-.pattern-display {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 12px;
-    background: var(--pad-bg);
-    border-radius: var(--radius);
+/* Piano Roll */
+.piano-roll-container {
     margin-bottom: 16px;
-    min-height: 50px;
-    align-items: center;
+    background: #1a1a1a;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid #3a3a3a;
 }
 
-.pattern-display .step {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--border);
-    border: 2px solid var(--border);
-    transition: all 0.15s;
+.piano-roll-wrapper {
+    display: flex;
+    height: 200px;
+    position: relative;
 }
 
-.pattern-display .step.hit {
-    background: var(--accent);
-    border-color: var(--accent-dark);
+.piano-roll-keyboard {
+    flex-shrink: 0;
+    background: #2a2a2a;
+    border-right: 1px solid #3a3a3a;
 }
 
-.pattern-display .step.active {
-    transform: scale(1.4);
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.5);
-    border-color: var(--warning);
-}
-
-.pattern-display .step.hit.active {
-    background: var(--error);
+.piano-roll-canvas {
+    flex: 1;
+    background: #1a1a1a;
 }
 
 /* Transport */
