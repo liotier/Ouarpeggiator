@@ -420,7 +420,8 @@ export function parseRomanNumeral(symbol) {
     } else if (remaining.includes('m7') || remaining.includes('min7')) {
         result.quality = 'm7';
     } else if (remaining.includes('7')) {
-        result.quality = '7';
+        // If the numeral was lowercase (minor), make it a minor 7th
+        result.quality = result.isMinor ? 'm7' : '7';
     } else if (remaining.includes('sus4')) {
         result.quality = 'sus4';
     } else if (remaining.includes('sus2')) {
