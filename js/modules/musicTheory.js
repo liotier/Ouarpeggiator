@@ -2767,27 +2767,71 @@ export function analyzeVoiceLeading(notes1, notes2) {
         smoothness: commonTones.length + movements.filter(m => m === 'step motion').length
     };
 }
+/**
+ * Determine harmonic function of a chord (CPG algorithm)
+ * @param {string} romanNumeral - Roman numeral notation
+ * @returns {string|null} - Function name or null
+ */
+function determineChordFunction(romanNumeral) {
+    if (!romanNumeral) return null;
+    const upper = romanNumeral.toUpperCase();
+
+    if (upper.includes('I') && !upper.includes('II') && !upper.includes('V')) return 'tonic';
+    if (upper.includes('IV') || upper.includes('II')) return 'subdominant';
+    if (upper.includes('V')) return 'dominant';
+    if (upper.includes('VI') || upper.includes('III')) return 'mediant';
+    return 'chromatic';
+}
+
+/**
+ * Analyze existing chords for Row 4 selection (CPG algorithm)
+ * @param {Array} existingChords - Chords from rows 1-3
+ * @returns {Object} - Analysis object
+ */
 export function analyzeExistingChords(existingChords) {
     const analysis = {
         hasDominant7: false,
         hasSubdominant: false,
+        hasBorrowed: false,
+        hasSecondary: false,
+        hasPivot: false,
+        functionsPresent: new Set(),
         roots: [],
-        romanNumerals: new Set()
+        romanNumerals: []
     };
 
     existingChords.forEach(chord => {
-        if (chord.notes && chord.notes[0]) {
+        const romanNumeral = chord.symbol || chord.romanNumeral;
+
+        // Check for dominant 7
+        if (chord.type === 'dominant' || romanNumeral === 'V7') {
+            analysis.hasDominant7 = true;
+        }
+
+        // Check for subdominant (IV or ii)
+        if (romanNumeral && (romanNumeral.includes('IV') || romanNumeral.includes('ii'))) {
+            analysis.hasSubdominant = true;
+        }
+
+        // Check for borrowed chords
+        if (romanNumeral && (romanNumeral.includes('♭') || romanNumeral.includes('♯'))) {
+            analysis.hasBorrowed = true;
+        }
+
+        // Check for secondary dominants
+        if (romanNumeral && romanNumeral.includes('/')) {
+            analysis.hasSecondary = true;
+        }
+
+        // Track roots and roman numerals
+        if (chord.notes && chord.notes.length > 0) {
             analysis.roots.push(chord.notes[0] % 12);
         }
-        if (chord.symbol) {
-            analysis.romanNumerals.add(chord.symbol);
-            if (chord.symbol.includes('V7')) {
-                analysis.hasDominant7 = true;
-            }
-            if (chord.symbol.toLowerCase().includes('ii') || chord.symbol.includes('IV')) {
-                analysis.hasSubdominant = true;
-            }
-        }
+        analysis.romanNumerals.push(romanNumeral);
+
+        // Determine function
+        const func = determineChordFunction(romanNumeral);
+        if (func) analysis.functionsPresent.add(func);
     });
 
     return analysis;
@@ -2803,15 +2847,14 @@ export function analyzeExistingChords(existingChords) {
  */
 export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, variantType) {
     const candidates = [];
-    const baseNote = 60 + keyOffset;
 
     // ♭VII (borrowed from mixolydian/minor)
     const flatSeven = (scaleDegrees[0] + 10) % 12;
     candidates.push({
         root: flatSeven,
-        notes: buildChordRaw(baseNote + flatSeven, 'major'),
+        notes: buildChord(flatSeven, 'major', keyOffset),
         chordType: 'major',
-        chordName: getChordName(baseNote + flatSeven, 'major', keyOffset),
+        chordName: getChordName(flatSeven, 'major', keyOffset, '♭VII'),
         romanNumeral: '♭VII',
         quality: 'Major',
         category: 'borrowed',
@@ -2822,9 +2865,9 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
     const flatSix = (scaleDegrees[0] + 8) % 12;
     candidates.push({
         root: flatSix,
-        notes: buildChordRaw(baseNote + flatSix, 'major'),
+        notes: buildChord(flatSix, 'major', keyOffset),
         chordType: 'major',
-        chordName: getChordName(baseNote + flatSix, 'major', keyOffset),
+        chordName: getChordName(flatSix, 'major', keyOffset, '♭VI'),
         romanNumeral: '♭VI',
         quality: 'Major',
         category: 'borrowed',
@@ -2836,9 +2879,9 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         const fifth = scaleDegrees[4 % scaleDegrees.length];
         candidates.push({
             root: fifth,
-            notes: buildChordRaw(baseNote + fifth, 'dom7'),
+            notes: buildChord(fifth, 'dom7', keyOffset),
             chordType: 'dom7',
-            chordName: getChordName(baseNote + fifth, 'dom7', keyOffset),
+            chordName: getChordName(fifth, 'dom7', keyOffset),
             romanNumeral: 'V7',
             quality: 'Dominant 7',
             category: 'dominant',
@@ -2851,9 +2894,9 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         const second = scaleDegrees[1 % scaleDegrees.length];
         candidates.push({
             root: second,
-            notes: buildChordRaw(baseNote + second, 'minor7'),
+            notes: buildChord(second, 'minor7', keyOffset),
             chordType: 'minor7',
-            chordName: getChordName(baseNote + second, 'minor7', keyOffset),
+            chordName: getChordName(second, 'minor7', keyOffset),
             romanNumeral: 'ii7',
             quality: 'Minor 7',
             category: 'subdominant',
@@ -2866,9 +2909,9 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         const fourth = scaleDegrees[3 % scaleDegrees.length];
         candidates.push({
             root: fourth,
-            notes: buildChordRaw(baseNote + fourth, 'minor'),
+            notes: buildChord(fourth, 'minor', keyOffset),
             chordType: 'minor',
-            chordName: getChordName(baseNote + fourth, 'minor', keyOffset),
+            chordName: getChordName(fourth, 'minor', keyOffset),
             romanNumeral: 'iv',
             quality: 'Minor',
             category: 'borrowed',
@@ -2876,54 +2919,70 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         });
     }
 
+    // VI (major sixth - raised submediant, common in pop/rock)
+    if (scaleDegrees.length > 5) {
+        const sixth = scaleDegrees[5 % scaleDegrees.length];
+        const majorSixth = (sixth + 1) % 12;
+        candidates.push({
+            root: majorSixth,
+            notes: buildChord(majorSixth, 'major', keyOffset),
+            chordType: 'major',
+            chordName: getChordName(majorSixth, 'major', keyOffset),
+            romanNumeral: 'VI',
+            quality: 'Major',
+            category: 'borrowed',
+            commonUsage: 0.8
+        });
+    }
+
     // Secondary dominants (V7/x chords)
     if (scaleDegrees.length > 1) {
-        // V7/V
+        // V7/V (secondary dominant of V) - most common
         const vOfV = scaleDegrees[1 % scaleDegrees.length];
         candidates.push({
             root: vOfV,
-            notes: buildChordRaw(baseNote + vOfV, 'dom7'),
+            notes: buildChord(vOfV, 'dom7', keyOffset),
             chordType: 'dom7',
-            chordName: getChordName(baseNote + vOfV, 'dom7', keyOffset),
+            chordName: getChordName(vOfV, 'dom7', keyOffset),
             romanNumeral: 'V7/V',
             quality: 'Dominant 7',
             category: 'secondary',
             commonUsage: 0.7
         });
 
-        // V7/ii
+        // V7/ii (secondary dominant of ii)
         const vOfii = (scaleDegrees[0] + 9) % 12;
         candidates.push({
             root: vOfii,
-            notes: buildChordRaw(baseNote + vOfii, 'dom7'),
+            notes: buildChord(vOfii, 'dom7', keyOffset),
             chordType: 'dom7',
-            chordName: getChordName(baseNote + vOfii, 'dom7', keyOffset),
+            chordName: getChordName(vOfii, 'dom7', keyOffset),
             romanNumeral: 'V7/ii',
             quality: 'Dominant 7',
             category: 'secondary',
             commonUsage: 0.5
         });
 
-        // V7/vi
+        // V7/vi (secondary dominant of vi) - common in pop/jazz
         const vOfvi = (scaleDegrees[0] + 4) % 12;
         candidates.push({
             root: vOfvi,
-            notes: buildChordRaw(baseNote + vOfvi, 'dom7'),
+            notes: buildChord(vOfvi, 'dom7', keyOffset),
             chordType: 'dom7',
-            chordName: getChordName(baseNote + vOfvi, 'dom7', keyOffset),
+            chordName: getChordName(vOfvi, 'dom7', keyOffset),
             romanNumeral: 'V7/vi',
             quality: 'Dominant 7',
             category: 'secondary',
             commonUsage: 0.5
         });
 
-        // V7/IV
+        // V7/IV (secondary dominant of IV)
         const vOfIV = scaleDegrees[0];
         candidates.push({
             root: vOfIV,
-            notes: buildChordRaw(baseNote + vOfIV, 'dom7'),
+            notes: buildChord(vOfIV, 'dom7', keyOffset),
             chordType: 'dom7',
-            chordName: getChordName(baseNote + vOfIV, 'dom7', keyOffset),
+            chordName: getChordName(vOfIV, 'dom7', keyOffset),
             romanNumeral: 'V7/IV',
             quality: 'Dominant 7',
             category: 'secondary',
@@ -2931,35 +2990,38 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         });
     }
 
-    // Augmented 6th chords (Classic and Jazz)
+    // Augmented 6th chords (classical approach to V)
     if (variantType === 'Classic' || variantType === 'Jazz') {
+        // Italian 6th (It+6): ♭VI with raised 4th
         candidates.push({
             root: flatSix,
-            notes: buildChordRaw(baseNote + flatSix, 'It6'),
+            notes: buildChord(flatSix, 'It6', keyOffset),
             chordType: 'It6',
-            chordName: getChordName(baseNote + flatSix, 'It6', keyOffset, 'It+6'),
+            chordName: getChordName(flatSix, 'It6', keyOffset, 'It+6'),
             romanNumeral: 'It+6',
             quality: 'Italian 6th',
             category: 'augmented6th',
             commonUsage: 0.3
         });
 
+        // German 6th (Ger+6): like It6 but with ♭3
         candidates.push({
             root: flatSix,
-            notes: buildChordRaw(baseNote + flatSix, 'Ger6'),
+            notes: buildChord(flatSix, 'Ger6', keyOffset),
             chordType: 'Ger6',
-            chordName: getChordName(baseNote + flatSix, 'Ger6', keyOffset, 'Ger+6'),
+            chordName: getChordName(flatSix, 'Ger6', keyOffset, 'Ger+6'),
             romanNumeral: 'Ger+6',
             quality: 'German 6th',
             category: 'augmented6th',
             commonUsage: 0.3
         });
 
+        // French 6th (Fr+6): like It6 but with 2
         candidates.push({
             root: flatSix,
-            notes: buildChordRaw(baseNote + flatSix, 'Fr6'),
+            notes: buildChord(flatSix, 'Fr6', keyOffset),
             chordType: 'Fr6',
-            chordName: getChordName(baseNote + flatSix, 'Fr6', keyOffset, 'Fr+6'),
+            chordName: getChordName(flatSix, 'Fr6', keyOffset, 'Fr+6'),
             romanNumeral: 'Fr+6',
             quality: 'French 6th',
             category: 'augmented6th',
@@ -2967,13 +3029,13 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         });
     }
 
-    // ♭III (borrowed)
+    // ♭III (borrowed from minor)
     const flatThree = (scaleDegrees[0] + 3) % 12;
     candidates.push({
         root: flatThree,
-        notes: buildChordRaw(baseNote + flatThree, 'major'),
+        notes: buildChord(flatThree, 'major', keyOffset),
         chordType: 'major',
-        chordName: getChordName(baseNote + flatThree, 'major', keyOffset),
+        chordName: getChordName(flatThree, 'major', keyOffset, '♭III'),
         romanNumeral: '♭III',
         quality: 'Major',
         category: 'borrowed',
@@ -2984,23 +3046,24 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
     const neapolitan = (scaleDegrees[0] + 1) % 12;
     candidates.push({
         root: neapolitan,
-        notes: buildChordRaw(baseNote + neapolitan, 'major'),
+        notes: buildChord(neapolitan, 'major', keyOffset),
         chordType: 'major',
-        chordName: getChordName(baseNote + neapolitan, 'major', keyOffset),
+        chordName: getChordName(neapolitan, 'major', keyOffset, '♭II'),
         romanNumeral: '♭II',
         quality: 'Major',
         category: 'chromatic',
         commonUsage: 0.4
     });
 
-    // Jazz-specific: Tritone substitution
-    if (variantType === 'Jazz' && scaleDegrees.length > 4) {
+    // Variant-specific additions
+    if (variantType === 'Jazz') {
+        // SubV7 (tritone substitution for V7)
         const tritone = (scaleDegrees[4] + 6) % 12;
         candidates.push({
             root: tritone,
-            notes: buildChordRaw(baseNote + tritone, 'dom7'),
+            notes: buildChord(tritone, 'dom7', keyOffset),
             chordType: 'dom7',
-            chordName: getChordName(baseNote + tritone, 'dom7', keyOffset, 'SubV7'),
+            chordName: getChordName(tritone, 'dom7', keyOffset, 'SubV7'),
             romanNumeral: 'SubV7',
             quality: 'Dominant 7',
             category: 'substitution',
@@ -3008,14 +3071,14 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         });
     }
 
-    // Modal-specific: Lydian II
     if (variantType === 'Modal') {
+        // Lydian II
         const lydianTwo = (scaleDegrees[0] + 2) % 12;
         candidates.push({
             root: lydianTwo,
-            notes: buildChordRaw(baseNote + lydianTwo, 'major'),
+            notes: buildChord(lydianTwo, 'major', keyOffset),
             chordType: 'major',
-            chordName: getChordName(baseNote + lydianTwo, 'major', keyOffset),
+            chordName: getChordName(lydianTwo, 'major', keyOffset),
             romanNumeral: 'II',
             quality: 'Major',
             category: 'modal',
@@ -3027,27 +3090,35 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
 }
 
 /**
- * Score a candidate chord for Row 4 selection (CPG-compatible)
+ * Score a candidate chord for Row 4 selection (CPG algorithm)
  * @param {Object} candidate - Candidate chord
  * @param {Object} analysis - Analysis of existing chords
  * @param {number[]} existingRoots - Roots of existing chords
- * @returns {number} - Score
+ * @returns {number} - Score (0-4 range)
  */
 function scoreCandidate(candidate, analysis, existingRoots) {
-    let score = candidate.commonUsage * 10;
+    let score = 0;
 
-    // Bonus for avoiding duplicate roots
-    if (!existingRoots.includes(candidate.root)) {
-        score += 5;
+    // 1. Fills functional gap (0 or 1)
+    const candidateFunction = determineChordFunction(candidate.romanNumeral);
+    if (candidateFunction && !analysis.functionsPresent.has(candidateFunction)) {
+        score += 1;
     }
 
-    // Bonus for filling gaps in harmony
-    if (candidate.category === 'dominant' && !analysis.hasDominant7) {
-        score += 3;
-    }
-    if (candidate.category === 'subdominant' && !analysis.hasSubdominant) {
-        score += 3;
-    }
+    // 2. Provides useful voice leading (0 or 1)
+    const leadsWell = existingRoots.some(root => {
+        const interval = Math.abs((candidate.root - root + 12) % 12);
+        return interval === 1 || interval === 5 || interval === 7; // semitone, fourth, or fifth
+    });
+    if (leadsWell) score += 1;
+
+    // 3. Common in modern music (0 or 1)
+    if (candidate.commonUsage > 0.6) score += 1;
+
+    // 4. Adds harmonic variety (0 or 1)
+    if (!analysis.hasBorrowed && candidate.category === 'borrowed') score += 1;
+    if (!analysis.hasSecondary && candidate.category === 'secondary') score += 1;
+    if (!analysis.hasDominant7 && candidate.category === 'dominant') score += 1;
 
     return score;
 }
