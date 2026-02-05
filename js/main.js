@@ -423,10 +423,10 @@ function generateProgression() {
                 const notes = chord.notes.map(n => n + variantType.octaveOffset);
                 return {
                     notes,
-                    name: MusicTheory.getChordNameFromNotes(notes),
-                    symbol: chord.symbol,
+                    name: chord.chordName || chord.name || MusicTheory.getChordNameFromNotes(notes),
+                    symbol: chord.symbol || chord.romanNumeral,
                     type: getChordType(notes),
-                    description: getChordDescription(chord.symbol),
+                    description: getChordDescription(chord.symbol || chord.romanNumeral),
                     isProgressionChord: true
                 };
             });
