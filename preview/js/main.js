@@ -456,10 +456,13 @@ function generateProgression() {
             for (let row = 0; row < 3; row++) {
                 const rowPads = [];
                 let previousSymbol = null;
+                let attempts = 0;
+                const maxAttempts = allChords.length * 2; // Prevent infinite loop
 
-                while (rowPads.length < 4) {
+                while (rowPads.length < 4 && attempts < maxAttempts) {
                     const chord = getNextChord();
                     if (!chord) break;
+                    attempts++;
 
                     // Collapse contiguous duplicates within the row
                     if (chord.symbol !== previousSymbol || rowPads.length === 0) {
@@ -467,6 +470,13 @@ function generateProgression() {
                         previousSymbol = chord.symbol;
                     }
                     // If duplicate, skip and get next chord
+                }
+
+                // If we couldn't fill the row with unique chords, pad with duplicates
+                while (rowPads.length < 4 && allChords.length > 0) {
+                    const chord = getNextChord();
+                    if (!chord) break;
+                    rowPads.push({...chord});
                 }
 
                 rows1to3.push(...rowPads);
