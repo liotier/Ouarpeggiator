@@ -9,6 +9,7 @@ import * as MIDI from './midi.js';
 import * as Arpeggiator from './arpeggiator.js';
 import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
+import * as PianoRoll from './pianoRoll.js';
 
 // ============================================================================
 // Application State
@@ -885,17 +886,8 @@ function regeneratePattern() {
 }
 
 function renderPattern() {
-    const display = document.getElementById('patternDisplay');
-    display.innerHTML = '';
-
-    appState.euclidean.pattern.forEach((isHit, index) => {
-        const step = document.createElement('div');
-        step.className = 'step' + (isHit ? ' hit' : '');
-        if (index === appState.euclideanStepIndex) {
-            step.classList.add('active');
-        }
-        display.appendChild(step);
-    });
+    // Pattern visualization replaced by piano roll
+    // No-op to maintain backward compatibility
 }
 
 // ============================================================================
@@ -923,6 +915,10 @@ function startPlayback() {
 
     regeneratePattern();
 
+    // Start piano roll
+    PianoRoll.startPianoRoll();
+    PianoRoll.setBPM(appState.bpm);
+
     document.getElementById('startBtn').disabled = true;
     document.getElementById('stopBtn').disabled = false;
     document.getElementById('clockStatus').textContent = 'Playing';
@@ -948,6 +944,9 @@ function stopPlayback() {
     }
 
     appState.isPlaying = false;
+
+    // Stop piano roll
+    PianoRoll.stopPianoRoll();
 
     // Stop all notes
     appState.scheduledNotes.forEach(s => {
@@ -1120,15 +1119,23 @@ function executeChordStab(notes, velocity, gateLength, humanOffset) {
  * Play a single note via MIDI or Audio
  */
 function playNote(note, velocity, gateLength) {
+    // Add to piano roll visualization
+    PianoRoll.addNote(note, velocity, gateLength, appState.currentChordIndex);
+
     if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
         MIDI.sendNoteOn(note, velocity);
         const handle = setTimeout(() => {
             MIDI.sendNoteOff(note);
+            PianoRoll.removeNote(note);
             appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
         }, gateLength);
         appState.scheduledNotes.push({ note, handle });
     } else if (appState.outputMode === 'audio') {
         Audio.playNote(note, velocity, gateLength);
+        // Audio engine handles note off internally, so schedule removal for piano roll
+        setTimeout(() => {
+            PianoRoll.removeNote(note);
+        }, gateLength);
     }
 }
 
@@ -1299,6 +1306,9 @@ function bindControls() {
     document.getElementById('bpmSlider').addEventListener('input', function() {
         appState.bpm = parseInt(this.value);
         document.getElementById('bpmValue').textContent = this.value;
+
+        // Update piano roll BPM
+        PianoRoll.setBPM(appState.bpm);
 
         // Restart if playing
         if (appState.isPlaying) {
@@ -1478,6 +1488,9 @@ async function initialize() {
 
     // Initialize MIDI
     await initializeMIDI();
+
+    // Initialize piano roll
+    PianoRoll.initPianoRoll('pianoRollContainer');
 
     // Bind all controls
     bindControls();
