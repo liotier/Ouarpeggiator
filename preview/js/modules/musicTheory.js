@@ -2848,31 +2848,53 @@ export function analyzeExistingChords(existingChords) {
 export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, variantType) {
     const candidates = [];
 
-    // ♭VII (borrowed from mixolydian/minor)
-    const flatSeven = (scaleDegrees[0] + 10) % 12;
-    candidates.push({
-        root: flatSeven,
-        notes: buildChord(flatSeven, 'major', keyOffset),
-        chordType: 'major',
-        chordName: getChordName(flatSeven, 'major', keyOffset, '♭VII'),
-        romanNumeral: '♭VII',
-        quality: 'Major',
-        category: 'borrowed',
-        commonUsage: 0.9
-    });
+    // Build set of diatonic pitch classes to avoid duplicating chords already in the mode
+    const diatonicPitchClasses = new Set(scaleDegrees.map(deg => deg % 12));
 
-    // ♭VI (borrowed from minor)
+    // ♭VII (borrowed from mixolydian/minor) - only if not already diatonic
+    const flatSeven = (scaleDegrees[0] + 10) % 12;
+    if (!diatonicPitchClasses.has(flatSeven)) {
+        candidates.push({
+            root: flatSeven,
+            notes: buildChord(flatSeven, 'major', keyOffset),
+            chordType: 'major',
+            chordName: getChordName(flatSeven, 'major', keyOffset, '♭VII'),
+            romanNumeral: '♭VII',
+            quality: 'Major',
+            category: 'borrowed',
+            commonUsage: 0.9
+        });
+    }
+
+    // ♭VI (borrowed from minor) - only if not already diatonic
     const flatSix = (scaleDegrees[0] + 8) % 12;
-    candidates.push({
-        root: flatSix,
-        notes: buildChord(flatSix, 'major', keyOffset),
-        chordType: 'major',
-        chordName: getChordName(flatSix, 'major', keyOffset, '♭VI'),
-        romanNumeral: '♭VI',
-        quality: 'Major',
-        category: 'borrowed',
-        commonUsage: 0.8
-    });
+    if (!diatonicPitchClasses.has(flatSix)) {
+        candidates.push({
+            root: flatSix,
+            notes: buildChord(flatSix, 'major', keyOffset),
+            chordType: 'major',
+            chordName: getChordName(flatSix, 'major', keyOffset, '♭VI'),
+            romanNumeral: '♭VI',
+            quality: 'Major',
+            category: 'borrowed',
+            commonUsage: 0.8
+        });
+    }
+
+    // ♭III (borrowed from minor) - only if not already diatonic
+    const flatThree = (scaleDegrees[0] + 3) % 12;
+    if (!diatonicPitchClasses.has(flatThree)) {
+        candidates.push({
+            root: flatThree,
+            notes: buildChord(flatThree, 'major', keyOffset),
+            chordType: 'major',
+            chordName: getChordName(flatThree, 'major', keyOffset, '♭III'),
+            romanNumeral: '♭III',
+            quality: 'Major',
+            category: 'borrowed',
+            commonUsage: 0.7
+        });
+    }
 
     // V7 (dominant seventh)
     if (!analysis.hasDominant7 && scaleDegrees.length > 4) {
@@ -2905,18 +2927,22 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
     }
 
     // iv (minor subdominant - borrowed from parallel minor)
+    // Only add if IV is not already minor in the mode
     if (scaleDegrees.length > 3) {
         const fourth = scaleDegrees[3 % scaleDegrees.length];
-        candidates.push({
-            root: fourth,
-            notes: buildChord(fourth, 'minor', keyOffset),
-            chordType: 'minor',
-            chordName: getChordName(fourth, 'minor', keyOffset),
-            romanNumeral: 'iv',
-            quality: 'Minor',
-            category: 'borrowed',
-            commonUsage: 0.85
-        });
+        const fourthQuality = getScaleDegreeQuality(4, keyOffset, mode);
+        if (fourthQuality !== 'minor') {
+            candidates.push({
+                root: fourth,
+                notes: buildChord(fourth, 'minor', keyOffset),
+                chordType: 'minor',
+                chordName: getChordName(fourth, 'minor', keyOffset),
+                romanNumeral: 'iv',
+                quality: 'Minor',
+                category: 'borrowed',
+                commonUsage: 0.85
+            });
+        }
     }
 
     // VI (major sixth - raised submediant, common in pop/rock)
@@ -2936,59 +2962,64 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
     }
 
     // Secondary dominants (V7/x chords)
-    if (scaleDegrees.length > 1) {
-        // V7/V (secondary dominant of V) - most common
-        const vOfV = scaleDegrees[1 % scaleDegrees.length];
-        candidates.push({
-            root: vOfV,
-            notes: buildChord(vOfV, 'dom7', keyOffset),
-            chordType: 'dom7',
-            chordName: getChordName(vOfV, 'dom7', keyOffset),
-            romanNumeral: 'V7/V',
-            quality: 'Dominant 7',
-            category: 'secondary',
-            commonUsage: 0.7
-        });
+    // NOTE: Secondary dominants are chromatic and not derived from the diatonic scale.
+    // They are always calculated from major scale intervals regardless of current mode.
 
-        // V7/ii (secondary dominant of ii)
-        const vOfii = (scaleDegrees[0] + 9) % 12;
-        candidates.push({
-            root: vOfii,
-            notes: buildChord(vOfii, 'dom7', keyOffset),
-            chordType: 'dom7',
-            chordName: getChordName(vOfii, 'dom7', keyOffset),
-            romanNumeral: 'V7/ii',
-            quality: 'Dominant 7',
-            category: 'secondary',
-            commonUsage: 0.5
-        });
+    // V7/V (secondary dominant of V) - most common
+    // Always 2 semitones above tonic (D in C major - P5 above V)
+    const vOfV = (scaleDegrees[0] + 2) % 12;
+    candidates.push({
+        root: vOfV,
+        notes: buildChord(vOfV, 'dom7', keyOffset),
+        chordType: 'dom7',
+        chordName: getChordName(vOfV, 'dom7', keyOffset),
+        romanNumeral: 'V7/V',
+        quality: 'Dominant 7',
+        category: 'secondary',
+        commonUsage: 0.7
+    });
 
-        // V7/vi (secondary dominant of vi) - common in pop/jazz
-        const vOfvi = (scaleDegrees[0] + 4) % 12;
-        candidates.push({
-            root: vOfvi,
-            notes: buildChord(vOfvi, 'dom7', keyOffset),
-            chordType: 'dom7',
-            chordName: getChordName(vOfvi, 'dom7', keyOffset),
-            romanNumeral: 'V7/vi',
-            quality: 'Dominant 7',
-            category: 'secondary',
-            commonUsage: 0.5
-        });
+    // V7/ii (secondary dominant of ii)
+    // Always 9 semitones above tonic (A in C major - P5 above ii)
+    const vOfii = (scaleDegrees[0] + 9) % 12;
+    candidates.push({
+        root: vOfii,
+        notes: buildChord(vOfii, 'dom7', keyOffset),
+        chordType: 'dom7',
+        chordName: getChordName(vOfii, 'dom7', keyOffset),
+        romanNumeral: 'V7/ii',
+        quality: 'Dominant 7',
+        category: 'secondary',
+        commonUsage: 0.5
+    });
 
-        // V7/IV (secondary dominant of IV)
-        const vOfIV = scaleDegrees[0];
-        candidates.push({
-            root: vOfIV,
-            notes: buildChord(vOfIV, 'dom7', keyOffset),
-            chordType: 'dom7',
-            chordName: getChordName(vOfIV, 'dom7', keyOffset),
-            romanNumeral: 'V7/IV',
-            quality: 'Dominant 7',
-            category: 'secondary',
-            commonUsage: 0.4
-        });
-    }
+    // V7/vi (secondary dominant of vi) - common in pop/jazz
+    // Always 4 semitones above tonic (E in C major - P5 above vi)
+    const vOfvi = (scaleDegrees[0] + 4) % 12;
+    candidates.push({
+        root: vOfvi,
+        notes: buildChord(vOfvi, 'dom7', keyOffset),
+        chordType: 'dom7',
+        chordName: getChordName(vOfvi, 'dom7', keyOffset),
+        romanNumeral: 'V7/vi',
+        quality: 'Dominant 7',
+        category: 'secondary',
+        commonUsage: 0.5
+    });
+
+    // V7/IV (secondary dominant of IV)
+    // Always the tonic as dom7 (C7 in C major - I7 functions as V7/IV)
+    const vOfIV = scaleDegrees[0];
+    candidates.push({
+        root: vOfIV,
+        notes: buildChord(vOfIV, 'dom7', keyOffset),
+        chordType: 'dom7',
+        chordName: getChordName(vOfIV, 'dom7', keyOffset),
+        romanNumeral: 'V7/IV',
+        quality: 'Dominant 7',
+        category: 'secondary',
+        commonUsage: 0.4
+    });
 
     // Augmented 6th chords (classical approach to V)
     if (variantType === 'Classic' || variantType === 'Jazz') {
