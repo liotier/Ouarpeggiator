@@ -851,24 +851,24 @@ button:disabled {
     justify-content: center;
     align-items: center;
     padding: 16px;
-    background: #d4c5b9;
+    background: #e8e8e8;
     border-radius: var(--radius);
-    border: 1px solid #b8a898;
+    border: 1px solid #d0d0d0;
 }
 
 .euclidean-circle-container canvas {
-    background: #bfaf9f;
+    background: #f5f5f5;
     border-radius: 50%;
-    border: 2px solid #9a8878;
+    border: 2px solid #c0c0c0;
 }
 
 /* Piano Roll */
 .piano-roll-container {
     margin-bottom: 16px;
-    background: #d4c5b9;
+    background: #e8e8e8;
     border-radius: var(--radius);
     overflow: hidden;
-    border: 1px solid #b8a898;
+    border: 1px solid #d0d0d0;
 }
 
 .piano-roll-wrapper {
@@ -879,13 +879,13 @@ button:disabled {
 
 .piano-roll-keyboard {
     flex-shrink: 0;
-    background: #a89888;
-    border-right: 1px solid #9a8878;
+    background: #dcdcdc;
+    border-right: 1px solid #c0c0c0;
 }
 
 .piano-roll-canvas {
     flex: 1;
-    background: #bfaf9f;
+    background: #f5f5f5;
 }
 
 /* Transport */

@@ -207,8 +207,8 @@ function renderPianoRoll() {
     const width = pianoRoll.width;
     const height = pianoRoll.height;
 
-    // Clear with tan background
-    ctx.fillStyle = '#bfaf9f';
+    // Clear with light gray background
+    ctx.fillStyle = '#f5f5f5';
     ctx.fillRect(0, 0, width, height);
 
     // Draw grid lines
@@ -228,8 +228,8 @@ function drawGrid(ctx, width, height) {
     // Calculate grid offset based on current time
     const scrollOffset = (pianoRoll.currentTime * pianoRoll.pixelsPerSecond) % pixelsPerBar;
 
-    // Draw bar lines (darker tan)
-    ctx.strokeStyle = '#9a8878';
+    // Draw bar lines (medium gray)
+    ctx.strokeStyle = '#c0c0c0';
     ctx.lineWidth = 2;
     for (let x = width - scrollOffset; x >= 0; x -= pixelsPerBar) {
         ctx.beginPath();
@@ -239,7 +239,7 @@ function drawGrid(ctx, width, height) {
     }
 
     // Draw beat lines (subtle)
-    ctx.strokeStyle = '#afa098';
+    ctx.strokeStyle = '#ddd';
     ctx.lineWidth = 1;
     for (let x = width - (scrollOffset % pixelsPerBeat); x >= 0; x -= pixelsPerBeat) {
         ctx.beginPath();
@@ -255,10 +255,10 @@ function drawGrid(ctx, width, height) {
         // Highlight octave lines (C notes)
         const pitch = pianoRoll.maxPitch - i;
         if (pitch % 12 === 0) {
-            ctx.strokeStyle = '#9a8878';
+            ctx.strokeStyle = '#b8b8b8';
             ctx.lineWidth = 1;
         } else {
-            ctx.strokeStyle = '#b8a898';
+            ctx.strokeStyle = '#e8e8e8';
             ctx.lineWidth = 1;
         }
         ctx.beginPath();
@@ -290,12 +290,12 @@ function drawGrid(ctx, width, height) {
                 // Skip if off-screen
                 if (stepX + stepWidth < 0 || stepX > width) return;
 
-                // Draw subtle vertical highlight bar for hits (darker brown overlay)
-                ctx.fillStyle = 'rgba(93, 78, 55, 0.12)';
+                // Draw subtle vertical highlight bar for hits (blue overlay)
+                ctx.fillStyle = 'rgba(74, 144, 226, 0.08)';
                 ctx.fillRect(stepX, 0, stepWidth, height);
 
                 // Draw slightly brighter line at the step boundary
-                ctx.strokeStyle = 'rgba(93, 78, 55, 0.25)';
+                ctx.strokeStyle = 'rgba(74, 144, 226, 0.20)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(stepX, 0);
@@ -343,8 +343,8 @@ function drawNotes(ctx, width, height) {
 }
 
 function drawPlayhead(ctx, width, height) {
-    // Playhead at right edge (orange-brown)
-    ctx.strokeStyle = '#d35400';
+    // Playhead at right edge (orange)
+    ctx.strokeStyle = '#ff9500';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(width - 1, 0);
@@ -357,8 +357,8 @@ function renderKeyboard() {
     const width = pianoRoll.keyboardWidth;
     const height = pianoRoll.height;
 
-    // Clear with darker tan background
-    ctx.fillStyle = '#a89888';
+    // Clear with light gray background
+    ctx.fillStyle = '#dcdcdc';
     ctx.fillRect(0, 0, width, height);
 
     // White and black key patterns (matches generateKeyboardSVG)

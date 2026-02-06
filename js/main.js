@@ -1356,6 +1356,16 @@ function bindControls() {
         appState.euclidean.steps = parseInt(this.value);
         document.getElementById('stepsValue').textContent = this.value;
         document.getElementById('rotationSlider').max = appState.euclidean.steps - 1;
+
+        // Constrain hits to not exceed steps
+        const hitsSlider = document.getElementById('hitsSlider');
+        hitsSlider.max = appState.euclidean.steps;
+        if (appState.euclidean.hits > appState.euclidean.steps) {
+            appState.euclidean.hits = appState.euclidean.steps;
+            hitsSlider.value = appState.euclidean.steps;
+            document.getElementById('hitsValue').textContent = appState.euclidean.steps;
+        }
+
         regeneratePattern();
     });
 
