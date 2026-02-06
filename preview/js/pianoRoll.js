@@ -67,7 +67,11 @@ const pianoRoll = {
     // Settings
     bpm: 120,
     beatsPerBar: 4,
-    isPlaying: false
+    isPlaying: false,
+
+    // Euclidean pattern for hit visualization
+    euclideanPattern: [],
+    euclideanSteps: 16
 };
 
 // ============================================================================
@@ -263,6 +267,44 @@ function drawGrid(ctx, width, height) {
         ctx.lineTo(width, y);
         ctx.stroke();
     }
+
+    // Draw Euclidean hit indicators
+    if (pianoRoll.euclideanPattern.length > 0) {
+        const stepDuration = (60 / pianoRoll.bpm) * (4 / pianoRoll.euclideanSteps); // Duration of one Euclidean step in seconds
+        const stepWidth = stepDuration * pianoRoll.pixelsPerSecond;
+        const totalPatternDuration = stepDuration * pianoRoll.euclideanSteps;
+        const totalPatternWidth = totalPatternDuration * pianoRoll.pixelsPerSecond;
+
+        // Calculate how many pattern cycles to draw (enough to cover the visible area plus scroll offset)
+        const cycleStartTime = Math.floor(pianoRoll.currentTime / totalPatternDuration) * totalPatternDuration;
+
+        // Draw multiple pattern cycles if needed
+        for (let cycle = -1; cycle <= 2; cycle++) {
+            const cycleTime = cycleStartTime + (cycle * totalPatternDuration);
+
+            pianoRoll.euclideanPattern.forEach((isHit, stepIndex) => {
+                if (!isHit) return; // Only draw hits
+
+                const stepTime = cycleTime + (stepIndex * stepDuration);
+                const stepX = width - ((pianoRoll.currentTime - stepTime) * pianoRoll.pixelsPerSecond);
+
+                // Skip if off-screen
+                if (stepX + stepWidth < 0 || stepX > width) return;
+
+                // Draw subtle vertical highlight bar for hits
+                ctx.fillStyle = 'rgba(52, 152, 219, 0.08)'; // Very subtle blue
+                ctx.fillRect(stepX, 0, stepWidth, height);
+
+                // Draw slightly brighter line at the step boundary
+                ctx.strokeStyle = 'rgba(52, 152, 219, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(stepX, 0);
+                ctx.lineTo(stepX, height);
+                ctx.stroke();
+            });
+        }
+    }
 }
 
 function drawNotes(ctx, width, height) {
@@ -438,6 +480,11 @@ export function setBPM(bpm) {
     pianoRoll.bpm = bpm;
     // Update pixels per beat to maintain visual consistency
     pianoRoll.pixelsPerBeat = (pianoRoll.pixelsPerSecond * 60) / bpm;
+}
+
+export function setEuclideanPattern(pattern, steps) {
+    pianoRoll.euclideanPattern = pattern;
+    pianoRoll.euclideanSteps = steps;
 }
 
 export function setScrollSpeed(speed) {
