@@ -2560,6 +2560,37 @@ export function getRomanNumeral(degree, isMinor = false, isDim = false) {
 function parseProgression(progressionString) {
     const chords = progressionString.split('—');
     return chords.map(chord => {
+        // Check for secondary dominants (V7/ii, V/vi, V7/V, etc.)
+        const secondaryDominantMatch = chord.match(/^(V7?)\/([ivIV]+|♭?[IViv]+)$/);
+        if (secondaryDominantMatch) {
+            const targetNumeral = secondaryDominantMatch[2];
+            const isV7 = secondaryDominantMatch[1] === 'V7';
+
+            // Map target numeral to degree
+            const romanToNumber = {
+                'I': 0, 'i': 0,
+                'II': 1, 'ii': 1, '♭II': 1,
+                'III': 2, 'iii': 2, '♭III': 2,
+                'IV': 3, 'iv': 3,
+                'V': 4, 'v': 4,
+                'VI': 5, 'vi': 5, '♭VI': 5,
+                'VII': 6, 'vii': 6, '♭VII': 6
+            };
+
+            const targetDegree = romanToNumber[targetNumeral] !== undefined ? romanToNumber[targetNumeral] : 4;
+
+            // Secondary dominant root is P5 above target (7 semitones)
+            // We'll return a special marker and handle it in generateProgressionChords
+            return {
+                degree: targetDegree,
+                quality: isV7 ? 'dom7' : 'dom7', // Always dominant 7th for secondary dominants
+                alteration: '',
+                isSecondaryDominant: true,
+                targetDegree: targetDegree,
+                originalSymbol: chord
+            };
+        }
+
         // Remove any quality indicators for parsing
         const cleanChord = chord.replaceAll(/M7|m7|7|°|dim|maj|min/g, '');
 
@@ -2640,7 +2671,32 @@ export function generateProgressionChords(progressionString, keyOffset, scaleDeg
         });
     } else {
         const parsedChords = parseProgression(progressionString);
-        progression = parsedChords.map(({ degree, quality, alteration }) => {
+        progression = parsedChords.map((parsedChord) => {
+            const { degree, quality, alteration, isSecondaryDominant, targetDegree, originalSymbol } = parsedChord;
+
+            // Handle secondary dominants (V7/ii, V/vi, etc.)
+            if (isSecondaryDominant) {
+                // Always use major scale as reference for targets
+                const majorScale = [0, 2, 4, 5, 7, 9, 11];
+                const targetScaleDegree = majorScale[targetDegree % majorScale.length];
+
+                // Secondary dominant root is P5 above target (7 semitones)
+                const secondaryDominantRoot = (targetScaleDegree + 7) % 12;
+
+                const notes = buildChord(secondaryDominantRoot, quality, keyOffset);
+                const chordName = getChordName(secondaryDominantRoot, quality, keyOffset);
+
+                return {
+                    degree: targetDegree, // For analysis purposes
+                    notes,
+                    chordType: quality,
+                    chordName,
+                    romanNumeral: originalSymbol,
+                    symbol: originalSymbol,
+                    quality: quality
+                };
+            }
+
             // OPTION A: Pure parallel major analysis (r/MusicTheory approved!)
             // ALL roman numerals reference the parallel major scale, regardless of mode.
             // The chord quality is determined ONLY by the roman numeral itself:
