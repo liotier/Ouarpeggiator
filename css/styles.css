@@ -831,6 +831,21 @@ button:disabled {
 }
 
 /* Piano Roll */
+/* Euclidean Circle Visualization */
+.euclidean-circle-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px 0;
+    padding: 8px;
+}
+
+.euclidean-circle-container canvas {
+    background: #1a1a1a;
+    border-radius: 50%;
+    border: 2px solid #3a3a3a;
+}
+
 .piano-roll-container {
     margin-bottom: 16px;
     background: #1a1a1a;

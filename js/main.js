@@ -10,6 +10,7 @@ import * as Arpeggiator from './arpeggiator.js';
 import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
 import * as PianoRoll from './pianoRoll.js';
+import * as EuclideanCircle from './euclideanCircle.js';
 
 // ============================================================================
 // Application State
@@ -927,8 +928,21 @@ function regeneratePattern() {
 }
 
 function renderPattern() {
-    // Pattern visualization replaced by piano roll
-    // No-op to maintain backward compatibility
+    // Update Euclidean circle visualization
+    EuclideanCircle.updatePattern(
+        appState.euclidean.steps,
+        appState.euclidean.hits,
+        appState.euclidean.rotation,
+        appState.euclidean.pattern
+    );
+    // Update current step if playing
+    if (appState.isPlaying) {
+        EuclideanCircle.setCurrentStep(appState.euclideanStepIndex);
+    }
+    // Update piano roll Euclidean hit indicators
+    if (appState.pianoRollInitialized) {
+        PianoRoll.setEuclideanPattern(appState.euclidean.pattern, appState.euclidean.steps);
+    }
 }
 
 // ============================================================================
@@ -967,6 +981,9 @@ function startPlayback() {
     PianoRoll.startPianoRoll();
     PianoRoll.setBPM(appState.bpm);
 
+    // Start Euclidean circle animation
+    EuclideanCircle.setPlaying(true);
+
     document.getElementById('startBtn').disabled = true;
     document.getElementById('stopBtn').disabled = false;
     document.getElementById('clockStatus').textContent = 'Playing';
@@ -995,6 +1012,9 @@ function stopPlayback() {
 
     // Stop piano roll
     PianoRoll.stopPianoRoll();
+
+    // Stop Euclidean circle animation
+    EuclideanCircle.setPlaying(false);
 
     // Stop all notes
     appState.scheduledNotes.forEach(s => {
@@ -1543,6 +1563,9 @@ async function initialize() {
 
     // Generate initial progression (priority: render chord palette ASAP)
     generateProgression();
+
+    // Initialize Euclidean circle visualization
+    EuclideanCircle.initEuclideanCircle('euclideanCircle');
 
     // Generate initial pattern
     regeneratePattern();
