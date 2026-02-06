@@ -99,8 +99,8 @@ export function initPianoRoll(containerId = 'pianoRollContainer') {
     resizePianoRoll();
     window.addEventListener('resize', resizePianoRoll);
 
-    // Start animation loop
-    startAnimation();
+    // Render initial static frame (don't start animation loop yet)
+    render();
 }
 
 function resizePianoRoll() {
