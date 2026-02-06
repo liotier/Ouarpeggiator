@@ -320,76 +320,75 @@ function renderKeyboard() {
     ctx.fillStyle = '#2a2a2a';
     ctx.fillRect(0, 0, width, height);
 
-    // Piano key layout pattern (in semitones from C)
+    // White and black key patterns (matches generateKeyboardSVG)
+    const whiteKeyPattern = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
     const blackKeyPattern = [1, 3, 6, 8, 10]; // C# D# F# G# A#
 
-    const pitchCount = pianoRoll.maxPitch - pianoRoll.minPitch + 1;
-    const whiteKeyWidth = width;
-    const blackKeyWidth = width * 0.6; // Black keys are 60% width of white keys
+    // Build list of white keys in range (top to bottom = high to low pitch)
+    const whiteKeys = [];
+    for (let pitch = pianoRoll.maxPitch; pitch >= pianoRoll.minPitch; pitch--) {
+        if (whiteKeyPattern.includes(pitch % 12)) {
+            whiteKeys.push(pitch);
+        }
+    }
 
-    // First pass: Draw all white keys
-    for (let i = 0; i < pitchCount; i++) {
-        const pitch = pianoRoll.maxPitch - i;
+    // Calculate height per white key
+    const whiteKeyHeight = height / whiteKeys.length;
+    const blackKeyWidth = width * 0.6; // Black keys are 60% width
+
+    // First pass: Draw white keys
+    whiteKeys.forEach((pitch, index) => {
+        const y = index * whiteKeyHeight;
+        const isCurrentlyPlaying = pianoRoll.currentNotes.has(pitch);
         const pitchClass = pitch % 12;
 
-        // Only draw white keys in first pass
-        if (blackKeyPattern.includes(pitchClass)) continue;
-
-        const y = i * pianoRoll.pitchHeight;
-        const h = pianoRoll.pitchHeight - 0.5;
-        const isCurrentlyPlaying = pianoRoll.currentNotes.has(pitch);
-
         // White key background
-        if (isCurrentlyPlaying) {
-            ctx.fillStyle = '#f39c12';
-        } else {
-            ctx.fillStyle = '#fafafa';
-        }
-        ctx.fillRect(0, y, whiteKeyWidth, h);
+        ctx.fillStyle = isCurrentlyPlaying ? '#f59e0b' : '#fafafa';
+        ctx.fillRect(0, y, width, whiteKeyHeight);
 
         // White key border
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1;
-        ctx.strokeRect(0, y, whiteKeyWidth, h);
+        ctx.strokeRect(0, y, width, whiteKeyHeight);
 
         // Draw note name for C notes
         if (pitchClass === 0) {
             const octave = Math.floor(pitch / 12) - 1;
             ctx.fillStyle = isCurrentlyPlaying ? '#000' : '#888';
-            ctx.font = '9px sans-serif';
+            ctx.font = '10px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(`C${octave}`, whiteKeyWidth / 2, y + h / 2);
+            ctx.fillText(`C${octave}`, width / 2, y + whiteKeyHeight / 2);
         }
-    }
+    });
 
-    // Second pass: Draw all black keys on top
-    for (let i = 0; i < pitchCount; i++) {
-        const pitch = pianoRoll.maxPitch - i;
+    // Second pass: Draw black keys between white keys
+    // Black keys are positioned between their adjacent white keys
+    whiteKeys.forEach((pitch, index) => {
         const pitchClass = pitch % 12;
 
-        // Only draw black keys in second pass
-        if (!blackKeyPattern.includes(pitchClass)) continue;
+        // Check if there's a black key above this white key (higher pitch)
+        const blackKeyAbove = pitch + 1;
+        if (blackKeyPattern.includes(blackKeyAbove % 12) && blackKeyAbove <= pianoRoll.maxPitch) {
+            const isCurrentlyPlaying = pianoRoll.currentNotes.has(blackKeyAbove);
 
-        const y = i * pianoRoll.pitchHeight;
-        const h = pianoRoll.pitchHeight - 0.5;
-        const isCurrentlyPlaying = pianoRoll.currentNotes.has(pitch);
+            // Position black key centered between this white key and the previous one
+            const blackKeyHeight = whiteKeyHeight * 0.7; // 70% height of white key
+            const y = index * whiteKeyHeight - blackKeyHeight / 2;
 
-        // Black key - offset to the right
-        const xOffset = whiteKeyWidth - blackKeyWidth;
+            // Black key aligned to right edge
+            const x = width - blackKeyWidth;
 
-        if (isCurrentlyPlaying) {
-            ctx.fillStyle = '#f39c12';
-        } else {
-            ctx.fillStyle = '#1a1a1a';
+            // Black key background
+            ctx.fillStyle = isCurrentlyPlaying ? '#dc2626' : '#333';
+            ctx.fillRect(x, y, blackKeyWidth, blackKeyHeight);
+
+            // Black key border
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, blackKeyWidth, blackKeyHeight);
         }
-        ctx.fillRect(xOffset, y, blackKeyWidth, h);
-
-        // Black key border
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(xOffset, y, blackKeyWidth, h);
-    }
+    });
 }
 
 // ============================================================================
