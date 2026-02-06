@@ -80,6 +80,9 @@ const appState = {
 
     // Generation tracking
     hasGeneratedOnce: false,
+
+    // UI initialization tracking
+    pianoRollInitialized: false,
 };
 
 // Timing constants
@@ -937,6 +940,13 @@ let masterClockInterval = null;
 function startPlayback() {
     if (appState.isPlaying) return;
 
+    // Lazy-load piano roll on first playback
+    if (!appState.pianoRollInitialized) {
+        PianoRoll.initPianoRoll('pianoRollContainer');
+        PianoRoll.setOctaveSpread(appState.octaveSpread);
+        appState.pianoRollInitialized = true;
+    }
+
     // Initialize audio if browser tone is selected
     if (appState.outputMode === 'audio') {
         if (!Audio.isAudioAvailable()) {
@@ -1338,6 +1348,10 @@ function bindControls() {
     document.getElementById('octaveSpread').addEventListener('input', function() {
         appState.octaveSpread = parseInt(this.value);
         document.getElementById('octaveValue').textContent = this.value;
+        // Update piano roll pitch range if initialized
+        if (appState.pianoRollInitialized) {
+            PianoRoll.setOctaveSpread(appState.octaveSpread);
+        }
     });
 
     // Timing
@@ -1524,14 +1538,11 @@ function renderGateControls() {
 async function initialize() {
     console.log('Ouarpeggiator initializing...');
 
-    // Initialize MIDI
-    await initializeMIDI();
-
-    // Initialize piano roll
-    PianoRoll.initPianoRoll('pianoRollContainer');
-
-    // Bind all controls
+    // Bind all controls first (no rendering)
     bindControls();
+
+    // Generate initial progression (priority: render chord palette ASAP)
+    generateProgression();
 
     // Generate initial pattern
     regeneratePattern();
@@ -1540,11 +1551,13 @@ async function initialize() {
     renderVelocityControls();
     renderGateControls();
 
-    // Generate initial progression
-    generateProgression();
-
     // Initialize suggestions
     updateSuggestions();
+
+    // Initialize MIDI (async, lower priority)
+    await initializeMIDI();
+
+    // Piano roll is initialized lazily on first playback (lowest priority)
 
     console.log('Ouarpeggiator ready');
 }
