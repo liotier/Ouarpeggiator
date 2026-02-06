@@ -93,8 +93,8 @@ function render() {
     const centerY = circle.centerY;
     const radius = circle.radius;
 
-    // Clear with tan background
-    ctx.fillStyle = '#bfaf9f';
+    // Clear with light gray background
+    ctx.fillStyle = '#f5f5f5';
     ctx.fillRect(0, 0, circle.size, circle.size);
 
     // Draw steps around circle
@@ -103,7 +103,7 @@ function render() {
         const x = centerX + radius * Math.cos(angle);
         const y = centerY + radius * Math.sin(angle);
 
-        const isHit = circle.pattern[i] === 1;
+        const isHit = circle.pattern[i]; // Pattern uses true/false, not 1/0
         const isCurrent = i === circle.currentStep && circle.isPlaying;
 
         // Draw step
@@ -111,22 +111,22 @@ function render() {
         ctx.arc(x, y, isCurrent ? 6 : 4, 0, 2 * Math.PI);
 
         if (isCurrent) {
-            // Current step: bright highlight
-            ctx.fillStyle = '#d35400';
+            // Current step: orange highlight
+            ctx.fillStyle = '#ff9500';
             ctx.fill();
-            ctx.strokeStyle = '#e67e22';
+            ctx.strokeStyle = '#ff9500';
             ctx.lineWidth = 2;
             ctx.stroke();
         } else if (isHit) {
-            // Hit: filled dot (darker brown)
-            ctx.fillStyle = '#5d4e37';
+            // Hit: filled blue dot
+            ctx.fillStyle = '#4a90e2';
             ctx.fill();
-            ctx.strokeStyle = '#6d5e47';
+            ctx.strokeStyle = '#357abd';
             ctx.lineWidth = 1;
             ctx.stroke();
         } else {
-            // Rest: hollow dot (light)
-            ctx.strokeStyle = '#9a8878';
+            // Rest: hollow gray dot
+            ctx.strokeStyle = '#888';
             ctx.lineWidth = 1;
             ctx.stroke();
         }
@@ -150,9 +150,9 @@ function render() {
         ctx.lineTo(3, 0);
         ctx.closePath();
 
-        ctx.fillStyle = '#c0504d';
+        ctx.fillStyle = '#e74c3c';
         ctx.fill();
-        ctx.strokeStyle = '#a04844';
+        ctx.strokeStyle = '#c0392b';
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -160,7 +160,7 @@ function render() {
     }
 
     // Draw center label showing hits/steps
-    ctx.fillStyle = '#5d4e37';
+    ctx.fillStyle = '#555';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
