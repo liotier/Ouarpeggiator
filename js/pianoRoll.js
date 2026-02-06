@@ -181,7 +181,13 @@ function startAnimation() {
         }
 
         render();
-        pianoRoll.animationFrame = requestAnimationFrame(animate);
+
+        // Only continue animation loop if playing
+        if (pianoRoll.isPlaying) {
+            pianoRoll.animationFrame = requestAnimationFrame(animate);
+        } else {
+            pianoRoll.animationFrame = null;
+        }
     }
 
     pianoRoll.animationFrame = requestAnimationFrame(animate);
@@ -411,10 +417,17 @@ function adjustBrightness(color, factor) {
 
 export function startPianoRoll() {
     pianoRoll.isPlaying = true;
+    // Restart animation loop if not already running
+    if (!pianoRoll.animationFrame) {
+        pianoRoll.lastFrameTime = 0;
+        startAnimation();
+    }
 }
 
 export function stopPianoRoll() {
     pianoRoll.isPlaying = false;
+    // Render one final frame to show stopped state
+    render();
 }
 
 export function resetPianoRoll() {
