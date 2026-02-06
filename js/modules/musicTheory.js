@@ -1861,6 +1861,10 @@ export function generateInversions(chordNotes) {
     if (baseChord.length >= 3) {
         const drop2 = [...baseChord];
         drop2[drop2.length - 1] -= 12;
+        // Range clamp: don't go below C1 (MIDI 36)
+        if (drop2[drop2.length - 1] < 36) {
+            drop2[drop2.length - 1] += 12;
+        }
         inversions.push(drop2.sort((a, b) => a - b));
     }
 
@@ -2131,6 +2135,10 @@ export function applyOpenVoicing(chordNotes) {
     const openVoiced = [...sorted];
     if (openVoiced.length >= 3) {
         openVoiced[openVoiced.length - 2] -= 12;
+        // Range clamp: don't go below C1 (MIDI 36)
+        if (openVoiced[openVoiced.length - 2] < 36) {
+            openVoiced[openVoiced.length - 2] += 12;
+        }
     }
 
     return openVoiced.sort((a, b) => a - b);
