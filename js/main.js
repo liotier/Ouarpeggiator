@@ -426,11 +426,32 @@ function generateProgression() {
             // Apply variant-specific octave offset and build chord objects
             let chords = voicedProgression.map(chord => {
                 const notes = chord.notes.map(n => n + variantType.octaveOffset);
+                let chordType = getChordType(notes);
+
+                // Apply Jazz variant chord type conversions
+                if (variantType.name === 'Jazz') {
+                    if (chordType === 'diminished') {
+                        chordType = 'm7b5'; // Half-diminished 7th
+                        // Rebuild notes with m7b5 voicing
+                        const root = notes[0];
+                        const newNotes = MusicTheory.buildChordRaw(root, 'm7b5');
+                        notes.length = 0;
+                        notes.push(...newNotes);
+                    } else if (chordType === 'augmented') {
+                        chordType = 'aug7'; // Augmented 7th
+                        // Rebuild notes with aug7 voicing
+                        const root = notes[0];
+                        const newNotes = MusicTheory.buildChordRaw(root, 'aug7');
+                        notes.length = 0;
+                        notes.push(...newNotes);
+                    }
+                }
+
                 return {
                     notes,
                     name: chord.chordName || chord.name || MusicTheory.getChordNameFromNotes(notes),
                     symbol: chord.symbol || chord.romanNumeral,
-                    type: getChordType(notes),
+                    type: chordType,
                     description: getChordDescription(chord.symbol || chord.romanNumeral),
                     isProgressionChord: true
                 };
@@ -864,12 +885,29 @@ function calculateVoiceLeadingDistance(notes1, notes2) {
 
 function getQualityLabel(type) {
     const labels = {
-        'major': 'Major',
-        'minor': 'Minor',
+        // Specific types first (before generic ones)
+        'major7': 'Major 7',
+        'minor7': 'Minor 7',
+        'dom7': 'Dominant 7',
         'dominant': 'Dominant 7',
-        'diminished': 'Diminished',
+        'm7b5': 'Half-Diminished',
+        'minMaj7': 'Minor-Major 7',
+        'dom9': 'Dominant 9',
+        'dom13': 'Dominant 13',
+        'add9': 'Add 9',
+        'minor6': 'Minor 6',
+        'major6': 'Major 6',
+        'aug7': 'Augmented 7',
+        'augMaj7': 'Augmented Major 7',
+        'sus2': 'Suspended 2',
+        'sus4': 'Suspended 4',
+        'quartal': 'Quartal',
+        // Generic types last
         'augmented': 'Augmented',
-        'suspended': 'Suspended'
+        'suspended': 'Suspended',
+        'diminished': 'Diminished',
+        'minor': 'Minor',
+        'major': 'Major'
     };
     return labels[type] || 'Major';
 }

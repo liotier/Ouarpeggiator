@@ -1203,7 +1203,7 @@ export function getScaleDegrees(mode) {
 }
 
 // Get chord quality for a scale degree in a given mode
-export function getChordQualityForMode(degree, mode) {
+export function getChordQualityForMode(degree, mode, variantType = null) {
     // Define triads for each mode (0-indexed scale degrees)
     const modeChordQualities = {
         'Major': {
@@ -1594,7 +1594,12 @@ export function getChordQualityForMode(degree, mode) {
 
     // For pentatonic and other scales with fewer than 7 degrees, use modulo of actual scale length
     const scaleLength = getScaleDegrees(mode).length;
-    return qualities[degree % scaleLength] || 'major';
+    let quality = qualities[degree % scaleLength] || 'major';
+
+    // Apply Jazz variant chord type conversions
+    quality = applyJazzVariantChordType(quality, variantType);
+
+    return quality;
 }
 
 // ============================================================================
@@ -2433,16 +2438,42 @@ export function getChordName(degree, chordType, keyOffset, romanNumeral = '') {
 
     switch (chordType) {
         case 'minor':
+            return rootNote + 'm';
         case 'minor7':
-            return rootNote + 'm' + (chordType === 'minor7' ? '7' : '');
+            return rootNote + 'm7';
         case 'diminished':
             return rootNote + 'dim';
         case 'major7':
             return rootNote + 'maj7';
         case 'dom7':
             return rootNote + '7';
+        case 'augmented':
+            return rootNote + 'aug';
+        case 'sus2':
+            return rootNote + 'sus2';
+        case 'sus4':
         case 'quartal':
             return rootNote + 'sus4';
+        case 'm7b5':
+            return rootNote + 'm7♭5';
+        case 'minMaj7':
+            return rootNote + 'mMaj7';
+        case 'dom9':
+            return rootNote + '9';
+        case 'dom13':
+            return rootNote + '13';
+        case 'add9':
+            return rootNote + 'add9';
+        case 'minor6':
+            return rootNote + 'm6';
+        case 'major6':
+            return rootNote + '6';
+        case 'aug7':
+            return rootNote + 'aug7';
+        case 'augMaj7':
+            return rootNote + 'augMaj7';
+        case 'major':
+            return rootNote;
         default:
             return rootNote;
     }
@@ -2508,8 +2539,12 @@ export function getInversionNotation(notes, chordType, chordName, romanNumeral =
 }
 
 export function getRomanNumeral(degree, isMinor = false, isDim = false) {
-    const numerals = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii'];
+    const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
     let numeral = numerals[degree] || 'I';
+
+    if (isMinor || isDim) {
+        numeral = numeral.toLowerCase();
+    }
 
     if (isDim) {
         numeral += '°';
@@ -2585,12 +2620,13 @@ export function generateProgressionChords(progressionString, keyOffset, scaleDeg
 
     // Special handling for 12-bar blues
     if (progressionString === '12-bar-blues') {
-        // 12-bar blues pattern: I-I-I-I-IV-IV-I-I-V-IV-I-V
+        // 12-bar blues pattern: I7-I7-I7-I7-IV7-IV7-I7-I7-V7-IV7-I7-V7
+        // All primary chords (I, IV, V) are dominant 7th - defining characteristic of blues
         const pattern = [0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4];
         pattern.forEach(degree => {
             const scaleDegree = scaleDegrees[degree % scaleDegrees.length];
-            const chordType = degree === 4 ? 'dom7' : 'major';
-            const romanNumeral = getRomanNumeral(degree, false, false);
+            const chordType = 'dom7'; // All blues chords are dom7
+            const romanNumeral = getRomanNumeral(degree, false, false) + '7';
             progression.push({
                 degree,
                 notes: buildChord(scaleDegree, chordType, keyOffset),
@@ -2835,6 +2871,28 @@ export function analyzeExistingChords(existingChords) {
     });
 
     return analysis;
+}
+
+/**
+ * Apply Jazz variant chord type conversions
+ * @param {string} chordType - Original chord type
+ * @param {string} variantType - Variant type ('Jazz', 'Classic', etc.)
+ * @returns {string} - Modified chord type for Jazz variant, or original type
+ */
+function applyJazzVariantChordType(chordType, variantType) {
+    if (variantType !== 'Jazz') {
+        return chordType;
+    }
+
+    // Jazz variant: Use extended chords
+    switch (chordType) {
+        case 'diminished':
+            return 'm7b5'; // Half-diminished 7th (more common in jazz)
+        case 'augmented':
+            return 'aug7'; // Augmented 7th (adds tension)
+        default:
+            return chordType;
+    }
 }
 
 /**
