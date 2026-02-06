@@ -830,28 +830,45 @@ button:disabled {
     min-width: 150px;
 }
 
-/* Piano Roll */
+/* Two Column Layout for Pattern and Output Controls */
+.two-column-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 16px;
+}
+
+.pattern-controls-column,
+.output-controls-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 /* Euclidean Circle Visualization */
 .euclidean-circle-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 16px 0;
-    padding: 8px;
+    padding: 16px;
+    background: #d4c5b9;
+    border-radius: var(--radius);
+    border: 1px solid #b8a898;
 }
 
 .euclidean-circle-container canvas {
-    background: #1a1a1a;
+    background: #bfaf9f;
     border-radius: 50%;
-    border: 2px solid #3a3a3a;
+    border: 2px solid #9a8878;
 }
 
+/* Piano Roll */
 .piano-roll-container {
     margin-bottom: 16px;
-    background: #1a1a1a;
+    background: #d4c5b9;
     border-radius: var(--radius);
     overflow: hidden;
-    border: 1px solid #3a3a3a;
+    border: 1px solid #b8a898;
 }
 
 .piano-roll-wrapper {
@@ -862,13 +879,13 @@ button:disabled {
 
 .piano-roll-keyboard {
     flex-shrink: 0;
-    background: #2a2a2a;
-    border-right: 1px solid #3a3a3a;
+    background: #a89888;
+    border-right: 1px solid #9a8878;
 }
 
 .piano-roll-canvas {
     flex: 1;
-    background: #1a1a1a;
+    background: #bfaf9f;
 }
 
 /* Transport */

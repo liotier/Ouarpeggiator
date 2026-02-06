@@ -53,7 +53,7 @@ export function initEuclideanCircle(canvasId = 'euclideanCircle') {
     circle.centerY = circle.size / 2;
     circle.radius = circle.size * 0.38;
 
-    render();
+    // Don't render yet - pattern will be set by regeneratePattern() immediately after init
 }
 
 // ============================================================================
@@ -93,8 +93,8 @@ function render() {
     const centerY = circle.centerY;
     const radius = circle.radius;
 
-    // Clear
-    ctx.fillStyle = '#1a1a1a';
+    // Clear with tan background
+    ctx.fillStyle = '#bfaf9f';
     ctx.fillRect(0, 0, circle.size, circle.size);
 
     // Draw steps around circle
@@ -112,21 +112,21 @@ function render() {
 
         if (isCurrent) {
             // Current step: bright highlight
-            ctx.fillStyle = '#f39c12';
+            ctx.fillStyle = '#d35400';
             ctx.fill();
-            ctx.strokeStyle = '#f39c12';
+            ctx.strokeStyle = '#e67e22';
             ctx.lineWidth = 2;
             ctx.stroke();
         } else if (isHit) {
-            // Hit: filled dot
-            ctx.fillStyle = '#3498db';
+            // Hit: filled dot (darker brown)
+            ctx.fillStyle = '#5d4e37';
             ctx.fill();
-            ctx.strokeStyle = '#5dade2';
+            ctx.strokeStyle = '#6d5e47';
             ctx.lineWidth = 1;
             ctx.stroke();
         } else {
-            // Rest: hollow dot
-            ctx.strokeStyle = '#555';
+            // Rest: hollow dot (light)
+            ctx.strokeStyle = '#9a8878';
             ctx.lineWidth = 1;
             ctx.stroke();
         }
@@ -150,9 +150,9 @@ function render() {
         ctx.lineTo(3, 0);
         ctx.closePath();
 
-        ctx.fillStyle = '#e74c3c';
+        ctx.fillStyle = '#c0504d';
         ctx.fill();
-        ctx.strokeStyle = '#c0392b';
+        ctx.strokeStyle = '#a04844';
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -160,7 +160,7 @@ function render() {
     }
 
     // Draw center label showing hits/steps
-    ctx.fillStyle = '#aaa';
+    ctx.fillStyle = '#5d4e37';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
