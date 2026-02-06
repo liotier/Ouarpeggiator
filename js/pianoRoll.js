@@ -30,9 +30,9 @@ const pianoRoll = {
     visibleSeconds: 6,         // Show last 6 seconds
     pixelsPerBeat: 100,        // For grid lines
 
-    // Pitch range (auto-adjusts)
-    minPitch: 36,              // C2
-    maxPitch: 84,              // C6
+    // Pitch range (matches chord diagrams: 2 octaves base, scales with octave spread)
+    minPitch: 48,              // C3 (base)
+    maxPitch: 72,              // C5 (2 octaves from C3)
     pitchHeight: 8,            // Pixels per semitone
 
     // Note buffer
@@ -448,6 +448,20 @@ export function setPitchRange(minPitch, maxPitch) {
     pianoRoll.minPitch = minPitch;
     pianoRoll.maxPitch = maxPitch;
     resizePianoRoll();
+}
+
+export function setOctaveSpread(octaveSpread) {
+    // Base range: C3 to C5 (2 octaves = 24 semitones)
+    // Each additional octave spread adds 12 semitones to the top
+    const basePitch = 48; // C3
+    const baseRange = 24; // 2 octaves
+    pianoRoll.minPitch = basePitch;
+    pianoRoll.maxPitch = basePitch + baseRange + ((octaveSpread - 1) * 12);
+    resizePianoRoll();
+    // Re-render if initialized
+    if (pianoRoll.ctx) {
+        render();
+    }
 }
 
 export function setChordIndex(index) {

@@ -943,6 +943,7 @@ function startPlayback() {
     // Lazy-load piano roll on first playback
     if (!appState.pianoRollInitialized) {
         PianoRoll.initPianoRoll('pianoRollContainer');
+        PianoRoll.setOctaveSpread(appState.octaveSpread);
         appState.pianoRollInitialized = true;
     }
 
@@ -1347,6 +1348,10 @@ function bindControls() {
     document.getElementById('octaveSpread').addEventListener('input', function() {
         appState.octaveSpread = parseInt(this.value);
         document.getElementById('octaveValue').textContent = this.value;
+        // Update piano roll pitch range if initialized
+        if (appState.pianoRollInitialized) {
+            PianoRoll.setOctaveSpread(appState.octaveSpread);
+        }
     });
 
     // Timing
