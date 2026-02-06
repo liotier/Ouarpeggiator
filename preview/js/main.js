@@ -682,7 +682,9 @@ function getChordType(notes) {
 
 function renderChordGrid() {
     const grid = document.getElementById('chordGrid');
-    grid.innerHTML = '';
+
+    // Use DocumentFragment to batch DOM manipulations (reduces reflows from 16 to 1)
+    const fragment = document.createDocumentFragment();
 
     // Find tonic chord for voice leading analysis
     const tonicChord = appState.chordProgression.find(p =>
@@ -767,8 +769,12 @@ function renderChordGrid() {
             }
         });
 
-        grid.appendChild(pad);
+        fragment.appendChild(pad);
     });
+
+    // Single DOM update instead of 16 individual appendChild calls
+    grid.innerHTML = '';
+    grid.appendChild(fragment);
 }
 
 function getQualityClass(type) {
