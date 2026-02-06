@@ -31,17 +31,7 @@ export const modes = {
         'Augmented',
         'Altered',
         'Lydian Dominant',
-        'Locrian #2',
-        'Bebop Major',
-        'Bebop Dominant',
-        'Bebop Minor'
-    ],
-    'Arabic Maqamat': [
-        'Maqam Hijaz',
-        'Maqam Bayati',
-        'Maqam Rast',
-        'Maqam Saba',
-        'Maqam Kurd'
+        'Locrian #2'
     ],
     'Indian Ragas': [
         'Bhairav',
@@ -55,7 +45,6 @@ export const modes = {
         'Hungarian Minor',
         'Neapolitan Major',
         'Neapolitan Minor',
-        'Enigmatic',
         'Phrygian Dominant',
         'Persian',
         'Hirajoshi',
@@ -1163,12 +1152,6 @@ export function getScaleDegrees(mode) {
         'Diminished (W-H)': [0, 2, 3, 5, 6, 8, 9, 11],  // Whole-Half octatonic
         'Diminished (H-W)': [0, 1, 3, 4, 6, 7, 9, 10],  // Half-Whole octatonic
         'Augmented': [0, 3, 4, 7, 8, 11],  // Hexatonic scale
-        // Arabic Maqamat (12-TET approximations)
-        'Maqam Hijaz': [0, 1, 4, 5, 7, 8, 11],  // Like Phrygian Dominant
-        'Maqam Bayati': [0, 1.5, 3, 5, 7, 8, 10],  // Quarter tone approximated to [0, 2, 3, 5, 7, 8, 10]
-        'Maqam Rast': [0, 2, 3.5, 5, 7, 9, 10.5],  // Quarter tone approximated to [0, 2, 4, 5, 7, 9, 11]
-        'Maqam Saba': [0, 1.5, 3, 4, 6, 8, 10],  // Quarter tone approximated to [0, 1, 3, 4, 6, 8, 10]
-        'Maqam Kurd': [0, 1, 3, 5, 7, 8, 10],  // Like Phrygian
         // Indian Ragas (12-TET approximations)
         'Bhairav': [0, 1, 4, 5, 7, 8, 11],  // Double Harmonic
         'Kafi': [0, 2, 3, 5, 7, 9, 10],  // Like Dorian
@@ -1180,7 +1163,6 @@ export function getScaleDegrees(mode) {
         'Hungarian Minor': [0, 2, 3, 6, 7, 8, 11],
         'Neapolitan Major': [0, 1, 3, 5, 7, 9, 11],
         'Neapolitan Minor': [0, 1, 3, 5, 7, 8, 11],
-        'Enigmatic': [0, 1, 4, 6, 8, 10, 11],
         'Phrygian Dominant': [0, 1, 4, 5, 7, 8, 10],
         'Persian': [0, 1, 4, 5, 6, 8, 11],
         'Hirajoshi': [0, 2, 3, 7, 8],
@@ -1190,11 +1172,7 @@ export function getScaleDegrees(mode) {
         // Melodic Minor Modes
         'Altered': [0, 1, 3, 4, 6, 8, 10],  // 7th mode of melodic minor (Super Locrian)
         'Lydian Dominant': [0, 2, 4, 6, 7, 9, 10],  // 4th mode of melodic minor (Lydian b7)
-        'Locrian #2': [0, 2, 3, 5, 6, 8, 10],  // 6th mode of melodic minor
-        // Bebop Scales (8 notes)
-        'Bebop Major': [0, 2, 4, 5, 7, 8, 9, 11],  // Major with added b6
-        'Bebop Dominant': [0, 2, 4, 5, 7, 9, 10, 11],  // Mixolydian with added natural 7
-        'Bebop Minor': [0, 2, 3, 4, 5, 7, 9, 10]  // Dorian with added major 3
+        'Locrian #2': [0, 2, 3, 5, 6, 8, 10]  // 6th mode of melodic minor
     };
 
     // Handle quarter tone approximations
@@ -1338,20 +1316,11 @@ export function getChordQualityForMode(degree, mode, variantType = null) {
         },
         'Neapolitan Minor': {
             0: 'minor',   // i
-            1: 'major',   // II (with b2)
+            1: 'augmented',   // II+ (with b2)
             2: 'minor',   // iii
             3: 'minor',   // iv
             4: 'major',   // V
             5: 'major',   // VI
-            6: 'diminished'  // vii°
-        },
-        'Enigmatic': {
-            0: 'major',   // I
-            1: 'major',   // II (with b2)
-            2: 'major',   // III
-            3: 'major',   // #IV
-            4: 'major',   // #V
-            5: 'major',   // #VI
             6: 'diminished'  // vii°
         },
         'Phrygian Dominant': {
@@ -1402,12 +1371,12 @@ export function getChordQualityForMode(degree, mode, variantType = null) {
         },
         // Symmetrical/Jazz scales
         'Whole Tone': {
-            0: 'major',   // I (augmented context)
-            1: 'major',   // II
-            2: 'major',   // III
-            3: 'major',   // #IV
-            4: 'major',   // #V
-            5: 'major'    // #VI
+            0: 'augmented',   // I+ (all chords augmented)
+            1: 'augmented',   // II+
+            2: 'augmented',   // III+
+            3: 'augmented',   // ♯IV+
+            4: 'augmented',   // ♯V+
+            5: 'augmented'    // ♯VI+
         },
         'Diminished (W-H)': {
             0: 'diminished',  // i°
@@ -1430,58 +1399,12 @@ export function getChordQualityForMode(degree, mode, variantType = null) {
             7: 'diminished'  // i° (octave)
         },
         'Augmented': {
-            0: 'major',   // I (augmented context)
-            1: 'minor',   // iii
-            2: 'major',   // III
-            3: 'major',   // V
-            4: 'major',   // VI
-            5: 'major'    // VII
-        },
-        // Arabic Maqamat
-        'Maqam Hijaz': {
-            0: 'major',   // I
-            1: 'major',   // II (with b2)
-            2: 'diminished',  // iii°
-            3: 'minor',   // iv
-            4: 'minor',   // v
-            5: 'major',   // VI (with b6)
-            6: 'minor'    // vii
-        },
-        'Maqam Bayati': {
-            0: 'minor',   // i
-            1: 'major',   // II
-            2: 'minor',   // iii
-            3: 'minor',   // iv
-            4: 'minor',   // v
-            5: 'major',   // VI
-            6: 'major'    // VII
-        },
-        'Maqam Rast': {
-            0: 'major',   // I
-            1: 'major',   // II
-            2: 'major',   // III
-            3: 'major',   // IV
-            4: 'major',   // V
-            5: 'minor',   // vi
-            6: 'major'    // VII
-        },
-        'Maqam Saba': {
-            0: 'minor',   // i
-            1: 'major',   // II (with b2)
-            2: 'minor',   // iii
-            3: 'diminished',  // iv°
-            4: 'major',   // V (with b5)
-            5: 'major',   // VI (with b6)
-            6: 'major'    // VII
-        },
-        'Maqam Kurd': {
-            0: 'minor',   // i
-            1: 'major',   // II
-            2: 'major',   // III
-            3: 'minor',   // iv
-            4: 'diminished',  // v°
-            5: 'major',   // VI
-            6: 'minor'    // vii
+            0: 'augmented',   // I+
+            1: 'augmented',   // ♭III+
+            2: 'augmented',   // III+
+            3: 'augmented',   // V+
+            4: 'augmented',   // ♭VI+
+            5: 'augmented'    // VI+
         },
         // Indian Ragas
         'Bhairav': {
@@ -1556,37 +1479,6 @@ export function getChordQualityForMode(degree, mode, variantType = null) {
             4: 'major',   // V (with b5)
             5: 'major',   // VI
             6: 'minor'    // vii
-        },
-        // Bebop scales (8 notes - use first 7 for chord qualities)
-        'Bebop Major': {
-            0: 'major',   // I
-            1: 'minor',   // ii
-            2: 'minor',   // iii
-            3: 'major',   // IV
-            4: 'major',   // V
-            5: 'diminished',  // vi° (passing)
-            6: 'minor',   // vi
-            7: 'diminished'  // vii°
-        },
-        'Bebop Dominant': {
-            0: 'major',   // I (dom7 context)
-            1: 'minor',   // ii
-            2: 'minor',   // iii
-            3: 'major',   // IV
-            4: 'minor',   // v
-            5: 'minor',   // vi
-            6: 'diminished',  // vii°
-            7: 'major'    // VII (passing)
-        },
-        'Bebop Minor': {
-            0: 'minor',   // i
-            1: 'minor',   // ii
-            2: 'diminished',  // iii° (passing)
-            3: 'major',   // III
-            4: 'major',   // IV
-            5: 'minor',   // v
-            6: 'minor',   // vi
-            7: 'major'    // VII
         }
     };
 
