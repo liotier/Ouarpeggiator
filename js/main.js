@@ -397,7 +397,7 @@ function generateProgression() {
             const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
 
             // Apply CPG voice leading optimization based on variant type
-            let voicedProgression = generatedChords;
+            let voicedProgression;
             switch (variantType.name) {
                 case 'Smooth':
                     voicedProgression = MusicTheory.optimizeSmoothVoiceLeading(generatedChords);

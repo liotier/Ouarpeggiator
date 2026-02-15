@@ -193,7 +193,7 @@ export function playNote(midiNote, velocity = 100, duration = null) {
     gainNode.connect(masterGain);
 
     // Apply ADSR envelope
-    const { attack, decay, sustain, release } = synthSettings;
+    const { attack, decay, sustain } = synthSettings;
 
     // Attack
     gainNode.gain.setValueAtTime(0, now);
