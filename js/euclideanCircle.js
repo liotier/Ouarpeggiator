@@ -41,17 +41,20 @@ export function initEuclideanCircle(canvasId = 'euclideanCircle') {
 
     circle.ctx = circle.canvas.getContext('2d');
 
+    // Set fixed size for the canvas
+    const canvasSize = 240; // Fixed size in CSS pixels
+    circle.size = canvasSize;
+    circle.centerX = canvasSize / 2;
+    circle.centerY = canvasSize / 2;
+    circle.radius = canvasSize * 0.38;
+
     // Handle high DPI displays
     const dpr = window.devicePixelRatio || 1;
-    const rect = circle.canvas.getBoundingClientRect();
-    circle.canvas.width = rect.width * dpr;
-    circle.canvas.height = rect.height * dpr;
+    circle.canvas.width = canvasSize * dpr;
+    circle.canvas.height = canvasSize * dpr;
+    circle.canvas.style.width = canvasSize + 'px';
+    circle.canvas.style.height = canvasSize + 'px';
     circle.ctx.scale(dpr, dpr);
-
-    circle.size = rect.width;
-    circle.centerX = circle.size / 2;
-    circle.centerY = circle.size / 2;
-    circle.radius = circle.size * 0.38;
 
     // Don't render yet - pattern will be set by regeneratePattern() immediately after init
 }
@@ -108,13 +111,13 @@ function render() {
 
         // Draw step
         ctx.beginPath();
-        ctx.arc(x, y, isCurrent ? 6 : 4, 0, 2 * Math.PI);
+        ctx.arc(x, y, isCurrent ? 8 : 6, 0, 2 * Math.PI);
 
         if (isCurrent) {
             // Current step: orange highlight
             ctx.fillStyle = '#ff9500';
             ctx.fill();
-            ctx.strokeStyle = '#ff9500';
+            ctx.strokeStyle = '#ff6600';
             ctx.lineWidth = 2;
             ctx.stroke();
         } else if (isHit) {
@@ -122,12 +125,14 @@ function render() {
             ctx.fillStyle = '#4a90e2';
             ctx.fill();
             ctx.strokeStyle = '#357abd';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 2;
             ctx.stroke();
         } else {
             // Rest: hollow gray dot
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
             ctx.strokeStyle = '#888';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 2;
             ctx.stroke();
         }
     }
