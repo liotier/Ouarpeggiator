@@ -34,6 +34,17 @@ function euclidean(hits, steps) {
         return new Array(steps).fill(true);
     }
 
+    // Complementary property: For dense patterns (hits > steps/2),
+    // calculate where RESTS go, then invert. This maintains even distribution
+    // and avoids clumping at the start.
+    // Mathematical property: E(k, n) = complement of E(n-k, n)
+    if (hits > steps / 2) {
+        const rests = steps - hits;
+        const restPattern = euclidean(rests, steps);
+        // Invert: rests become hits, hits become rests
+        return restPattern.map(v => !v);
+    }
+
     // Build initial groups: hits as [1], rests as [0]
     let pattern = [];
     for (let i = 0; i < hits; i++) {
