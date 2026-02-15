@@ -215,7 +215,7 @@ function renderPianoRoll() {
     drawGrid(ctx, width, height);
 
     // Draw notes
-    drawNotes(ctx, width, height);
+    drawNotes(ctx, width);
 
     // Draw playhead
     drawPlayhead(ctx, width, height);
@@ -272,7 +272,6 @@ function drawGrid(ctx, width, height) {
         const stepDuration = (60 / pianoRoll.bpm) * (4 / pianoRoll.euclideanSteps); // Duration of one Euclidean step in seconds
         const stepWidth = stepDuration * pianoRoll.pixelsPerSecond;
         const totalPatternDuration = stepDuration * pianoRoll.euclideanSteps;
-        const totalPatternWidth = totalPatternDuration * pianoRoll.pixelsPerSecond;
 
         // Calculate how many pattern cycles to draw (enough to cover the visible area plus scroll offset)
         const cycleStartTime = Math.floor(pianoRoll.currentTime / totalPatternDuration) * totalPatternDuration;
@@ -306,7 +305,7 @@ function drawGrid(ctx, width, height) {
     }
 }
 
-function drawNotes(ctx, width, height) {
+function drawNotes(ctx, width) {
     const currentTime = pianoRoll.currentTime;
     const pixelsPerSecond = pianoRoll.pixelsPerSecond;
 
@@ -314,7 +313,6 @@ function drawNotes(ctx, width, height) {
         // Calculate note position
         const noteStartX = width - ((currentTime - note.startTime) * pixelsPerSecond);
         const noteEndX = width - ((currentTime - note.endTime) * pixelsPerSecond);
-        const noteWidth = noteEndX - noteStartX;
 
         // Skip if off-screen
         if (noteEndX < 0 || noteStartX > width) return;
@@ -406,8 +404,6 @@ function renderKeyboard() {
     // Second pass: Draw black keys between white keys
     // Black keys are positioned between their adjacent white keys
     whiteKeys.forEach((pitch, index) => {
-        const pitchClass = pitch % 12;
-
         // Check if there's a black key above this white key (higher pitch)
         const blackKeyAbove = pitch + 1;
         if (blackKeyPattern.includes(blackKeyAbove % 12) && blackKeyAbove <= pianoRoll.maxPitch) {

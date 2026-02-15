@@ -3074,19 +3074,6 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
         });
     }
 
-    // ♭III (borrowed from minor)
-    const flatThree = (scaleDegrees[0] + 3) % 12;
-    candidates.push({
-        root: flatThree,
-        notes: buildChord(flatThree, 'major', keyOffset),
-        chordType: 'major',
-        chordName: getChordName(flatThree, 'major', keyOffset, '♭III'),
-        romanNumeral: '♭III',
-        quality: 'Major',
-        category: 'borrowed',
-        commonUsage: 0.5
-    });
-
     // ♭II (Neapolitan)
     const neapolitan = (scaleDegrees[0] + 1) % 12;
     candidates.push({

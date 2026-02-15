@@ -6,7 +6,6 @@
 
 import { euclidean, rotatePattern } from './euclidean.js';
 import * as MIDI from './midi.js';
-import * as Arpeggiator from './arpeggiator.js';
 import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
 import * as PianoRoll from './pianoRoll.js';
@@ -376,9 +375,6 @@ function generateProgression() {
     const key = parseInt(document.getElementById('keySelect').value);
     appState.key = key;
 
-    const noteNames = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
-    const keyName = noteNames[key];
-
     if (appState.generationMode === 'template') {
         const templateRaw = document.getElementById('progressionSelect').value;
         appState.progressionTemplate = templateRaw;
@@ -401,7 +397,7 @@ function generateProgression() {
             const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
 
             // Apply CPG voice leading optimization based on variant type
-            let voicedProgression = generatedChords;
+            let voicedProgression;
             switch (variantType.name) {
                 case 'Smooth':
                     voicedProgression = MusicTheory.optimizeSmoothVoiceLeading(generatedChords);
@@ -926,25 +922,6 @@ function playChordWithFeedback(index, padElement) {
     }
 
     // Play sound
-    if (appState.outputMode === 'audio') {
-        Audio.playChord(chord.notes, 80, 400);
-    } else if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
-        chord.notes.forEach(note => {
-            MIDI.sendNoteOn(note, 80);
-            setTimeout(() => MIDI.sendNoteOff(note), 350);
-        });
-    }
-}
-
-function previewChord(index) {
-    const chord = appState.chordProgression[index];
-    if (!chord || !chord.notes) return;
-
-    // Initialize audio if needed
-    if (!Audio.isAudioAvailable()) {
-        Audio.initAudio();
-    }
-
     if (appState.outputMode === 'audio') {
         Audio.playChord(chord.notes, 80, 400);
     } else if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
