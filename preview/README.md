@@ -27,7 +27,7 @@
    - In Ouarpeggiator, select the synth from the **MIDI Output** dropdown
    - Click **Start** and hear music instantly!
 
-> 💡 **Pro Tip**: Both tabs must use the same browser. Chrome/Edge recommended for best WebMIDI support.
+> 💡 **Pro Tip**: Both tabs must use the same browser. Chromium, Edge, or Firefox recommended for best WebMIDI support.
 
 ### 🎹 Virtual MIDI Setup (Optional)
 
@@ -85,7 +85,7 @@ The core innovation is combining:
 - **Built-in MIDI diagnostics** with real-time device monitoring and troubleshooting
 - **CSS Grid** for responsive layout
 - **"Batteries included"** - works immediately with browser tone or Web MIDI synths
-- Optimized for Chrome, Edge, and other WebMIDI-enabled browsers
+- Optimized for Chromium, Edge, Firefox, and other WebMIDI-enabled browsers
 
 ## File Structure
 
@@ -119,7 +119,7 @@ Ouarpeggiator/
 
 ### Basic Operation
 
-1. **Open Ouarpeggiator** in a WebMIDI-enabled browser (Chrome/Edge recommended)
+1. **Open Ouarpeggiator** in a WebMIDI-enabled browser (Chromium, Edge, or Firefox recommended)
 2. **Choose your sound source**:
    - **Browser tone** (built-in, works immediately)
    - **Web MIDI Synth** (open one from [WebMIDI Targets](#webmidi-targets) in another tab)
@@ -173,7 +173,7 @@ Chords are specified as JSON arrays of MIDI note numbers:
 - **No devices detected**: Connect hardware, enable virtual MIDI ports, or use browser synth
 - **Permission denied**: Check browser site settings, clear and re-grant
 - **Not secure context**: Use HTTPS or localhost (not HTTP)
-- **Browser not supported**: Use Chrome, Edge, or Opera
+- **Browser not supported**: Use Chromium, Edge, or Firefox
 
 **Virtual MIDI Setup**:
 - **Windows**: Install [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html), create port, select in app
@@ -262,7 +262,7 @@ Take it further with full production environments:
 - **[WebAudio Playground](https://webaudioplayground.appspot.com/)** - Visual patching
 - Track-based recording and MIDI sequencing
 
-> 💡 **Compatibility Note**: All tools above require WebMIDI API support. Use **Chrome**, **Edge**, or **Opera** for best results. Firefox requires enabling `dom.webmidi.enabled` in `about:config`.
+> 💡 **Compatibility Note**: All tools above require WebMIDI API support. Use **Chromium**, **Edge**, or **Firefox** for best results. Firefox may require enabling `dom.webmidi.enabled` in `about:config`.
 
 ## License
 
