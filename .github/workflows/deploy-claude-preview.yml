@@ -15,6 +15,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Write commit hash
+        run: git rev-parse --short HEAD > commit.txt
+
       - name: Deploy to GitHub Pages (Preview)
         uses: peaceiris/actions-gh-pages@v4
         with:
