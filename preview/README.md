@@ -12,6 +12,31 @@
 - **Production**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
 - **Development Preview**: [https://liotier.github.io/Ouarpeggiator/preview/](https://liotier.github.io/Ouarpeggiator/preview/)
 
+## Quick Start: Batteries Included! 🔋
+
+**No MIDI hardware? No problem!** Experience Ouarpeggiator in seconds with browser-based synthesizers:
+
+### ⚡ 30-Second Setup
+
+1. **Open Ouarpeggiator**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
+2. **Open a Web Synth in another tab** (pick one):
+   - **[WebAudioFont MIDI Synth](https://surikov.github.io/webaudiofont/examples/midi.html)** ⭐ **Recommended** - Full GM soundbank, professional quality
+   - **[Chris Wilson's MIDI Synth](https://webaudiodemos.appspot.com/midi-synth/index.html)** - Clean, simple interface
+   - **[g200kg TinySynth](https://g200kg.github.io/webaudio-tinysynth/)** - Lightweight, instant load
+3. **Connect the two tabs**:
+   - In Ouarpeggiator, select the synth from the **MIDI Output** dropdown
+   - Click **Start** and hear music instantly!
+
+> 💡 **Pro Tip**: Both tabs must use the same browser. Chrome/Edge recommended for best WebMIDI support.
+
+### 🎹 Virtual MIDI Setup (Optional)
+
+For routing between apps or using desktop synths, set up virtual MIDI ports:
+
+- **Windows**: [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) (free)
+- **macOS**: IAC Driver (built-in, enable in Audio MIDI Setup)
+- **Linux**: `virmidi` kernel module or JACK
+
 ## What is Ouarpeggiator?
 
 Unlike typical arpeggiators that arpeggiate individual chords, Ouarpeggiator arpeggiates **entire chord progressions**. It generates melodic lines that traverse harmonic structures over time, creating evolving patterns through chord changes.
@@ -56,9 +81,11 @@ The core innovation is combining:
 ## Technology
 
 - **Pure vanilla JavaScript** (ES6 modules) - no frameworks or dependencies
-- **WebMIDI API** for hardware integration
+- **WebMIDI API** for hardware integration and browser-to-browser MIDI routing
+- **Built-in MIDI diagnostics** with real-time device monitoring and troubleshooting
 - **CSS Grid** for responsive layout
-- Works in Chrome, Edge, and other WebMIDI-enabled browsers
+- **"Batteries included"** - works immediately with browser tone or Web MIDI synths
+- Optimized for Chrome, Edge, and other WebMIDI-enabled browsers
 
 ## File Structure
 
@@ -67,12 +94,17 @@ Ouarpeggiator/
 ├── index.html              # Main HTML structure
 ├── css/
 │   ├── layout.css          # Grid, responsive breakpoints
-│   └── main.css            # Component styling
+│   └── styles.css          # Component styling, diagnostics UI
 ├── js/
 │   ├── euclidean.js        # Bjorklund algorithm
 │   ├── midi.js             # WebMIDI with clock handling
+│   ├── midiDiagnostics.js  # MIDI troubleshooting UI
 │   ├── arpeggiator.js      # Note selection, variation logic
-│   ├── ui.js               # UI bindings and rendering
+│   ├── pianoRoll.js        # Visual pattern display
+│   ├── euclideanCircle.js  # Circular rhythm visualization
+│   ├── modules/
+│   │   ├── musicTheory.js  # Chord analysis, voice leading
+│   │   └── audio.js        # Browser tone synthesis
 │   └── main.js             # State management, clock
 ├── .github/workflows/
 │   ├── deploy-main-production.yml
@@ -87,11 +119,19 @@ Ouarpeggiator/
 
 ### Basic Operation
 
-1. Open the application in a WebMIDI-enabled browser (Chrome recommended)
-2. Select your MIDI output device
-3. Load a chord progression (or use the default)
-4. Adjust the Euclidean pattern parameters
-5. Click **Start** to begin playback
+1. **Open Ouarpeggiator** in a WebMIDI-enabled browser (Chrome/Edge recommended)
+2. **Choose your sound source**:
+   - **Browser tone** (built-in, works immediately)
+   - **Web MIDI Synth** (open one from [WebMIDI Targets](#webmidi-targets) in another tab)
+   - **Hardware synth** (connect via USB/MIDI interface)
+3. **Select MIDI output** from the dropdown (shows "Browser tone" + detected MIDI devices)
+4. **Adjust pattern parameters**:
+   - Hits (1-32): Number of notes in the pattern
+   - Steps (1-32): Total rhythm divisions
+   - Rotation: Shift pattern start position
+5. **Click Start** to begin playback
+
+> 💡 **First time?** Just click **Start** with default settings - you'll hear sound immediately via browser tone!
 
 ### Chord Progression Format
 
@@ -112,6 +152,34 @@ Chords are specified as JSON arrays of MIDI note numbers:
 2. Connect your external clock source to the MIDI input
 3. The arpeggiator will sync to incoming clock and transport messages
 
+### Troubleshooting MIDI Issues
+
+**No MIDI devices appearing?** Ouarpeggiator includes built-in diagnostics:
+
+1. **Open "MIDI Diagnostics"** section (collapsible panel above arpeggiator)
+2. **Check status indicators**:
+   - ✓ WebMIDI API Available?
+   - ✓ Initialized successfully?
+   - ✓ Permission granted?
+   - ✓ Secure context (HTTPS/localhost)?
+3. **Review device lists** - shows all detected inputs/outputs
+4. **Try actions**:
+   - Click **"Refresh Devices"** to rescan
+   - Click **"Request MIDI Permission"** to re-authorize
+   - Click **"Send Test Note"** to verify output works
+5. **Check Event Log** - real-time MIDI activity with timestamps
+
+**Common fixes**:
+- **No devices detected**: Connect hardware, enable virtual MIDI ports, or use browser synth
+- **Permission denied**: Check browser site settings, clear and re-grant
+- **Not secure context**: Use HTTPS or localhost (not HTTP)
+- **Browser not supported**: Use Chrome, Edge, or Opera
+
+**Virtual MIDI Setup**:
+- **Windows**: Install [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html), create port, select in app
+- **macOS**: Audio MIDI Setup → MIDI Studio → IAC Driver → "Device is online"
+- **Linux**: `sudo modprobe snd-virmidi` or use JACK
+
 ## Euclidean Rhythm Examples
 
 | Hits | Steps | Pattern | Name |
@@ -127,14 +195,74 @@ This project is an evolution of the [Akai MPC Chord Progression Generator](https
 
 ## WebMIDI Targets
 
-No hardware synth? Use these browser-based WebMIDI tools to test Ouarpeggiator:
+Transform your browser into a complete music workstation! No hardware required.
 
-### Monitor
-- [MIDI Monitor](https://www.midimonitor.com/) - Visualize MIDI messages in real-time
+### 🎵 Recommended Synthesizers
 
-### Synthesizers
-- [FM Synthesizer](https://notes.ameo.design/fm.html) - Browser-based FM synthesis
-- [DX7 Synth JS](https://mmontag.github.io/dx7-synth-js/) - Yamaha DX7 emulation
+#### Production-Ready Options
+
+**[WebAudioFont MIDI Synth](https://surikov.github.io/webaudiofont/examples/midi.html)** ⭐ **Best Overall**
+- Full General MIDI soundbank (128 instruments + drum kits)
+- Sample-based synthesis for authentic sound
+- Professional quality, zero configuration
+- Works on desktop and mobile
+- **[GitHub](https://github.com/surikov/webaudiofont)** | **[NPM Package](https://www.npmjs.com/package/webaudiofont)**
+
+**[Chris Wilson's MIDI Synth](https://webaudiodemos.appspot.com/midi-synth/index.html)**
+- Clean, responsive interface
+- Low latency, great for real-time performance
+- Part of Google's WebAudio demos
+- **[GitHub](https://github.com/cwilso/midi-synth)**
+
+#### Creative & Experimental
+
+**[g200kg TinySynth](https://g200kg.github.io/webaudio-tinysynth/soundedit.html)**
+- Lightweight, algorithmically-generated timbres
+- GM-compatible sound map
+- No sample loading, instant start
+- Great for lo-fi/chiptune aesthetics
+
+**[FM Synthesizer](https://notes.ameo.design/fm.html)**
+- 6-operator FM synthesis (like DX7)
+- Deep sound design capabilities
+- Perfect for bell-like, metallic tones
+
+**[DX7 Synth JS](https://mmontag.github.io/dx7-synth-js/)**
+- Authentic Yamaha DX7 emulation
+- Classic 1980s FM sounds
+- Preset library included
+
+**[Web-Synths Collection](https://synth.playtronica.com/)**
+- Curated collection by Playtronica & Chromatone
+- Various synth engines and interfaces
+- MIDI controller support
+
+### 🔍 Monitoring & Debugging
+
+**[MIDI Monitor](https://www.midimonitor.com/)**
+- Visualize MIDI messages in real-time
+- Essential for troubleshooting
+- Shows note data, CC, clock, sysex
+
+**[WebMIDI Test](https://arachsys.github.io/webmidi/)**
+- Comprehensive MIDI I/O testing
+- Device enumeration and inspection
+
+### 💾 Advanced: SoundFont Players
+
+For the ultimate sound quality, use SoundFont-based players:
+
+- **[ResidentSf2Synth](https://github.com/notator/WebMIDISynthHost)** - Load custom .sf2 files
+- Compatible with professional soundfonts (Arachno, TimGM6mb, etc.)
+
+### 🎚️ Browser-Based DAWs
+
+Take it further with full production environments:
+
+- **[WebAudio Playground](https://webaudioplayground.appspot.com/)** - Visual patching
+- Track-based recording and MIDI sequencing
+
+> 💡 **Compatibility Note**: All tools above require WebMIDI API support. Use **Chrome**, **Edge**, or **Opera** for best results. Firefox requires enabling `dom.webmidi.enabled` in `about:config`.
 
 ## License
 
