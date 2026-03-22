@@ -18,6 +18,9 @@
 const circle = {
     container: null,
     svg: null,
+    dotsGroup: null,
+    arrowGroup: null,
+    labelGroup: null,
     size: 240,
     centerX: 120,
     centerY: 120,
@@ -86,6 +89,9 @@ export function initEuclideanCircle(containerId = 'euclideanCircle') {
     circle.container.innerHTML = '';
     circle.container.appendChild(svg);
     circle.svg = svg;
+    circle.dotsGroup = dotsGroup;
+    circle.arrowGroup = arrowGroup;
+    circle.labelGroup = labelGroup;
 
     // Don't render yet - pattern will be set by regeneratePattern() immediately after init
 }
@@ -119,22 +125,28 @@ export function setPlaying(isPlaying) {
 // Rendering
 // ============================================================================
 
+function clearSVGGroup(group) {
+    while (group.firstChild) {
+        group.removeChild(group.firstChild);
+    }
+}
+
 function render() {
-    if (!circle.svg) return;
+    if (!circle.svg || !circle.dotsGroup) return;
 
     const centerX = circle.centerX;
     const centerY = circle.centerY;
     const radius = circle.radius;
 
-    // Get groups
-    const dotsGroup = circle.svg.querySelector('#euclidean-dots');
-    const arrowGroup = circle.svg.querySelector('#euclidean-arrow');
-    const labelGroup = circle.svg.querySelector('#euclidean-label');
+    // Use stored references
+    const dotsGroup = circle.dotsGroup;
+    const arrowGroup = circle.arrowGroup;
+    const labelGroup = circle.labelGroup;
 
-    // Clear previous content
-    dotsGroup.innerHTML = '';
-    arrowGroup.innerHTML = '';
-    labelGroup.innerHTML = '';
+    // Clear previous content (DOM method, not innerHTML which is unreliable on SVG)
+    clearSVGGroup(dotsGroup);
+    clearSVGGroup(arrowGroup);
+    clearSVGGroup(labelGroup);
 
     // Draw guide circle
     const guide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');

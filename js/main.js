@@ -390,9 +390,12 @@ function generateProgression() {
         const progressionName = nameMatch ? nameMatch[1] : '';
 
         // Generate multiple variants using CPG algorithm
+        try {
+        console.log('[Ouarpeggiator] Template mode generating:', templateRaw, 'key:', key);
         appState.variants = VARIANT_TYPES.map(variantType => {
             const scaleDegrees = MusicTheory.getScaleDegrees('Major');
             const generatedChords = MusicTheory.generateProgressionChords(templateRaw, key, scaleDegrees, 'Major', 4);
+            console.log('[Ouarpeggiator] Generated', generatedChords.length, 'chords for variant', variantType.name);
 
             // Apply CPG voice leading optimization based on variant type
             let voicedProgression;
@@ -570,6 +573,23 @@ function generateProgression() {
 
         // Store the progression name for display
         appState.progressionName = progressionName;
+        } catch (error) {
+            console.error('[Ouarpeggiator] Progression generation failed:', error);
+            // Generate simple triads as fallback so UI doesn't break
+            const scaleDegrees = MusicTheory.getScaleDegrees('Major');
+            const degrees = [0, 3, 4, 0];
+            const symbols = ['I', 'IV', 'V', 'I'];
+            const fallbackChords = degrees.map((deg, i) => {
+                const notes = MusicTheory.buildChordRaw(60 + key + scaleDegrees[deg], 'major');
+                return { notes, name: MusicTheory.getChordNameFromNotes(notes), symbol: symbols[i], type: 'major', description: '', isProgressionChord: true };
+            });
+            appState.variants = [{
+                name: 'Error',
+                description: `Generation error: ${error.message} — see browser console`,
+                chords: fallbackChords,
+                baseChordCount: 4
+            }];
+        }
     } else {
         // Scale Mode: Generate single variant showing all scale chords
         const mode = document.getElementById('modeSelect').value;
@@ -642,6 +662,7 @@ function generateProgression() {
     // Update variant selector
     updateVariantSelector();
     renderChordGrid();
+    console.log('[Ouarpeggiator] generateProgression complete:', appState.generationMode, '→', appState.variants.length, 'variant(s),', appState.chordProgression.length, 'chords');
 }
 
 function updateVariantSelector() {
