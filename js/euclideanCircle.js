@@ -1,5 +1,5 @@
 /**
- * Euclidean Circle Visualization
+ * Euclidean Circle Visualization (SVG-based)
  *
  * Circular display showing Euclidean rhythm pattern structure.
  * - Steps arranged around circle
@@ -7,6 +7,8 @@
  * - Rests shown as hollow dots
  * - Rotation indicator shows starting point
  * - Current step highlighted during playback
+ *
+ * Uses SVG for robust, scale-independent rendering.
  */
 
 // ============================================================================
@@ -14,12 +16,12 @@
 // ============================================================================
 
 const circle = {
-    canvas: null,
-    ctx: null,
-    size: 120,
-    centerX: 60,
-    centerY: 60,
-    radius: 45,
+    container: null,
+    svg: null,
+    size: 240,
+    centerX: 120,
+    centerY: 120,
+    radius: 91,  // 240 * 0.38
     steps: 16,
     hits: 7,
     rotation: 0,
@@ -32,29 +34,58 @@ const circle = {
 // Initialization
 // ============================================================================
 
-export function initEuclideanCircle(canvasId = 'euclideanCircle') {
-    circle.canvas = document.getElementById(canvasId);
-    if (!circle.canvas) {
-        console.error('Euclidean circle canvas not found');
+export function initEuclideanCircle(containerId = 'euclideanCircle') {
+    // Get container (could be the canvas element or a parent div)
+    let container = document.getElementById(containerId);
+    if (!container) {
+        console.error('Euclidean circle container not found');
         return;
     }
 
-    circle.ctx = circle.canvas.getContext('2d');
+    // If it's a canvas, replace it with a div
+    if (container.tagName === 'CANVAS') {
+        const parent = container.parentNode;
+        const newContainer = document.createElement('div');
+        newContainer.id = containerId;
+        newContainer.className = 'euclidean-circle-svg';
+        parent.replaceChild(newContainer, container);
+        container = newContainer;
+    }
 
-    // Set fixed size for the canvas
-    const canvasSize = 240; // Fixed size in CSS pixels
-    circle.size = canvasSize;
-    circle.centerX = canvasSize / 2;
-    circle.centerY = canvasSize / 2;
-    circle.radius = canvasSize * 0.38;
+    circle.container = container;
 
-    // Handle high DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    circle.canvas.width = canvasSize * dpr;
-    circle.canvas.height = canvasSize * dpr;
-    circle.canvas.style.width = canvasSize + 'px';
-    circle.canvas.style.height = canvasSize + 'px';
-    circle.ctx.scale(dpr, dpr);
+    // Create SVG element
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', circle.size);
+    svg.setAttribute('height', circle.size);
+    svg.setAttribute('viewBox', `0 0 ${circle.size} ${circle.size}`);
+    svg.style.display = 'block';
+    svg.style.width = '100%';
+    svg.style.height = '100%';
+
+    // Add background
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    background.setAttribute('width', circle.size);
+    background.setAttribute('height', circle.size);
+    background.setAttribute('fill', '#f5f5f5');
+    svg.appendChild(background);
+
+    // Create groups for layering
+    const dotsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    dotsGroup.setAttribute('id', 'euclidean-dots');
+    svg.appendChild(dotsGroup);
+
+    const arrowGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    arrowGroup.setAttribute('id', 'euclidean-arrow');
+    svg.appendChild(arrowGroup);
+
+    const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    labelGroup.setAttribute('id', 'euclidean-label');
+    svg.appendChild(labelGroup);
+
+    circle.container.innerHTML = '';
+    circle.container.appendChild(svg);
+    circle.svg = svg;
 
     // Don't render yet - pattern will be set by regeneratePattern() immediately after init
 }
@@ -89,16 +120,21 @@ export function setPlaying(isPlaying) {
 // ============================================================================
 
 function render() {
-    if (!circle.ctx) return;
+    if (!circle.svg) return;
 
-    const ctx = circle.ctx;
     const centerX = circle.centerX;
     const centerY = circle.centerY;
     const radius = circle.radius;
 
-    // Clear with light gray background
-    ctx.fillStyle = '#f5f5f5';
-    ctx.fillRect(0, 0, circle.size, circle.size);
+    // Get groups
+    const dotsGroup = circle.svg.querySelector('#euclidean-dots');
+    const arrowGroup = circle.svg.querySelector('#euclidean-arrow');
+    const labelGroup = circle.svg.querySelector('#euclidean-label');
+
+    // Clear previous content
+    dotsGroup.innerHTML = '';
+    arrowGroup.innerHTML = '';
+    labelGroup.innerHTML = '';
 
     // Draw steps around circle
     for (let i = 0; i < circle.steps; i++) {
@@ -106,35 +142,33 @@ function render() {
         const x = centerX + radius * Math.cos(angle);
         const y = centerY + radius * Math.sin(angle);
 
-        const isHit = circle.pattern[i]; // Pattern uses true/false, not 1/0
+        const isHit = circle.pattern[i];
         const isCurrent = i === circle.currentStep && circle.isPlaying;
 
-        // Draw step
-        ctx.beginPath();
-        ctx.arc(x, y, isCurrent ? 8 : 6, 0, 2 * Math.PI);
+        // Create circle element for dot
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', x);
+        dot.setAttribute('cy', y);
+        dot.setAttribute('r', isCurrent ? 8 : 6);
 
         if (isCurrent) {
             // Current step: orange highlight
-            ctx.fillStyle = '#ff9500';
-            ctx.fill();
-            ctx.strokeStyle = '#ff6600';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            dot.setAttribute('fill', '#ff9500');
+            dot.setAttribute('stroke', '#ff6600');
+            dot.setAttribute('stroke-width', '2');
         } else if (isHit) {
             // Hit: filled blue dot
-            ctx.fillStyle = '#4a90e2';
-            ctx.fill();
-            ctx.strokeStyle = '#357abd';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            dot.setAttribute('fill', '#4a90e2');
+            dot.setAttribute('stroke', '#357abd');
+            dot.setAttribute('stroke-width', '2');
         } else {
             // Rest: hollow gray dot
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-            ctx.strokeStyle = '#888';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            dot.setAttribute('fill', '#ffffff');
+            dot.setAttribute('stroke', '#888888');
+            dot.setAttribute('stroke-width', '2');
         }
+
+        dotsGroup.appendChild(dot);
     }
 
     // Draw rotation indicator (arrow pointing to start)
@@ -144,32 +178,33 @@ function render() {
         const arrowX = centerX + arrowRadius * Math.cos(rotAngle);
         const arrowY = centerY + arrowRadius * Math.sin(rotAngle);
 
-        // Draw small arrow
-        ctx.save();
-        ctx.translate(arrowX, arrowY);
-        ctx.rotate(rotAngle + Math.PI / 2);
+        // Create arrow path
+        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const arrowAngleDeg = (rotAngle + Math.PI / 2) * 180 / Math.PI;
 
-        ctx.beginPath();
-        ctx.moveTo(0, -6);
-        ctx.lineTo(-3, 0);
-        ctx.lineTo(3, 0);
-        ctx.closePath();
+        // Draw arrow pointing outward from center
+        arrow.setAttribute('d', 'M 0,-6 L -3,0 L 3,0 Z');
+        arrow.setAttribute('transform', `translate(${arrowX},${arrowY}) rotate(${arrowAngleDeg})`);
+        arrow.setAttribute('fill', '#e74c3c');
+        arrow.setAttribute('stroke', '#c0392b');
+        arrow.setAttribute('stroke-width', '1');
 
-        ctx.fillStyle = '#e74c3c';
-        ctx.fill();
-        ctx.strokeStyle = '#c0392b';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.restore();
+        arrowGroup.appendChild(arrow);
     }
 
     // Draw center label showing hits/steps
-    ctx.fillStyle = '#555';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${circle.hits}/${circle.steps}`, centerX, centerY);
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', centerX);
+    label.setAttribute('y', centerY);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('dominant-baseline', 'middle');
+    label.setAttribute('fill', '#555555');
+    label.setAttribute('font-size', '14');
+    label.setAttribute('font-weight', 'bold');
+    label.setAttribute('font-family', 'sans-serif');
+    label.textContent = `${circle.hits}/${circle.steps}`;
+
+    labelGroup.appendChild(label);
 }
 
 // ============================================================================
@@ -177,6 +212,9 @@ function render() {
 // ============================================================================
 
 export function destroyEuclideanCircle() {
-    circle.canvas = null;
-    circle.ctx = null;
+    if (circle.container) {
+        circle.container.innerHTML = '';
+    }
+    circle.container = null;
+    circle.svg = null;
 }
