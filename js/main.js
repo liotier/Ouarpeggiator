@@ -1251,6 +1251,7 @@ function populateMIDIDevices() {
     if (!outputSelect) return;
 
     const outputs = MIDI.getOutputDevices();
+    const inputs = MIDI.getInputDevices();
 
     // Preserve current selection
     const currentValue = outputSelect.value;
@@ -1271,7 +1272,18 @@ function populateMIDIDevices() {
         outputSelect.value = currentValue;
     }
 
-    console.log(`Found ${outputs.length} MIDI output devices`);
+    // Enhanced diagnostic logging
+    console.log(`[MIDI] WebMIDI initialized: ${MIDI.isMIDIInitialized()}`);
+    console.log(`[MIDI] Found ${outputs.length} output device(s)`, outputs.length > 0 ? outputs.map(d => d.name) : '(none)');
+    console.log(`[MIDI] Found ${inputs.length} input device(s)`, inputs.length > 0 ? inputs.map(d => d.name) : '(none)');
+
+    if (outputs.length === 0 && inputs.length === 0) {
+        console.warn('[MIDI] No devices detected. Possible causes:');
+        console.warn('  - No MIDI devices connected');
+        console.warn('  - Browser permissions not granted');
+        console.warn('  - MIDI drivers not installed/running');
+        console.warn('  - Virtual MIDI ports not configured');
+    }
 }
 
 // ============================================================================
@@ -1620,3 +1632,59 @@ if (document.readyState === 'loading') {
 // Debug
 window.ouarpeggiatorState = appState;
 window.ouarpeggiatorMIDI = MIDI;
+
+// MIDI Diagnostics - call from console: ouarpDiagnoseMIDI()
+window.ouarpDiagnoseMIDI = function() {
+    console.log('=== Ouarpeggiator MIDI Diagnostics ===');
+    console.log('Browser:', navigator.userAgent);
+    console.log('WebMIDI API available:', MIDI.isWebMIDIAvailable());
+    console.log('MIDI initialized:', MIDI.isMIDIInitialized());
+
+    if (!MIDI.isWebMIDIAvailable()) {
+        console.error('❌ WebMIDI API not available in this browser');
+        console.log('💡 Try Chrome, Edge, or Opera (Firefox requires flag)');
+        return;
+    }
+
+    if (!MIDI.isMIDIInitialized()) {
+        console.error('❌ MIDI not initialized - initialization failed');
+        return;
+    }
+
+    const inputs = MIDI.getInputDevices();
+    const outputs = MIDI.getOutputDevices();
+
+    console.log(`\n📥 MIDI Inputs (${inputs.length}):`);
+    if (inputs.length === 0) {
+        console.log('  (none detected)');
+    } else {
+        inputs.forEach((device, i) => {
+            console.log(`  ${i + 1}. ${device.name} [${device.id}]`);
+        });
+    }
+
+    console.log(`\n📤 MIDI Outputs (${outputs.length}):`);
+    if (outputs.length === 0) {
+        console.log('  (none detected)');
+    } else {
+        outputs.forEach((device, i) => {
+            const selected = MIDI.getSelectedOutput()?.id === device.id ? ' ✓ SELECTED' : '';
+            console.log(`  ${i + 1}. ${device.name} [${device.id}]${selected}`);
+        });
+    }
+
+    if (inputs.length === 0 && outputs.length === 0) {
+        console.log('\n🔍 Troubleshooting:');
+        console.log('  1. Check if MIDI devices are physically connected');
+        console.log('  2. Check if MIDI drivers are installed and running');
+        console.log('  3. Try virtual MIDI ports (e.g., loopMIDI, IAC Driver)');
+        console.log('  4. Reload page after connecting devices');
+        console.log('  5. Check browser MIDI permissions in site settings');
+    }
+
+    console.log('\n💻 System Check:');
+    console.log('  - Secure context (HTTPS/localhost):', window.isSecureContext);
+    console.log('  - Page protocol:', window.location.protocol);
+
+    console.log('\n=================================');
+};
