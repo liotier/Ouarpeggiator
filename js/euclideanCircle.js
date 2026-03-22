@@ -67,7 +67,7 @@ export function initEuclideanCircle(containerId = 'euclideanCircle') {
     const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     background.setAttribute('width', circle.size);
     background.setAttribute('height', circle.size);
-    background.setAttribute('fill', '#f5f5f5');
+    background.setAttribute('fill', '#ffffff');
     svg.appendChild(background);
 
     // Create groups for layering
@@ -136,6 +136,16 @@ function render() {
     arrowGroup.innerHTML = '';
     labelGroup.innerHTML = '';
 
+    // Draw guide circle
+    const guide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    guide.setAttribute('cx', centerX);
+    guide.setAttribute('cy', centerY);
+    guide.setAttribute('r', radius);
+    guide.setAttribute('fill', 'none');
+    guide.setAttribute('stroke', '#e0e0e0');
+    guide.setAttribute('stroke-width', '1');
+    dotsGroup.appendChild(guide);
+
     // Draw steps around circle
     for (let i = 0; i < circle.steps; i++) {
         const angle = (i / circle.steps) * 2 * Math.PI - Math.PI / 2; // Start at top
@@ -162,9 +172,9 @@ function render() {
             dot.setAttribute('stroke', '#357abd');
             dot.setAttribute('stroke-width', '2');
         } else {
-            // Rest: hollow gray dot
-            dot.setAttribute('fill', '#ffffff');
-            dot.setAttribute('stroke', '#888888');
+            // Rest: light gray dot
+            dot.setAttribute('fill', '#e8e8e8');
+            dot.setAttribute('stroke', '#aaaaaa');
             dot.setAttribute('stroke-width', '2');
         }
 

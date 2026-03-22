@@ -1074,8 +1074,9 @@ button:disabled {
     width: 240px;
     height: 240px;
     border-radius: 50%;
-    border: 2px solid #c0c0c0;
+    border: 2px solid #b0b0b0;
     overflow: hidden;
+    background: #ffffff;
 }
 
 .euclidean-circle-svg svg {
