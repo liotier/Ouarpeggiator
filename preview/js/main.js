@@ -380,9 +380,6 @@ function generateProgression() {
         const templateRaw = document.getElementById('progressionSelect').value;
         appState.progressionTemplate = templateRaw;
 
-        // Convert em-dashes to spaces for parsing
-        const template = templateRaw.replace(/—/g, ' ').replace(/-/g, ' ');
-
         // Get selected option text for the name
         const selectEl = document.getElementById('progressionSelect');
         const selectedOption = selectEl.options[selectEl.selectedIndex];
@@ -395,7 +392,7 @@ function generateProgression() {
         // Generate multiple variants using CPG algorithm
         appState.variants = VARIANT_TYPES.map(variantType => {
             const scaleDegrees = MusicTheory.getScaleDegrees('Major');
-            const generatedChords = MusicTheory.generateProgressionChords(template, key, scaleDegrees, 'Major', 4);
+            const generatedChords = MusicTheory.generateProgressionChords(templateRaw, key, scaleDegrees, 'Major', 4);
 
             // Apply CPG voice leading optimization based on variant type
             let voicedProgression;
@@ -1234,6 +1231,7 @@ async function initializeMIDI() {
     if (!MIDI.isWebMIDIAvailable()) {
         console.log('WebMIDI not available');
         MIDIDiagnostics.logError('WebMIDI API not available in this browser');
+        MIDIDiagnostics.updateAllStatus();
         return;
     }
 
@@ -1241,10 +1239,12 @@ async function initializeMIDI() {
     if (!access) {
         console.log('Failed to initialize MIDI');
         MIDIDiagnostics.logError('Failed to initialize MIDI - permission denied or error occurred');
+        MIDIDiagnostics.updateAllStatus();
         return;
     }
 
     MIDIDiagnostics.logSuccess('MIDI initialized successfully');
+    MIDIDiagnostics.updateAllStatus();
     populateMIDIDevices();
 
     // Re-populate on device change

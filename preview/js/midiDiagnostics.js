@@ -49,7 +49,7 @@ function updateAPIStatus() {
 
     if (!available) {
         log('❌ WebMIDI API not available in this browser', 'error');
-        log('💡 Try Chrome, Edge, or Opera (Firefox requires flag)', 'warning');
+        log('💡 Try Chromium, Edge, or Firefox (may require dom.webmidi.enabled flag)', 'warning');
     }
 }
 
@@ -307,3 +307,5 @@ export function logSuccess(message) {
 export function logWarning(message) {
     log(message, 'warning');
 }
+
+export { updateAllStatus };
