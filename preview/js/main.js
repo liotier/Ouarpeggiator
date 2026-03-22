@@ -10,6 +10,7 @@ import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
 import * as PianoRoll from './pianoRoll.js';
 import * as EuclideanCircle from './euclideanCircle.js';
+import * as MIDIDiagnostics from './midiDiagnostics.js';
 
 // ============================================================================
 // Application State
@@ -1227,21 +1228,28 @@ function playNote(note, velocity, gateLength) {
 // ============================================================================
 
 async function initializeMIDI() {
+    // Initialize diagnostics UI first
+    MIDIDiagnostics.initMIDIDiagnostics();
+
     if (!MIDI.isWebMIDIAvailable()) {
         console.log('WebMIDI not available');
+        MIDIDiagnostics.logError('WebMIDI API not available in this browser');
         return;
     }
 
     const access = await MIDI.initMIDI();
     if (!access) {
         console.log('Failed to initialize MIDI');
+        MIDIDiagnostics.logError('Failed to initialize MIDI - permission denied or error occurred');
         return;
     }
 
+    MIDIDiagnostics.logSuccess('MIDI initialized successfully');
     populateMIDIDevices();
 
     // Re-populate on device change
-    access.onstatechange = () => {
+    access.onstatechange = (event) => {
+        MIDIDiagnostics.logMIDIEvent(`Device ${event.port.state}: ${event.port.name}`, 'info');
         setTimeout(populateMIDIDevices, 100);
     };
 }
@@ -1284,6 +1292,9 @@ function populateMIDIDevices() {
         console.warn('  - MIDI drivers not installed/running');
         console.warn('  - Virtual MIDI ports not configured');
     }
+
+    // Update diagnostics UI
+    MIDIDiagnostics.updateDeviceLists();
 }
 
 // ============================================================================
