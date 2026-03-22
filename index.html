@@ -590,7 +590,16 @@
             <p>
                 <a href="https://github.com/liotier/Ouarpeggiator" target="_blank" rel="noopener">GitHub</a> |
                 Based on <a href="https://liotier.github.io/AkaiMPC/AkaiMPCChordProgressionGenerator/" target="_blank" rel="noopener">Akai MPC Chord Progression Generator</a>
+                <span id="debugCommit" style="display:none"> | <code style="font-size:0.85em;color:#888" id="commitHash"></code></span>
             </p>
+            <script>
+                if (location.href.includes('liotier.github.io/Ouarpeggiator/preview')) {
+                    fetch('commit.txt').then(r => r.ok ? r.text() : 'unknown').then(hash => {
+                        document.getElementById('commitHash').textContent = 'commit ' + hash.trim();
+                        document.getElementById('debugCommit').style.display = 'inline';
+                    }).catch(() => {});
+                }
+            </script>
         </footer>
     </div>
 
