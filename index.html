@@ -325,6 +325,80 @@
             </div>
         </div>
 
+        <!-- MIDI Diagnostics Section -->
+        <section class="midi-diagnostics-section">
+            <details>
+                <summary>MIDI Diagnostics</summary>
+                <div class="diagnostics-content">
+                    <div class="diagnostic-row">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">WebMIDI API:</span>
+                            <span id="midiApiStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Initialized:</span>
+                            <span id="midiInitStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Permission:</span>
+                            <span id="midiPermissionStatus" class="diagnostic-value">Unknown</span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-row">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Secure Context:</span>
+                            <span id="secureContextStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Protocol:</span>
+                            <span id="protocolStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>MIDI Input Devices (<span id="inputDeviceCount">0</span>)</h4>
+                        <ul id="inputDeviceList" class="device-list">
+                            <li class="no-devices">No devices detected</li>
+                        </ul>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>MIDI Output Devices (<span id="outputDeviceCount">0</span>)</h4>
+                        <ul id="outputDeviceList" class="device-list">
+                            <li class="no-devices">No devices detected</li>
+                        </ul>
+                    </div>
+
+                    <div class="diagnostic-actions">
+                        <button id="refreshMidiBtn" class="diagnostic-btn">Refresh Devices</button>
+                        <button id="requestMidiPermissionBtn" class="diagnostic-btn">Request MIDI Permission</button>
+                        <button id="testMidiOutputBtn" class="diagnostic-btn" disabled>Send Test Note (C4)</button>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>Event Log</h4>
+                        <div id="midiEventLog" class="event-log">
+                            <div class="log-entry">Ready to diagnose MIDI...</div>
+                        </div>
+                        <button id="clearLogBtn" class="diagnostic-btn-small">Clear Log</button>
+                    </div>
+
+                    <div class="diagnostic-help">
+                        <strong>Troubleshooting Tips:</strong>
+                        <ul>
+                            <li>Ensure MIDI devices are physically connected and powered on</li>
+                            <li>Check that MIDI drivers are installed (Windows) or IAC Driver enabled (macOS)</li>
+                            <li>Try virtual MIDI ports: loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)</li>
+                            <li>Reload the page after connecting/configuring devices</li>
+                            <li>Check browser site permissions for MIDI access</li>
+                            <li>WebMIDI requires secure context (HTTPS or localhost)</li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </section>
+
         <!-- Arpeggiator Section -->
         <section class="arpeggiator-section">
             <h2>Arpeggiator</h2>
