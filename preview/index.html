@@ -492,10 +492,10 @@
                 <div class="control-row">
                     <div class="filter-group">
                         <label>Velocity Mode</label>
-                        <select id="velocityMode">
-                            <option value="fixed">Fixed</option>
-                            <option value="random">Random</option>
-                            <option value="curve">Curve</option>
+                        <select id="velocityMode" title="How velocity changes across the pattern">
+                            <option value="fixed" title="Same velocity for all notes">Fixed</option>
+                            <option value="random" title="Random velocity for each note within range">Random</option>
+                            <option value="curve" title="Velocity follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
                         </select>
                     </div>
                     <div id="velocityControls" class="dynamic-controls"></div>
@@ -503,10 +503,10 @@
                 <div class="control-row">
                     <div class="filter-group">
                         <label>Gate Mode</label>
-                        <select id="gateMode">
-                            <option value="fixed">Fixed</option>
-                            <option value="random">Random</option>
-                            <option value="curve">Curve</option>
+                        <select id="gateMode" title="How note duration changes across the pattern">
+                            <option value="fixed" title="Same gate length for all notes">Fixed</option>
+                            <option value="random" title="Random gate length for each note within range">Random</option>
+                            <option value="curve" title="Gate length follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
                         </select>
                     </div>
                     <div id="gateControls" class="dynamic-controls"></div>
