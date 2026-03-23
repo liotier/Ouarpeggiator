@@ -24,7 +24,41 @@ const MAX_LOG_ENTRIES = 100;
 export function initMIDIDiagnostics() {
     updateAllStatus();
     bindEventHandlers();
+    populateTroubleshootingTips();
     log('MIDI Diagnostics initialized', 'info');
+}
+
+function populateTroubleshootingTips() {
+    const helpDiv = document.querySelector('.diagnostic-help ul');
+    if (!helpDiv) return;
+
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isWindows = userAgent.includes('win');
+    const isLinux = userAgent.includes('linux');
+    const isMac = userAgent.includes('mac');
+
+    // Determine OS-specific virtual MIDI advice
+    let virtualMIDITip = '';
+    if (isWindows) {
+        virtualMIDITip = 'Try virtual MIDI ports: loopMIDI (Windows)';
+    } else if (isMac) {
+        virtualMIDITip = 'Try virtual MIDI ports: IAC Driver (macOS, built-in)';
+    } else if (isLinux) {
+        virtualMIDITip = 'Try virtual MIDI ports: virmidi (Linux)';
+    } else {
+        // Ambiguous user agent - show all options
+        virtualMIDITip = 'Try virtual MIDI ports: loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)';
+    }
+
+    // Build OS-specific tip list
+    helpDiv.innerHTML = `
+        <li>Ensure MIDI devices are physically connected and powered on</li>
+        <li>Check that MIDI drivers are installed and running</li>
+        <li>${virtualMIDITip}</li>
+        <li>Reload the page after connecting/configuring devices</li>
+        <li>Check browser site permissions for MIDI access</li>
+        <li>WebMIDI requires secure context (HTTPS or localhost)</li>
+    `;
 }
 
 // ============================================================================
@@ -172,11 +206,13 @@ function updateOutputDeviceList() {
     // Show troubleshooting hints if no devices found
     if (devices.length === 0 && MIDI.getInputDevices().length === 0) {
         log('⚠️ No MIDI devices detected', 'warning');
-        log('Possible causes:', 'info');
-        log('  • No MIDI devices connected', 'info');
-        log('  • MIDI drivers not installed/running', 'info');
-        log('  • Virtual MIDI ports not configured', 'info');
-        log('  • Browser permissions not granted', 'info');
+        // Debug logging for developers
+        console.log('[MIDI Diagnostics] Possible causes:', [
+            'No MIDI devices connected',
+            'MIDI drivers not installed/running',
+            'Virtual MIDI ports not configured',
+            'Browser permissions not granted'
+        ]);
     }
 }
 
