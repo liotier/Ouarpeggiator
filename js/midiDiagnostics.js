@@ -242,6 +242,14 @@ function detectBrowserIssues(error) {
     const isLinux = userAgent.includes('linux');
     const isMac = userAgent.includes('mac');
 
+    // Debug: Log when multiple or no OS detected (ambiguous UA)
+    const osCount = (isWindows ? 1 : 0) + (isLinux ? 1 : 0) + (isMac ? 1 : 0);
+    if (osCount !== 1) {
+        log(`🔍 Ambiguous User Agent detected:`, 'info');
+        log(`   "${navigator.userAgent.substring(0, 80)}..."`, 'info');
+        log(`   OS flags: Windows=${isWindows} Linux=${isLinux} Mac=${isMac}`, 'info');
+    }
+
     // Firefox-specific no devices issue
     if (isFirefox) {
         // LEVEL 1: Quick Fix
