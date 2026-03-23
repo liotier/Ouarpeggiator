@@ -74,6 +74,7 @@ const appState = {
     // Velocity/Gate
     velocity: { mode: 'fixed', fixed: 100, randomMin: 60, randomMax: 110, curveType: 'linear-ascending', curveMin: 60, curveMax: 120 },
     gate: { mode: 'fixed', fixed: 0.8, randomMin: 0.5, randomMax: 0.9, curveType: 'linear-ascending', curveMin: 0.3, curveMax: 0.95 },
+    curveSyncRotation: false,  // Sync curve start to Euclidean rotation
 
     // Runtime
     euclideanStepIndex: 0,
@@ -1539,6 +1540,11 @@ function bindControls() {
     document.getElementById('gateMode').addEventListener('change', function() {
         appState.gate.mode = this.value;
         renderGateControls();
+    });
+
+    // Curve rotation sync
+    document.getElementById('curveSyncRotation').addEventListener('change', function() {
+        appState.curveSyncRotation = this.checked;
     });
 }
 
