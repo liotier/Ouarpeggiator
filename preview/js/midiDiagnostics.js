@@ -267,11 +267,11 @@ async function handleRequestPermission() {
         }
     } catch (error) {
         log(`❌ MIDI permission denied: ${error.message}`, 'error');
-        detectBrowserIssues(error);
+        detectBrowserIssues();
     }
 }
 
-function detectBrowserIssues(error) {
+function detectBrowserIssues() {
     const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
     const userAgent = navigator.userAgent.toLowerCase();
     const isWindows = userAgent.includes('win');
