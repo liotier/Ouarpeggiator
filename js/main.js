@@ -1710,7 +1710,20 @@ window.ouarpDiagnoseMIDI = function() {
         console.log('\n🔍 Troubleshooting:');
         console.log('  1. Check if MIDI devices are physically connected');
         console.log('  2. Check if MIDI drivers are installed and running');
-        console.log('  3. Try virtual MIDI ports (e.g., loopMIDI, IAC Driver)');
+
+        // OS-specific virtual MIDI recommendations
+        const ua = navigator.userAgent.toLowerCase();
+        if (ua.includes('win')) {
+            console.log('  3. Try virtual MIDI ports: loopMIDI (Windows)');
+        } else if (ua.includes('mac')) {
+            console.log('  3. Try virtual MIDI ports: IAC Driver (macOS, built-in)');
+        } else if (ua.includes('linux')) {
+            console.log('  3. Try virtual MIDI ports: virmidi (Linux)');
+        } else {
+            // Fallback for ambiguous user agents
+            console.log('  3. Try virtual MIDI ports (loopMIDI/IAC Driver/virmidi)');
+        }
+
         console.log('  4. Reload page after connecting devices');
         console.log('  5. Check browser MIDI permissions in site settings');
     }

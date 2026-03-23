@@ -87,7 +87,7 @@ function updatePermissionStatus() {
         element.textContent = '✓ Granted';
         element.className = 'diagnostic-value status-ok';
     } else {
-        element.textContent = '? Unknown';
+        element.textContent = '? Unknown';
         element.className = 'diagnostic-value status-warning';
     }
 }
