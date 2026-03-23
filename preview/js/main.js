@@ -1586,8 +1586,40 @@ function renderVelocityControls() {
         document.getElementById('velMax')?.addEventListener('input', function() {
             appState.velocity.randomMax = parseInt(this.value);
         });
-    } else {
-        container.innerHTML = '<span>Curve mode</span>';
+    } else if (appState.velocity.mode === 'curve') {
+        container.innerHTML = `
+            <label>
+                Curve Type:
+                <select id="velocityCurveType">
+                    <option value="linear-ascending">Linear Ascending</option>
+                    <option value="linear-descending">Linear Descending</option>
+                    <option value="exponential">Exponential</option>
+                    <option value="logarithmic">Logarithmic</option>
+                    <option value="sinusoidal">Sinusoidal</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </label>
+            <label>
+                Min: <span id="velocityCurveMinValue">${appState.velocity.curveMin}</span>
+                <input type="range" id="velocityCurveMin" min="1" max="127" value="${appState.velocity.curveMin}">
+            </label>
+            <label>
+                Max: <span id="velocityCurveMaxValue">${appState.velocity.curveMax}</span>
+                <input type="range" id="velocityCurveMax" min="1" max="127" value="${appState.velocity.curveMax}">
+            </label>
+        `;
+        document.getElementById('velocityCurveType').value = appState.velocity.curveType;
+        document.getElementById('velocityCurveType')?.addEventListener('change', function() {
+            appState.velocity.curveType = this.value;
+        });
+        document.getElementById('velocityCurveMin')?.addEventListener('input', function() {
+            appState.velocity.curveMin = parseInt(this.value);
+            document.getElementById('velocityCurveMinValue').textContent = this.value;
+        });
+        document.getElementById('velocityCurveMax')?.addEventListener('input', function() {
+            appState.velocity.curveMax = parseInt(this.value);
+            document.getElementById('velocityCurveMaxValue').textContent = this.value;
+        });
     }
 }
 
@@ -1616,8 +1648,40 @@ function renderGateControls() {
         document.getElementById('gateMax')?.addEventListener('input', function() {
             appState.gate.randomMax = parseFloat(this.value);
         });
-    } else {
-        container.innerHTML = '<span>Curve mode</span>';
+    } else if (appState.gate.mode === 'curve') {
+        container.innerHTML = `
+            <label>
+                Curve Type:
+                <select id="gateCurveType">
+                    <option value="linear-ascending">Linear Ascending</option>
+                    <option value="linear-descending">Linear Descending</option>
+                    <option value="exponential">Exponential</option>
+                    <option value="logarithmic">Logarithmic</option>
+                    <option value="sinusoidal">Sinusoidal</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </label>
+            <label>
+                Min: <span id="gateCurveMinValue">${toPercent(appState.gate.curveMin)}</span>
+                <input type="range" id="gateCurveMin" min="0.05" max="1" step="0.01" value="${appState.gate.curveMin}">
+            </label>
+            <label>
+                Max: <span id="gateCurveMaxValue">${toPercent(appState.gate.curveMax)}</span>
+                <input type="range" id="gateCurveMax" min="0.05" max="1" step="0.01" value="${appState.gate.curveMax}">
+            </label>
+        `;
+        document.getElementById('gateCurveType').value = appState.gate.curveType;
+        document.getElementById('gateCurveType')?.addEventListener('change', function() {
+            appState.gate.curveType = this.value;
+        });
+        document.getElementById('gateCurveMin')?.addEventListener('input', function() {
+            appState.gate.curveMin = parseFloat(this.value);
+            document.getElementById('gateCurveMinValue').textContent = toPercent(appState.gate.curveMin);
+        });
+        document.getElementById('gateCurveMax')?.addEventListener('input', function() {
+            appState.gate.curveMax = parseFloat(this.value);
+            document.getElementById('gateCurveMaxValue').textContent = toPercent(appState.gate.curveMax);
+        });
     }
 }
 
