@@ -20,9 +20,9 @@
 
 1. **Open Ouarpeggiator**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
 2. **Open a Web Synth in another tab** (pick one):
-   - **[WebAudioFont MIDI Synth](https://surikov.github.io/webaudiofont/examples/midi.html)** ⭐ **Recommended** - Full GM soundbank, professional quality
-   - **[Chris Wilson's MIDI Synth](https://webaudiodemos.appspot.com/midi-synth/index.html)** - Clean, simple interface
-   - **[g200kg TinySynth](https://g200kg.github.io/webaudio-tinysynth/)** - Lightweight, instant load
+   - **[Juno-106](https://juno-106.js.org/)** ⭐ **Recommended** - Classic analog sound, everybody loves the Juno 106!
+   - **[Cardboard Synth](https://www.gsn-lib.org/apps/cardboardsynth/index.html)** - Full-featured subtractive synth with extensive controls
+   - **[FM Synthesizer](https://notes.ameo.design/fm.html)** - 6-operator FM synthesis for complex, evolving timbres
 3. **Connect the two tabs**:
    - In Ouarpeggiator, select the synth from the **MIDI Output** dropdown
    - Click **Start** and hear music instantly!
@@ -199,33 +199,29 @@ Transform your browser into a complete music workstation! No hardware required.
 
 ### 🎵 Recommended Synthesizers
 
-#### Production-Ready Options
+#### Classic Analog Sound
 
-**[WebAudioFont MIDI Synth](https://surikov.github.io/webaudiofont/examples/midi.html)** ⭐ **Best Overall**
-- Full General MIDI soundbank (128 instruments + drum kits)
-- Sample-based synthesis for authentic sound
-- Professional quality, zero configuration
-- Works on desktop and mobile
-- **[GitHub](https://github.com/surikov/webaudiofont)** | **[NPM Package](https://www.npmjs.com/package/webaudiofont)**
+**[Juno-106](https://juno-106.js.org/)** ⭐ **Best for Beginners**
+- Faithful emulation of the iconic Roland Juno-106
+- Warm, lush analog sound that's universally loved
+- Simple, intuitive interface
+- Perfect for pads, strings, and classic synth sounds
+- Instant gratification, zero learning curve
 
-**[Chris Wilson's MIDI Synth](https://webaudiodemos.appspot.com/midi-synth/index.html)**
-- Clean, responsive interface
-- Low latency, great for real-time performance
-- Part of Google's WebAudio demos
-- **[GitHub](https://github.com/cwilso/midi-synth)**
+#### Full-Featured Synthesis
 
-#### Creative & Experimental
-
-**[g200kg TinySynth](https://g200kg.github.io/webaudio-tinysynth/soundedit.html)**
-- Lightweight, algorithmically-generated timbres
-- GM-compatible sound map
-- No sample loading, instant start
-- Great for lo-fi/chiptune aesthetics
+**[Cardboard Synth](https://www.gsn-lib.org/apps/cardboardsynth/index.html)**
+- Complete subtractive synthesizer with extensive controls
+- Multiple oscillators, filters, envelopes, and LFOs
+- Great for sound design and experimentation
+- More flexibility than basic synths
+- Modern, responsive interface
 
 **[FM Synthesizer](https://notes.ameo.design/fm.html)**
-- 6-operator FM synthesis (like DX7)
-- Deep sound design capabilities
-- Perfect for bell-like, metallic tones
+- 6-operator FM synthesis (like Yamaha DX7)
+- Deep sound design capabilities for complex timbres
+- Perfect for bell-like, metallic, and evolving tones
+- Advanced users who want maximum flexibility
 
 **[DX7 Synth JS](https://mmontag.github.io/dx7-synth-js/)**
 - Authentic Yamaha DX7 emulation
