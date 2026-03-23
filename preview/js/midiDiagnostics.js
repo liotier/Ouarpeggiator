@@ -24,11 +24,11 @@ const MAX_LOG_ENTRIES = 100;
 export function initMIDIDiagnostics() {
     updateAllStatus();
     bindEventHandlers();
-    populateTroubleshootingTips();
+    updateTroubleshootingTips('default');
     log('MIDI Diagnostics initialized', 'info');
 }
 
-function populateTroubleshootingTips() {
+function updateTroubleshootingTips(situation = 'default') {
     const helpDiv = document.querySelector('.diagnostic-help ul');
     if (!helpDiv) return;
 
@@ -40,25 +40,50 @@ function populateTroubleshootingTips() {
     // Determine OS-specific virtual MIDI advice
     let virtualMIDITip = '';
     if (isWindows) {
-        virtualMIDITip = 'Try virtual MIDI ports: loopMIDI (Windows)';
+        virtualMIDITip = 'loopMIDI (Windows)';
     } else if (isMac) {
-        virtualMIDITip = 'Try virtual MIDI ports: IAC Driver (macOS, built-in)';
+        virtualMIDITip = 'IAC Driver (macOS, built-in)';
     } else if (isLinux) {
-        virtualMIDITip = 'Try virtual MIDI ports: virmidi (Linux)';
+        virtualMIDITip = 'virmidi (Linux)';
     } else {
-        // Ambiguous user agent - show all options
-        virtualMIDITip = 'Try virtual MIDI ports: loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)';
+        virtualMIDITip = 'loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)';
     }
 
-    // Build OS-specific tip list
-    helpDiv.innerHTML = `
-        <li>Ensure MIDI devices are physically connected and powered on</li>
-        <li>Check that MIDI drivers are installed and running</li>
-        <li>${virtualMIDITip}</li>
-        <li>Reload the page after connecting/configuring devices</li>
-        <li>Check browser site permissions for MIDI access</li>
-        <li>WebMIDI requires secure context (HTTPS or localhost)</li>
-    `;
+    // Build situation-specific tip list
+    let tips = '';
+
+    if (situation === 'firefox-no-devices') {
+        // Firefox requires MIDI devices to grant permission
+        tips = `
+            <li><strong>🔧 Quick Fix:</strong> Install a virtual MIDI device: ${virtualMIDITip}</li>
+            <li>Restart Firefox completely after installing</li>
+            <li><strong>Alternative:</strong> Use Chrome/Edge (works without devices)</li>
+            <li><strong>Why?</strong> Firefox requires MIDI devices for permission grant (privacy protection)</li>
+            <li>The virtual device satisfies the check but doesn't need to be used</li>
+            <li>Pure browser-to-browser MIDI will work after permission is granted</li>
+        `;
+    } else if (situation === 'permission-denied') {
+        // Permission denied or init failed
+        tips = `
+            <li>Check browser site settings for MIDI permissions</li>
+            <li>Ensure MIDI devices are connected before requesting permission</li>
+            <li>Try virtual MIDI ports: ${virtualMIDITip}</li>
+            <li>Reload the page after connecting/configuring devices</li>
+            <li>Try restarting your browser</li>
+        `;
+    } else {
+        // Default tips
+        tips = `
+            <li>Ensure MIDI devices are physically connected and powered on</li>
+            <li>Check that MIDI drivers are installed and running</li>
+            <li>Try virtual MIDI ports: ${virtualMIDITip}</li>
+            <li>Reload the page after connecting/configuring devices</li>
+            <li>Check browser site permissions for MIDI access</li>
+            <li>WebMIDI requires secure context (HTTPS or localhost)</li>
+        `;
+    }
+
+    helpDiv.innerHTML = tips;
 }
 
 // ============================================================================
@@ -273,80 +298,24 @@ async function handleRequestPermission() {
 
 function detectBrowserIssues() {
     const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isWindows = userAgent.includes('win');
-    const isLinux = userAgent.includes('linux');
-    const isMac = userAgent.includes('mac');
 
-    // Debug: Log ambiguous user agents (corporate proxies)
-    const osCount = (isWindows ? 1 : 0) + (isLinux ? 1 : 0) + (isMac ? 1 : 0);
-    if (osCount !== 1) {
-        console.log('[MIDI Diagnostics] Ambiguous OS detection:', {
-            userAgent: navigator.userAgent,
-            flags: { Windows: isWindows, Linux: isLinux, Mac: isMac }
-        });
-    }
+    // Debug logging only
+    console.log('[MIDI Diagnostics] Browser issue detected:', {
+        browser: isFirefox ? 'Firefox' : 'Other',
+        userAgent: navigator.userAgent
+    });
 
-    // Firefox-specific no devices issue
+    // Log what's happening (diagnostics only)
     if (isFirefox) {
-        // LEVEL 1: Quick Fix
-        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-        log('🔧 QUICK FIX - Choose one:', 'warning');
-
-        // OS-specific instructions
-        if (isWindows) {
-            log('  1. Install loopMIDI (free virtual MIDI cable)', 'info');
-            log('     → Download from tobias-erichsen.de', 'info');
-            log('  2. Restart Firefox completely', 'info');
-        } else if (isLinux) {
-            log('  1. Enable virmidi: sudo modprobe snd-virmidi', 'info');
-            log('  2. Restart Firefox completely', 'info');
-        } else if (isMac) {
-            log('  1. Enable IAC Driver (Audio MIDI Setup app)', 'info');
-            log('  2. Restart Firefox completely', 'info');
-        } else {
-            log('  1. Install a virtual MIDI device for your OS', 'info');
-            log('  2. Restart Firefox completely', 'info');
-        }
-
-        log('  OR use Chrome/Edge (works without devices)', 'info');
-        log('', 'info');
-
-        // LEVEL 2: Understanding
-        log('📖 WHAT\'S HAPPENING:', 'info');
-        log('  Firefox blocks MIDI if no devices are detected', 'info');
-        log('  (even for browser-only, tab-to-tab MIDI)', 'info');
-        log('', 'info');
-
-        // LEVEL 3: Deep Dive
-        log('🎓 WHY THIS HAPPENS:', 'info');
-        log('  Firefox checks for MIDI devices before granting access', 'info');
-        log('  as a privacy/fingerprinting protection measure.', 'info');
-        log('  Chrome/Edge are more permissive for development.', 'info');
-        log('  The virtual device satisfies the check but doesn\'t', 'info');
-        log('  need to be used - pure browser MIDI still works !', 'info');
-        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
-        return;
-    }
-
-    // Generic advice for other browsers
-    log('💡 Troubleshooting:', 'info');
-    log('  • Check browser site settings for MIDI permissions', 'info');
-    log('  • Ensure MIDI devices are connected before requesting permission', 'info');
-
-    // OS-specific virtual MIDI recommendations
-    if (isWindows) {
-        log('  • Try virtual MIDI ports: loopMIDI (Windows)', 'info');
-    } else if (isMac) {
-        log('  • Try virtual MIDI ports: IAC Driver (macOS, built-in)', 'info');
-    } else if (isLinux) {
-        log('  • Try virtual MIDI ports: virmidi (Linux)', 'info');
+        log('⚠️ Firefox requires MIDI devices for permission grant', 'warning');
+        log('   (even for browser-only, tab-to-tab MIDI)', 'info');
+        // Update troubleshooting frame with Firefox-specific advice
+        updateTroubleshootingTips('firefox-no-devices');
     } else {
-        // Ambiguous user agent - show all options
-        log('  • Try virtual MIDI ports: loopMIDI / IAC Driver / virmidi', 'info');
+        log('⚠️ MIDI initialization failed', 'warning');
+        // Update troubleshooting frame with generic advice
+        updateTroubleshootingTips('permission-denied');
     }
-
-    log('  • Try restarting your browser', 'info');
 }
 
 function handleTestOutput() {
