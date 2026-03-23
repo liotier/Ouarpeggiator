@@ -244,21 +244,43 @@ function detectBrowserIssues(error) {
 
     // Firefox-specific no devices issue
     if (isFirefox) {
-        log('⚠️ Firefox Security: Blocks MIDI access if no devices found', 'warning');
-        log('💡 Firefox requires at least one MIDI device (even for tab-to-tab MIDI)', 'info');
+        // LEVEL 1: Quick Fix
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
+        log('🔧 QUICK FIX - Choose one:', 'warning');
 
         // OS-specific instructions
         if (isWindows) {
-            log('  • Install loopMIDI (virtual MIDI cable) and restart Firefox', 'info');
+            log('  1. Install loopMIDI (free virtual MIDI cable)', 'info');
+            log('     → Download from tobias-erichsen.de', 'info');
+            log('  2. Restart Firefox completely', 'info');
         } else if (isLinux) {
-            log('  • Enable virmidi: sudo modprobe snd-virmidi and restart Firefox', 'info');
+            log('  1. Enable virmidi: sudo modprobe snd-virmidi', 'info');
+            log('  2. Restart Firefox completely', 'info');
         } else if (isMac) {
-            log('  • Use IAC Driver (built-in virtual MIDI) and restart Firefox', 'info');
+            log('  1. Enable IAC Driver (Audio MIDI Setup app)', 'info');
+            log('  2. Restart Firefox completely', 'info');
         } else {
-            log('  • Install a virtual MIDI device and restart Firefox', 'info');
+            log('  1. Install a virtual MIDI device for your OS', 'info');
+            log('  2. Restart Firefox completely', 'info');
         }
 
-        log('  • Alternative: Use Chrome/Edge (permit MIDI without devices)', 'info');
+        log('  OR use Chrome/Edge (works without devices)', 'info');
+        log('', 'info');
+
+        // LEVEL 2: Understanding
+        log('📖 WHAT\'S HAPPENING:', 'info');
+        log('  Firefox blocks MIDI if no devices are detected', 'info');
+        log('  (even for browser-only, tab-to-tab MIDI)', 'info');
+        log('', 'info');
+
+        // LEVEL 3: Deep Dive
+        log('🎓 WHY THIS HAPPENS:', 'info');
+        log('  Firefox checks for MIDI devices before granting access', 'info');
+        log('  as a privacy/fingerprinting protection measure.', 'info');
+        log('  Chrome/Edge are more permissive for development.', 'info');
+        log('  The virtual device satisfies the check but doesn\'t', 'info');
+        log('  need to be used - pure browser MIDI still works!', 'info');
+        log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
         return;
     }
 
