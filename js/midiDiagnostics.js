@@ -214,15 +214,13 @@ async function handleRequestPermission() {
     }
 
     try {
-        await navigator.requestMIDIAccess({ sysex: false });
-        log('✓ MIDI permission granted', 'success');
-
-        // Update the MIDI module's access object
-        // Note: This is a workaround - ideally the MIDI module should expose a way to update access
-        setTimeout(() => {
+        const access = await MIDI.initMIDI();
+        if (access) {
+            log('✓ MIDI permission granted and initialized', 'success');
             updateAllStatus();
-        }, 100);
-
+        } else {
+            log('❌ Failed to initialize MIDI', 'error');
+        }
     } catch (error) {
         log(`❌ MIDI permission denied: ${error.message}`, 'error');
         log('💡 Check browser site settings for MIDI permissions', 'warning');
