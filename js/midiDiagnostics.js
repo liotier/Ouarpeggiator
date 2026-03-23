@@ -279,7 +279,7 @@ function detectBrowserIssues(error) {
         log('  as a privacy/fingerprinting protection measure.', 'info');
         log('  Chrome/Edge are more permissive for development.', 'info');
         log('  The virtual device satisfies the check but doesn\'t', 'info');
-        log('  need to be used - pure browser MIDI still works!', 'info');
+        log('  need to be used - pure browser MIDI still works !', 'info');
         log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'info');
         return;
     }
