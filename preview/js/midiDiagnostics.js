@@ -242,12 +242,13 @@ function detectBrowserIssues(error) {
     const isLinux = userAgent.includes('linux');
     const isMac = userAgent.includes('mac');
 
-    // Debug: Log when multiple or no OS detected (ambiguous UA)
+    // Debug: Log ambiguous user agents (corporate proxies)
     const osCount = (isWindows ? 1 : 0) + (isLinux ? 1 : 0) + (isMac ? 1 : 0);
     if (osCount !== 1) {
-        log(`🔍 Ambiguous User Agent detected:`, 'info');
-        log(`   "${navigator.userAgent.substring(0, 80)}..."`, 'info');
-        log(`   OS flags: Windows=${isWindows} Linux=${isLinux} Mac=${isMac}`, 'info');
+        console.log('[MIDI Diagnostics] Ambiguous OS detection:', {
+            userAgent: navigator.userAgent,
+            flags: { Windows: isWindows, Linux: isLinux, Mac: isMac }
+        });
     }
 
     // Firefox-specific no devices issue
@@ -296,6 +297,19 @@ function detectBrowserIssues(error) {
     log('💡 Troubleshooting:', 'info');
     log('  • Check browser site settings for MIDI permissions', 'info');
     log('  • Ensure MIDI devices are connected before requesting permission', 'info');
+
+    // OS-specific virtual MIDI recommendations
+    if (isWindows) {
+        log('  • Try virtual MIDI ports: loopMIDI (Windows)', 'info');
+    } else if (isMac) {
+        log('  • Try virtual MIDI ports: IAC Driver (macOS, built-in)', 'info');
+    } else if (isLinux) {
+        log('  • Try virtual MIDI ports: virmidi (Linux)', 'info');
+    } else {
+        // Ambiguous user agent - show all options
+        log('  • Try virtual MIDI ports: loopMIDI / IAC Driver / virmidi', 'info');
+    }
+
     log('  • Try restarting your browser', 'info');
 }
 
