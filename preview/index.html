@@ -399,117 +399,144 @@
             <!-- Piano Roll Visualization -->
             <div id="pianoRollContainer" class="piano-roll-container"></div>
 
-            <!-- Timing Controls -->
-            <div class="control-row">
-                <div class="filter-group">
-                    <label>BPM: <span id="bpmValue">120</span></label>
-                    <input type="range" id="bpmSlider" min="40" max="240" value="120">
-                </div>
-                <div class="filter-group">
-                    <label>Bars per Chord</label>
-                    <div class="button-group">
-                        <button class="bars-btn" data-value="1">1</button>
-                        <button class="bars-btn" data-value="2">2</button>
-                        <button class="bars-btn active" data-value="4">4</button>
-                        <button class="bars-btn" data-value="8">8</button>
+            <!-- Two-Column Controls Layout -->
+            <div class="controls-grid">
+                <!-- LEFT COLUMN -->
+                <div class="controls-column">
+                    <!-- Transport & BPM -->
+                    <div class="variation-subsection">
+                        <div class="control-row transport">
+                            <button class="primary" id="startBtn">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <polygon points="5,3 19,12 5,21"/>
+                                </svg>
+                                Start
+                            </button>
+                            <button id="stopBtn" disabled>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <rect x="4" y="4" width="16" height="16"/>
+                                </svg>
+                                Stop
+                            </button>
+                            <div id="clockStatus" class="clock-status">Stopped</div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>BPM: <span id="bpmValue">120</span></label>
+                                <input type="range" id="bpmSlider" min="40" max="240" value="120">
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="filter-group">
-                    <label>Humanize: <span id="humanizationValue">0</span>ms</label>
-                    <input type="range" id="humanization" min="0" max="50" value="0">
-                </div>
-            </div>
 
-            <!-- Transport -->
-            <div class="control-row transport">
-                <button class="primary" id="startBtn">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                        <polygon points="5,3 19,12 5,21"/>
-                    </svg>
-                    Start
-                </button>
-                <button id="stopBtn" disabled>
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                        <rect x="4" y="4" width="16" height="16"/>
-                    </svg>
-                    Stop
-                </button>
-                <div id="clockStatus" class="clock-status">Stopped</div>
-            </div>
+                    <!-- Chord Variation -->
+                    <div class="variation-subsection">
+                        <h3>Chord Variation</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
+                                <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
+                            </div>
+                        </div>
+                    </div>
 
-            <!-- Chord Variation Controls -->
-            <div class="variation-subsection">
-                <h3>Chord Variation</h3>
-                <div class="control-row">
-                    <div class="filter-group">
-                        <label>Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
-                        <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
+                    <!-- Note Variation -->
+                    <div class="variation-subsection" id="noteVariationSection">
+                        <h3>Note Variation</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Note Substitution: <span id="harmonicValue">0%</span></label>
+                                <input type="range" id="harmonicVariation" min="0" max="100" value="0" title="Probability of replacing a note with one from the progression pool">
+                            </div>
+                        </div>
+                        <!-- Chord Stab specific controls (shown only in stab mode) -->
+                        <div class="control-row stab-controls" id="stabControls" style="display: none;">
+                            <div class="filter-group">
+                                <label>Strum Speed: <span id="strumSpeedValue">0</span>ms</label>
+                                <input type="range" id="strumSpeed" min="0" max="100" value="0" title="Delay between notes in a chord stab. 0 = instant, 100 = spread arpeggio-like">
+                            </div>
+                            <div class="filter-group">
+                                <label>Strum Direction</label>
+                                <div class="button-group">
+                                    <button class="strum-btn active" data-value="up">Up</button>
+                                    <button class="strum-btn" data-value="down">Down</button>
+                                    <button class="strum-btn" data-value="alternating">Alt</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Note Variation Controls - Disabled in Chord Stab mode -->
-            <div class="variation-subsection" id="noteVariationSection">
-                <h3>Note Variation</h3>
-                <div class="control-row">
-                    <div class="filter-group">
-                        <label>Note Substitution: <span id="harmonicValue">0%</span></label>
-                        <input type="range" id="harmonicVariation" min="0" max="100" value="0" title="Probability of replacing a note with one from the progression pool">
-                    </div>
-                    <div class="filter-group">
-                        <label>Rhythmic Variation: <span id="rhythmicValue">0%</span></label>
-                        <input type="range" id="rhythmicVariation" min="0" max="100" value="0" title="Probability of inserting a rest instead of playing">
-                    </div>
-                    <div class="filter-group">
-                        <label>Voice Leading</label>
-                        <div class="button-group">
-                            <button class="voice-btn active" data-value="smooth">Smooth</button>
-                            <button class="voice-btn" data-value="far">Far</button>
-                            <button class="voice-btn" data-value="none">None</button>
+                    <!-- Voice Leading -->
+                    <div class="variation-subsection">
+                        <h3>Voice Leading</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Mode</label>
+                                <div class="button-group">
+                                    <button class="voice-btn active" data-value="smooth">Smooth</button>
+                                    <button class="voice-btn" data-value="far">Far</button>
+                                    <button class="voice-btn" data-value="none">None</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <!-- Chord Stab specific controls (shown only in stab mode) -->
-                <div class="control-row stab-controls" id="stabControls" style="display: none;">
-                    <div class="filter-group">
-                        <label>Strum Speed: <span id="strumSpeedValue">0</span>ms</label>
-                        <input type="range" id="strumSpeed" min="0" max="100" value="0" title="Delay between notes in a chord stab. 0 = instant, 100 = spread arpeggio-like">
-                    </div>
-                    <div class="filter-group">
-                        <label>Strum Direction</label>
-                        <div class="button-group">
-                            <button class="strum-btn active" data-value="up">Up</button>
-                            <button class="strum-btn" data-value="down">Down</button>
-                            <button class="strum-btn" data-value="alternating">Alt</button>
+
+                <!-- RIGHT COLUMN -->
+                <div class="controls-column">
+                    <!-- Timing & Humanization -->
+                    <div class="variation-subsection">
+                        <h3>Timing & Humanization</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Bars per Chord</label>
+                                <div class="button-group">
+                                    <button class="bars-btn" data-value="1">1</button>
+                                    <button class="bars-btn" data-value="2">2</button>
+                                    <button class="bars-btn active" data-value="4">4</button>
+                                    <button class="bars-btn" data-value="8">8</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Humanize: <span id="humanizationValue">0</span>ms</label>
+                                <input type="range" id="humanization" min="0" max="50" value="0">
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Rhythmic Variation: <span id="rhythmicValue">0%</span></label>
+                                <input type="range" id="rhythmicVariation" min="0" max="100" value="0" title="Probability of inserting a rest instead of playing">
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Velocity/Gate Controls -->
-            <div class="variation-subsection">
-                <h3>Velocity & Gate</h3>
-                <div class="control-row">
-                    <div class="filter-group">
-                        <label>Velocity Mode</label>
-                        <select id="velocityMode" title="How velocity changes across the pattern">
-                            <option value="fixed" title="Same velocity for all notes">Fixed</option>
-                            <option value="random" title="Random velocity for each note within range">Random</option>
-                            <option value="curve" title="Velocity follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
-                        </select>
+                    <!-- Velocity & Gate -->
+                    <div class="variation-subsection">
+                        <h3>Velocity & Gate</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Velocity Mode</label>
+                                <select id="velocityMode" title="How velocity changes across the pattern">
+                                    <option value="fixed" title="Same velocity for all notes">Fixed</option>
+                                    <option value="random" title="Random velocity for each note within range">Random</option>
+                                    <option value="curve" title="Velocity follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
+                                </select>
+                            </div>
+                            <div id="velocityControls" class="dynamic-controls"></div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>Gate Mode</label>
+                                <select id="gateMode" title="How note duration changes across the pattern">
+                                    <option value="fixed" title="Same gate length for all notes">Fixed</option>
+                                    <option value="random" title="Random gate length for each note within range">Random</option>
+                                    <option value="curve" title="Gate length follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
+                                </select>
+                            </div>
+                            <div id="gateControls" class="dynamic-controls"></div>
+                        </div>
                     </div>
-                    <div id="velocityControls" class="dynamic-controls"></div>
-                </div>
-                <div class="control-row">
-                    <div class="filter-group">
-                        <label>Gate Mode</label>
-                        <select id="gateMode" title="How note duration changes across the pattern">
-                            <option value="fixed" title="Same gate length for all notes">Fixed</option>
-                            <option value="random" title="Random gate length for each note within range">Random</option>
-                            <option value="curve" title="Gate length follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
-                        </select>
-                    </div>
-                    <div id="gateControls" class="dynamic-controls"></div>
                 </div>
             </div>
         </section>
