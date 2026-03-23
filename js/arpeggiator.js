@@ -152,7 +152,18 @@ function isChordStabMode(state) {
  */
 function calculateVelocity(state) {
     const config = state.velocity;
-    const progress = state.euclideanStepIndex / state.euclidean.steps;
+
+    // Calculate progress (0-1 across pattern)
+    let progress;
+    if (state.curveSyncRotation && config.mode === 'curve') {
+        // Rotation-aware: curve starts at rotation offset (triggered mode)
+        const steps = state.euclidean.steps;
+        const rotation = state.euclidean.rotation || 0;
+        progress = ((state.euclideanStepIndex - rotation + steps) % steps) / steps;
+    } else {
+        // Free-running: curve progresses linearly 0→steps
+        progress = state.euclideanStepIndex / state.euclidean.steps;
+    }
 
     let velocity;
 
@@ -196,7 +207,18 @@ function calculateVelocity(state) {
  */
 function calculateGateLength(state, stepDuration) {
     const config = state.gate;
-    const progress = state.euclideanStepIndex / state.euclidean.steps;
+
+    // Calculate progress (0-1 across pattern)
+    let progress;
+    if (state.curveSyncRotation && config.mode === 'curve') {
+        // Rotation-aware: curve starts at rotation offset (triggered mode)
+        const steps = state.euclidean.steps;
+        const rotation = state.euclidean.rotation || 0;
+        progress = ((state.euclideanStepIndex - rotation + steps) % steps) / steps;
+    } else {
+        // Free-running: curve progresses linearly 0→steps
+        progress = state.euclideanStepIndex / state.euclidean.steps;
+    }
 
     let percentage;
 
