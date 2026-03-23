@@ -538,7 +538,8 @@ function generateProgression() {
                 rows1to3,
                 key,
                 scaleDegrees,
-                variantType.name
+                variantType.name,
+                'Major'
             );
 
             // Convert Row 4 candidates to chord format
