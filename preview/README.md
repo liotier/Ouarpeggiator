@@ -156,7 +156,7 @@ Chords are specified as JSON arrays of MIDI note numbers:
 
 **No MIDI devices appearing?** Ouarpeggiator includes built-in diagnostics:
 
-1. **Open "MIDI Diagnostics"** section (collapsible panel above arpeggiator)
+1. **Open "MIDI Diagnostics"** section (collapsible panel above footer)
 2. **Check status indicators**:
    - ✓ WebMIDI API Available?
    - ✓ Initialized successfully?
@@ -167,6 +167,8 @@ Chords are specified as JSON arrays of MIDI note numbers:
    - Click **"Refresh Devices"** to rescan
    - Click **"Request MIDI Permission"** to re-authorize
    - Click **"Send Test Note"** to verify output works
+
+**Want to see exactly what MIDI messages are being sent?** Use **[MIDI Monitor](https://www.midimonitor.com/)** - open it in another tab to visualize all MIDI traffic in real-time. Invaluable for debugging!
 5. **Check Event Log** - real-time MIDI activity with timestamps
 
 **Common fixes**:
@@ -235,10 +237,12 @@ Transform your browser into a complete music workstation! No hardware required.
 
 ### 🔍 Monitoring & Debugging
 
-**[MIDI Monitor](https://www.midimonitor.com/)**
-- Visualize MIDI messages in real-time
-- Essential for troubleshooting
-- Shows note data, CC, clock, sysex
+**[MIDI Monitor](https://www.midimonitor.com/)** ⭐ **Highly Recommended**
+- Real-time visualization of all MIDI messages flowing through your browser
+- Easy to use, incredibly informative for debugging Ouarpeggiator
+- Shows notes, velocity, timing, CC, clock, sysex - everything
+- Perfect for understanding exactly what's being generated and sent
+- Open in a tab alongside Ouarpeggiator to see your arpeggio patterns in action
 
 **[WebMIDI Test](https://arachsys.github.io/webmidi/)**
 - Comprehensive MIDI I/O testing
