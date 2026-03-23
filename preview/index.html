@@ -439,20 +439,20 @@
                 <div id="clockStatus" class="clock-status">Stopped</div>
             </div>
 
-            <!-- Chord Variation Controls (Collapsible) -->
-            <details class="variation-section chord-variation-section" open>
-                <summary>Chord Variation</summary>
+            <!-- Chord Variation Controls -->
+            <div class="variation-subsection">
+                <h3>Chord Variation</h3>
                 <div class="control-row">
                     <div class="filter-group">
                         <label>Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
                         <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
                     </div>
                 </div>
-            </details>
+            </div>
 
-            <!-- Note Variation Controls (Collapsible) - Disabled in Chord Stab mode -->
-            <details class="variation-section note-variation-section" id="noteVariationSection">
-                <summary>Note Variation</summary>
+            <!-- Note Variation Controls - Disabled in Chord Stab mode -->
+            <div class="variation-subsection" id="noteVariationSection">
+                <h3>Note Variation</h3>
                 <div class="control-row">
                     <div class="filter-group">
                         <label>Note Substitution: <span id="harmonicValue">0%</span></label>
@@ -486,11 +486,11 @@
                         </div>
                     </div>
                 </div>
-            </details>
+            </div>
 
-            <!-- Velocity/Gate Controls (Collapsible) -->
-            <details class="output-section">
-                <summary>Velocity & Gate</summary>
+            <!-- Velocity/Gate Controls -->
+            <div class="variation-subsection">
+                <h3>Velocity & Gate</h3>
                 <div class="control-row">
                     <div class="filter-group">
                         <label>Velocity Mode</label>
@@ -513,7 +513,7 @@
                     </div>
                     <div id="gateControls" class="dynamic-controls"></div>
                 </div>
-            </details>
+            </div>
         </section>
 
         <!-- MIDI Diagnostics Section -->

@@ -1044,15 +1044,19 @@ button:disabled {
 
 /* Output Section (above Arpeggiator) */
 .output-section-main {
-    background: var(--bg-light);
+    background: white;
+    border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px;
     margin-bottom: 24px;
 }
 
 .output-section-main h2 {
+    font-size: 18px;
+    font-weight: 600;
     margin: 0 0 16px 0;
-    font-size: 1.25rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
 }
 
 .output-controls-grid {
@@ -1198,47 +1202,34 @@ button:disabled {
 }
 
 /* Note Variation disabled state (for Chord Stab mode) */
-.note-variation-section.disabled {
+#noteVariationSection.disabled {
     opacity: 0.5;
     pointer-events: none;
 }
 
-.note-variation-section.disabled summary {
-    color: var(--muted);
-}
-
-.note-variation-section.disabled summary::after {
+#noteVariationSection.disabled h3::after {
     content: " (Arpeggio mode only)";
     font-size: 12px;
     font-weight: normal;
+    color: var(--muted);
 }
 
-/* Collapsible sections */
-.variation-section,
-.output-section {
+/* Variation subsections within Arpeggiator */
+.variation-subsection {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.variation-subsection:first-of-type {
     margin-top: 16px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
 }
 
-.variation-section summary,
-.output-section summary {
-    padding: 12px 16px;
-    cursor: pointer;
-    font-weight: 500;
-    background: var(--pad-bg);
-    border-radius: var(--radius);
-}
-
-.variation-section[open] summary,
-.output-section[open] summary {
-    border-bottom: 1px solid var(--border);
-    border-radius: var(--radius) var(--radius) 0 0;
-}
-
-.variation-section .control-row,
-.output-section .control-row {
-    padding: 16px;
+.variation-subsection h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: var(--text);
 }
 
 .dynamic-controls {
