@@ -2483,7 +2483,7 @@ function parseProgression(progressionString) {
             // We'll return a special marker and handle it in generateProgressionChords
             return {
                 degree: targetDegree,
-                quality: isV7 ? 'dom7' : 'dom7', // Always dominant 7th for secondary dominants
+                quality: 'dom7', // Always dominant 7th for secondary dominants
                 alteration: '',
                 isSecondaryDominant: true,
                 targetDegree: targetDegree,

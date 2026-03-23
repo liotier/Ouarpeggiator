@@ -333,7 +333,7 @@ function updateTransportButtons(isPlaying) {
 /**
  * Bind variation control elements
  */
-function bindVariationControls(state) {
+function bindVariationControls(state, callbacks) {
     const harmonicSlider = document.getElementById('harmonic-variation');
     const rhythmicSlider = document.getElementById('rhythmic-variation');
     const voiceButtons = document.querySelectorAll('.voice-btn');
@@ -382,7 +382,7 @@ function bindVariationControls(state) {
 /**
  * Bind output control elements
  */
-function bindOutputControls(state) {
+function bindOutputControls(state, callbacks) {
     const velocityMode = document.getElementById('velocity-mode');
     const gateMode = document.getElementById('gate-mode');
 

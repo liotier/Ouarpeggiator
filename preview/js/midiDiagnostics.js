@@ -214,7 +214,7 @@ async function handleRequestPermission() {
     }
 
     try {
-        const access = await navigator.requestMIDIAccess({ sysex: false });
+        await navigator.requestMIDIAccess({ sysex: false });
         log('✓ MIDI permission granted', 'success');
 
         // Update the MIDI module's access object
