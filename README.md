@@ -29,14 +29,6 @@
 
 > 💡 **Pro Tip**: Both tabs must use the same browser. Chromium, Edge, or Firefox recommended for best WebMIDI support.
 
-### 🎹 Virtual MIDI Setup (Optional)
-
-For routing between apps or using desktop synths, set up virtual MIDI ports:
-
-- **Windows**: [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) (free)
-- **macOS**: IAC Driver (built-in, enable in Audio MIDI Setup)
-- **Linux**: `virmidi` kernel module or JACK
-
 ## What is Ouarpeggiator?
 
 Unlike typical arpeggiators that arpeggiate individual chords, Ouarpeggiator arpeggiates **entire chord progressions**. It generates melodic lines that traverse harmonic structures over time, creating evolving patterns through chord changes.
@@ -133,19 +125,6 @@ Ouarpeggiator/
 
 > 💡 **First time?** Just click **Start** with default settings - you'll hear sound immediately via browser tone!
 
-### Chord Progression Format
-
-Chords are specified as JSON arrays of MIDI note numbers:
-
-```json
-[
-  [60, 64, 67],    // C major (C4, E4, G4)
-  [57, 60, 64],    // A minor (A3, C4, E4)
-  [65, 69, 72],    // F major (F4, A4, C5)
-  [62, 65, 69]     // D minor (D4, F4, A4)
-]
-```
-
 ### MIDI Clock Slave Mode
 
 1. Toggle "Clock Mode" to Slave
@@ -176,11 +155,6 @@ Chords are specified as JSON arrays of MIDI note numbers:
 - **Permission denied**: Check browser site settings, clear and re-grant
 - **Not secure context**: Use HTTPS or localhost (not HTTP)
 - **Browser not supported**: Use Chromium, Edge, or Firefox
-
-**Virtual MIDI Setup**:
-- **Windows**: Install [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html), create port, select in app
-- **macOS**: Audio MIDI Setup → MIDI Studio → IAC Driver → "Device is online"
-- **Linux**: `sudo modprobe snd-virmidi` or use JACK
 
 ## Euclidean Rhythm Examples
 
@@ -247,22 +221,6 @@ Transform your browser into a complete music workstation! No hardware required.
 **[WebMIDI Test](https://arachsys.github.io/webmidi/)**
 - Comprehensive MIDI I/O testing
 - Device enumeration and inspection
-
-### 💾 Advanced: SoundFont Players
-
-For the ultimate sound quality, use SoundFont-based players:
-
-- **[ResidentSf2Synth](https://github.com/notator/WebMIDISynthHost)** - Load custom .sf2 files
-- Compatible with professional soundfonts (Arachno, TimGM6mb, etc.)
-
-### 🎚️ Browser-Based DAWs
-
-Take it further with full production environments:
-
-- **[WebAudio Playground](https://webaudioplayground.appspot.com/)** - Visual patching
-- Track-based recording and MIDI sequencing
-
-> 💡 **Compatibility Note**: All tools above require WebMIDI API support. Use **Chromium**, **Edge**, or **Firefox** for best results. Firefox may require enabling `dom.webmidi.enabled` in `about:config`.
 
 ## License
 
