@@ -2464,7 +2464,6 @@ function parseProgression(progressionString) {
         const secondaryDominantMatch = chord.match(/^(V7?)\/([ivIV]+|♭?[IViv]+)$/);
         if (secondaryDominantMatch) {
             const targetNumeral = secondaryDominantMatch[2];
-            const isV7 = secondaryDominantMatch[1] === 'V7';
 
             // Map target numeral to degree
             const romanToNumber = {
