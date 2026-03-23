@@ -1229,6 +1229,13 @@ button:disabled {
 
 /* Variation subsections within Arpeggiator */
 .variation-subsection {
+    margin-top: 16px;
+    padding-top: 0;
+    border-top: none;
+}
+
+/* Only add separator when explicitly requested */
+.variation-subsection.with-separator {
     margin-top: 24px;
     padding-top: 16px;
     border-top: 1px solid var(--border);
@@ -1236,12 +1243,6 @@ button:disabled {
 
 .controls-column > .variation-subsection:first-child {
     margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-}
-
-.variation-subsection:first-of-type {
-    margin-top: 16px;
 }
 
 .variation-subsection h3 {
