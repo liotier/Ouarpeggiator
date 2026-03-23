@@ -63,6 +63,13 @@ function updateInitStatus() {
 
     if (!initialized && MIDI.isWebMIDIAvailable()) {
         log('⚠️ MIDI available but not initialized', 'warning');
+
+        // Show Firefox-specific warning
+        const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+        if (isFirefox) {
+            log('ℹ️ Firefox detected: May require MIDI devices to be connected first', 'info');
+            log('💡 Click "Request MIDI Permission" after connecting devices', 'info');
+        }
     }
 }
 
@@ -220,11 +227,33 @@ async function handleRequestPermission() {
             updateAllStatus();
         } else {
             log('❌ Failed to initialize MIDI', 'error');
+            detectBrowserIssues();
         }
     } catch (error) {
         log(`❌ MIDI permission denied: ${error.message}`, 'error');
-        log('💡 Check browser site settings for MIDI permissions', 'warning');
+        detectBrowserIssues(error);
     }
+}
+
+function detectBrowserIssues(error) {
+    const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
+    const errorMsg = error?.message?.toLowerCase() || '';
+
+    // Firefox-specific no devices issue
+    if (isFirefox) {
+        log('⚠️ Firefox detected - requires physical or virtual MIDI devices', 'warning');
+        log('💡 Solutions:', 'info');
+        log('  • Windows: Install loopMIDI and restart Firefox', 'info');
+        log('  • Linux: Enable virmidi kernel module and restart Firefox', 'info');
+        log('  • Alternative: Use Chrome/Edge (more permissive with MIDI)', 'info');
+        return;
+    }
+
+    // Generic advice for other browsers
+    log('💡 Troubleshooting:', 'info');
+    log('  • Check browser site settings for MIDI permissions', 'info');
+    log('  • Ensure MIDI devices are connected before requesting permission', 'info');
+    log('  • Try restarting your browser', 'info');
 }
 
 function handleTestOutput() {
