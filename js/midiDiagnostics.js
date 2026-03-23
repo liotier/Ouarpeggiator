@@ -237,15 +237,28 @@ async function handleRequestPermission() {
 
 function detectBrowserIssues(error) {
     const isFirefox = navigator.userAgent.toLowerCase().includes('firefox');
-    const errorMsg = error?.message?.toLowerCase() || '';
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isWindows = userAgent.includes('win');
+    const isLinux = userAgent.includes('linux');
+    const isMac = userAgent.includes('mac');
 
     // Firefox-specific no devices issue
     if (isFirefox) {
-        log('⚠️ Firefox detected - requires physical or virtual MIDI devices', 'warning');
-        log('💡 Solutions:', 'info');
-        log('  • Windows: Install loopMIDI and restart Firefox', 'info');
-        log('  • Linux: Enable virmidi kernel module and restart Firefox', 'info');
-        log('  • Alternative: Use Chrome/Edge (more permissive with MIDI)', 'info');
+        log('⚠️ Firefox Security: Blocks MIDI access if no devices found', 'warning');
+        log('💡 Firefox requires at least one MIDI device (even for tab-to-tab MIDI)', 'info');
+
+        // OS-specific instructions
+        if (isWindows) {
+            log('  • Install loopMIDI (virtual MIDI cable) and restart Firefox', 'info');
+        } else if (isLinux) {
+            log('  • Enable virmidi: sudo modprobe snd-virmidi and restart Firefox', 'info');
+        } else if (isMac) {
+            log('  • Use IAC Driver (built-in virtual MIDI) and restart Firefox', 'info');
+        } else {
+            log('  • Install a virtual MIDI device and restart Firefox', 'info');
+        }
+
+        log('  • Alternative: Use Chrome/Edge (permit MIDI without devices)', 'info');
         return;
     }
 
