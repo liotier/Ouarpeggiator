@@ -1042,7 +1042,26 @@ button:disabled {
     min-width: 150px;
 }
 
-/* Two Column Layout for Pattern and Output Controls */
+/* Output Section (above Arpeggiator) */
+.output-section-main {
+    background: var(--bg-light);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.output-section-main h2 {
+    margin: 0 0 16px 0;
+    font-size: 1.25rem;
+}
+
+.output-controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Two Column Layout for Euclidean Pattern Controls */
 .two-column-controls {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1050,11 +1069,16 @@ button:disabled {
     margin-bottom: 16px;
 }
 
-.pattern-controls-column,
-.output-controls-column {
+.pattern-controls-column {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.euclidean-circle-column {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Euclidean Circle Visualization */
@@ -1065,6 +1089,7 @@ button:disabled {
     padding: 16px;
     background: var(--bg);
     border-radius: var(--radius);
+    width: 100%;
 }
 
 .euclidean-circle-container canvas,
@@ -1292,6 +1317,22 @@ footer a:hover {
 
     .transport button {
         width: 100%;
+    }
+
+    /* Stack Output controls vertically on narrow viewports */
+    .output-controls-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Stack Euclidean controls: circle on top, then sliders */
+    .two-column-controls {
+        grid-template-columns: 1fr;
+    }
+
+    /* Move circle to top by reversing order */
+    .euclidean-circle-column {
+        order: -1;
+        margin-bottom: 16px;
     }
 }
 

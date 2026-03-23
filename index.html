@@ -325,78 +325,27 @@
             </div>
         </div>
 
-        <!-- MIDI Diagnostics Section -->
-        <section class="midi-diagnostics-section">
-            <details>
-                <summary>MIDI Diagnostics</summary>
-                <div class="diagnostics-content">
-                    <div class="diagnostic-row">
-                        <div class="diagnostic-item">
-                            <span class="diagnostic-label">WebMIDI API:</span>
-                            <span id="midiApiStatus" class="diagnostic-value">Checking...</span>
-                        </div>
-                        <div class="diagnostic-item">
-                            <span class="diagnostic-label">Initialized:</span>
-                            <span id="midiInitStatus" class="diagnostic-value">Checking...</span>
-                        </div>
-                        <div class="diagnostic-item">
-                            <span class="diagnostic-label">Permission:</span>
-                            <span id="midiPermissionStatus" class="diagnostic-value">Unknown</span>
-                        </div>
-                    </div>
-
-                    <div class="diagnostic-row">
-                        <div class="diagnostic-item">
-                            <span class="diagnostic-label">Secure Context:</span>
-                            <span id="secureContextStatus" class="diagnostic-value">Checking...</span>
-                        </div>
-                        <div class="diagnostic-item">
-                            <span class="diagnostic-label">Protocol:</span>
-                            <span id="protocolStatus" class="diagnostic-value">Checking...</span>
-                        </div>
-                    </div>
-
-                    <div class="diagnostic-section">
-                        <h4>MIDI Input Devices (<span id="inputDeviceCount">0</span>)</h4>
-                        <ul id="inputDeviceList" class="device-list">
-                            <li class="no-devices">No devices detected</li>
-                        </ul>
-                    </div>
-
-                    <div class="diagnostic-section">
-                        <h4>MIDI Output Devices (<span id="outputDeviceCount">0</span>)</h4>
-                        <ul id="outputDeviceList" class="device-list">
-                            <li class="no-devices">No devices detected</li>
-                        </ul>
-                    </div>
-
-                    <div class="diagnostic-actions">
-                        <button id="refreshMidiBtn" class="diagnostic-btn">Refresh Devices</button>
-                        <button id="requestMidiPermissionBtn" class="diagnostic-btn">Request MIDI Permission</button>
-                        <button id="testMidiOutputBtn" class="diagnostic-btn" disabled>Send Test Note (C4)</button>
-                    </div>
-
-                    <div class="diagnostic-section">
-                        <h4>Event Log</h4>
-                        <div id="midiEventLog" class="event-log">
-                            <div class="log-entry">Ready to diagnose MIDI...</div>
-                        </div>
-                        <button id="clearLogBtn" class="diagnostic-btn-small">Clear Log</button>
-                    </div>
-
-                    <div class="diagnostic-help">
-                        <strong>Troubleshooting Tips:</strong>
-                        <ul>
-                            <li>Ensure MIDI devices are physically connected and powered on</li>
-                            <li>Check that MIDI drivers are installed (Windows) or IAC Driver enabled (macOS)</li>
-                            <li>Try virtual MIDI ports: loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)</li>
-                            <li>Reload the page after connecting/configuring devices</li>
-                            <li>Check browser site permissions for MIDI access</li>
-                            <li>WebMIDI requires secure context (HTTPS or localhost)</li>
-                        </ul>
-                    </div>
+        <!-- Output Section -->
+        <section class="output-section-main">
+            <h2>Output</h2>
+            <div class="output-controls-grid">
+                <div class="filter-group">
+                    <label>Output</label>
+                    <select id="outputMode" title="Select audio output for chord preview and arpeggiator">
+                        <option value="audio">Browser tone</option>
+                        <!-- MIDI devices populated dynamically -->
+                    </select>
                 </div>
-            </details>
+                <div id="audioConfig" class="filter-group">
+                    <label>Waveform</label>
+                    <select id="synthWaveform">
+                        <option value="triangle">Triangle</option>
+                        <option value="sine">Sine</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="square">Square</option>
+                    </select>
+                </div>
+            </div>
         </section>
 
         <!-- Arpeggiator Section -->
@@ -415,15 +364,10 @@
                 </label>
             </div>
 
-            <!-- Pattern and Output Controls (Two Column Layout) -->
+            <!-- Euclidean Pattern Controls (Two Column Layout) -->
             <div class="two-column-controls">
-                <!-- Left Column: Pattern Controls -->
+                <!-- Left Column: Euclidean Sliders -->
                 <div class="pattern-controls-column">
-                    <!-- Euclidean Circle Visualization -->
-                    <div class="euclidean-circle-container">
-                        <canvas id="euclideanCircle"></canvas>
-                    </div>
-
                     <div class="filter-group">
                         <label>Steps: <span id="stepsValue">16</span></label>
                         <input type="range" id="stepsSlider" min="1" max="32" value="16">
@@ -438,23 +382,10 @@
                     </div>
                 </div>
 
-                <!-- Right Column: Output Controls -->
-                <div class="output-controls-column">
-                    <div class="filter-group">
-                        <label>Output</label>
-                        <select id="outputMode" title="Select audio output for chord preview and arpeggiator">
-                            <option value="audio">Browser tone</option>
-                            <!-- MIDI devices populated dynamically -->
-                        </select>
-                    </div>
-                    <div id="audioConfig" class="filter-group">
-                        <label>Waveform</label>
-                        <select id="synthWaveform">
-                            <option value="triangle">Triangle</option>
-                            <option value="sine">Sine</option>
-                            <option value="sawtooth">Sawtooth</option>
-                            <option value="square">Square</option>
-                        </select>
+                <!-- Right Column: Euclidean Circle Visualization -->
+                <div class="euclidean-circle-column">
+                    <div class="euclidean-circle-container">
+                        <canvas id="euclideanCircle"></canvas>
                     </div>
                 </div>
             </div>
@@ -581,6 +512,80 @@
                         </select>
                     </div>
                     <div id="gateControls" class="dynamic-controls"></div>
+                </div>
+            </details>
+        </section>
+
+        <!-- MIDI Diagnostics Section -->
+        <section class="midi-diagnostics-section">
+            <details>
+                <summary>MIDI Diagnostics</summary>
+                <div class="diagnostics-content">
+                    <div class="diagnostic-row">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">WebMIDI API:</span>
+                            <span id="midiApiStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Initialized:</span>
+                            <span id="midiInitStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Permission:</span>
+                            <span id="midiPermissionStatus" class="diagnostic-value">Unknown</span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-row">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Secure Context:</span>
+                            <span id="secureContextStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Protocol:</span>
+                            <span id="protocolStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>MIDI Input Devices (<span id="inputDeviceCount">0</span>)</h4>
+                        <ul id="inputDeviceList" class="device-list">
+                            <li class="no-devices">No devices detected</li>
+                        </ul>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>MIDI Output Devices (<span id="outputDeviceCount">0</span>)</h4>
+                        <ul id="outputDeviceList" class="device-list">
+                            <li class="no-devices">No devices detected</li>
+                        </ul>
+                    </div>
+
+                    <div class="diagnostic-actions">
+                        <button id="refreshMidiBtn" class="diagnostic-btn">Refresh Devices</button>
+                        <button id="requestMidiPermissionBtn" class="diagnostic-btn">Request MIDI Permission</button>
+                        <button id="testMidiOutputBtn" class="diagnostic-btn" disabled>Send Test Note (C4)</button>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>Event Log</h4>
+                        <div id="midiEventLog" class="event-log">
+                            <div class="log-entry">Ready to diagnose MIDI...</div>
+                        </div>
+                        <button id="clearLogBtn" class="diagnostic-btn-small">Clear Log</button>
+                    </div>
+
+                    <div class="diagnostic-help">
+                        <strong>Troubleshooting Tips:</strong>
+                        <ul>
+                            <li>Ensure MIDI devices are physically connected and powered on</li>
+                            <li>Check that MIDI drivers are installed (Windows) or IAC Driver enabled (macOS)</li>
+                            <li>Try virtual MIDI ports: loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)</li>
+                            <li>Reload the page after connecting/configuring devices</li>
+                            <li>Check browser site permissions for MIDI access</li>
+                            <li>WebMIDI requires secure context (HTTPS or localhost)</li>
+                        </ul>
+                    </div>
                 </div>
             </details>
         </section>

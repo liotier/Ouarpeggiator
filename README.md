@@ -20,7 +20,7 @@
 
 1. **Open Ouarpeggiator**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
 2. **Open a Web Synth in another tab** (pick one):
-   - **[Juno-106](https://juno-106.js.org/)** ⭐ **Recommended** - Classic analog sound, everybody loves the Juno 106!
+   - **[Juno-106](https://juno-106.js.org/)** ⭐ **Recommended** - Classic analog sound, everybody loves the Juno 106 !
    - **[Cardboard Synth](https://www.gsn-lib.org/apps/cardboardsynth/index.html)** - Full-featured subtractive synth with extensive controls
    - **[FM Synthesizer](https://notes.ameo.design/fm.html)** - 6-operator FM synthesis for complex, evolving timbres
 3. **Connect the two tabs**:
