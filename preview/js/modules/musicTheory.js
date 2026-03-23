@@ -2859,7 +2859,7 @@ function applyJazzVariantChordType(chordType, variantType) {
  * @param {string} variantType - Variant type
  * @returns {Array} - Candidate chords
  */
-export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, variantType) {
+export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, variantType, mode = 'Major') {
     const candidates = [];
 
     // Build set of diatonic pitch classes to avoid duplicating chords already in the mode
@@ -2944,7 +2944,7 @@ export function generateRow4Candidates(keyOffset, scaleDegrees, analysis, varian
     // Only add if IV is not already minor in the mode
     if (scaleDegrees.length > 3) {
         const fourth = scaleDegrees[3 % scaleDegrees.length];
-        const fourthQuality = getScaleDegreeQuality(4, keyOffset, mode);
+        const fourthQuality = getChordQualityForMode(3, mode);
         if (fourthQuality !== 'minor') {
             candidates.push({
                 root: fourth,
@@ -3163,9 +3163,9 @@ function scoreCandidate(candidate, analysis, existingRoots) {
  * @param {string} variantType - Variant type
  * @returns {Array} - Selected Row 4 chords
  */
-export function selectDynamicRow4Chords(existingChords, keyOffset, scaleDegrees, variantType) {
+export function selectDynamicRow4Chords(existingChords, keyOffset, scaleDegrees, variantType, mode = 'Major') {
     const analysis = analyzeExistingChords(existingChords);
-    const candidates = generateRow4Candidates(keyOffset, scaleDegrees, analysis, variantType);
+    const candidates = generateRow4Candidates(keyOffset, scaleDegrees, analysis, variantType, mode);
     const existingRoots = existingChords.map(c => c.notes && c.notes[0] ? c.notes[0] % 12 : 0);
 
     // Score and sort candidates
