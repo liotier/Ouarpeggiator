@@ -1176,7 +1176,6 @@ button:disabled {
     background: white;
     border-radius: var(--radius);
     border: 2px solid var(--border);
-    margin-bottom: 16px;
 }
 
 /* Strum controls in Chord Stab mode */

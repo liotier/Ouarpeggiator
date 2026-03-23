@@ -352,22 +352,22 @@
         <section class="arpeggiator-section">
             <h2>Arpeggiator</h2>
 
-            <!-- Playback Mode Toggle -->
-            <div class="playback-mode-toggle">
-                <label class="mode-option" id="arpeggioModeLabel">
-                    <input type="radio" name="playbackMode" value="arpeggio" id="arpeggioModeRadio" checked>
-                    <span>Arpeggio Mode</span>
-                </label>
-                <label class="mode-option" id="stabModeLabel">
-                    <input type="radio" name="playbackMode" value="stab" id="stabModeRadio">
-                    <span>Chord Stab Mode</span>
-                </label>
-            </div>
-
             <!-- Euclidean Pattern Controls (Two Column Layout) -->
             <div class="two-column-controls">
                 <!-- Left Column: Euclidean Sliders -->
                 <div class="pattern-controls-column">
+                    <!-- Playback Mode Toggle -->
+                    <div class="playback-mode-toggle">
+                        <label class="mode-option" id="arpeggioModeLabel">
+                            <input type="radio" name="playbackMode" value="arpeggio" id="arpeggioModeRadio" checked>
+                            <span>Arpeggio Mode</span>
+                        </label>
+                        <label class="mode-option" id="stabModeLabel">
+                            <input type="radio" name="playbackMode" value="stab" id="stabModeRadio">
+                            <span>Chord Stab Mode</span>
+                        </label>
+                    </div>
+
                     <div class="filter-group">
                         <label>Steps: <span id="stepsValue">16</span></label>
                         <input type="range" id="stepsSlider" min="1" max="32" value="16">
@@ -380,6 +380,12 @@
                         <label>Rotation: <span id="rotationValue">0</span></label>
                         <input type="range" id="rotationSlider" min="0" max="31" value="0">
                     </div>
+
+                    <!-- Octave Spread -->
+                    <div class="filter-group" id="octaveSpreadGroup">
+                        <label>Octave Spread: <span id="octaveValue">1</span></label>
+                        <input type="range" id="octaveSpread" min="1" max="4" value="1">
+                    </div>
                 </div>
 
                 <!-- Right Column: Euclidean Circle Visualization -->
@@ -387,14 +393,6 @@
                     <div class="euclidean-circle-container">
                         <canvas id="euclideanCircle"></canvas>
                     </div>
-                </div>
-            </div>
-
-            <!-- Octave Spread (below two-column section) -->
-            <div class="control-row">
-                <div class="filter-group" id="octaveSpreadGroup">
-                    <label>Octave Spread: <span id="octaveValue">1</span></label>
-                    <input type="range" id="octaveSpread" min="1" max="4" value="1">
                 </div>
             </div>
 
