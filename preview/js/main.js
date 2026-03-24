@@ -1086,6 +1086,7 @@ function stopPlayback() {
     appState.scheduledNotes.forEach(s => {
         clearTimeout(s.handle);
         if (MIDI.hasOutputDevice()) MIDI.sendNoteOff(s.note);
+        if (appState.outputMode === 'juno106') sendToJuno106({ type: 'noteOff', value: s.note });
     });
     appState.scheduledNotes = [];
 
@@ -1094,12 +1095,6 @@ function stopPlayback() {
         MIDI.stopAllNotes();
     }
     Audio.stopAllNotes();
-
-    if (appState.outputMode === 'juno106') {
-        appState.scheduledNotes.forEach(s => {
-            sendToJuno106({ type: 'noteOff', value: s.note });
-        });
-    }
 
     document.getElementById('startBtn').disabled = false;
     document.getElementById('stopBtn').disabled = true;
