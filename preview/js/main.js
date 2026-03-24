@@ -1760,7 +1760,7 @@ function renderChordChangeCircle() {
     const container = document.getElementById('chordChangeCircle');
     if (!container) return;
 
-    const { hits, steps, rotation, pattern } = appState.chordSequencing.euclidean;
+    const { hits, steps, pattern } = appState.chordSequencing.euclidean;
     const currentStep = appState.chordSequencing.stepIndex;
 
     // SVG parameters
