@@ -1013,7 +1013,10 @@ function renderPattern() {
 
 let masterClockInterval = null;
 let nextTickTime = 0;  // Next tick time in Web Audio clock time
-let scheduleAheadTime = 0.1;  // Schedule events 100ms ahead
+let scheduleAheadTime = 0.2;  // Schedule events 200ms ahead
+let schedulerLookahead = 25;  // How often to run scheduler (ms)
+let startTime = 0;  // When playback started (Web Audio time)
+let currentTick = 0;  // Current tick number
 
 function startPlayback() {
     if (appState.isPlaying) return;
@@ -1069,11 +1072,12 @@ function startPlayback() {
     // Initialize Web Audio clock-based timing
     const audioTime = Audio.getCurrentTime();
     if (audioTime !== null) {
-        nextTickTime = audioTime;  // Start immediately
+        startTime = audioTime;
+        nextTickTime = audioTime;
+        currentTick = 0;
     }
 
-    // Use setInterval at 25ms for scheduling (won't be throttled as badly)
-    // Even if throttled, Web Audio clock keeps accurate time
+    // Scheduler: Check frequently and schedule ticks ahead using setTimeout
     masterClockInterval = setInterval(() => {
         const audioTime = Audio.getCurrentTime();
 
@@ -1089,13 +1093,35 @@ function startPlayback() {
         // Schedule all ticks that should happen in the next scheduleAheadTime window
         const tickInterval = 60 / (appState.bpm * 24);  // in seconds
         while (nextTickTime < audioTime + scheduleAheadTime) {
-            if (MIDI.hasOutputDevice()) {
-                MIDI.sendClock();
-            }
-            handleClockTick();
+            scheduleTickAtTime(nextTickTime, currentTick);
             nextTickTime += tickInterval;
+            currentTick++;
         }
-    }, 25);  // Check every 25ms
+    }, schedulerLookahead);
+}
+
+/**
+ * Schedule a tick to execute at a specific time
+ * Uses setTimeout with calculated delay from Web Audio time
+ */
+function scheduleTickAtTime(time, tickNumber) {
+    const audioTime = Audio.getCurrentTime();
+    if (audioTime === null) {
+        // No Web Audio - execute immediately
+        if (MIDI.hasOutputDevice()) MIDI.sendClock();
+        handleClockTick();
+        return;
+    }
+
+    const delay = Math.max(0, (time - audioTime) * 1000);  // Convert to ms
+
+    setTimeout(() => {
+        if (!appState.isPlaying) return;
+        if (MIDI.hasOutputDevice()) {
+            MIDI.sendClock();
+        }
+        handleClockTick();
+    }, delay);
 }
 
 function stopPlayback() {
@@ -1106,6 +1132,8 @@ function stopPlayback() {
 
     appState.isPlaying = false;
     nextTickTime = 0;  // Reset timing
+    currentTick = 0;
+    startTime = 0;
 
     // Stop piano roll
     PianoRoll.stopPianoRoll();
