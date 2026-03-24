@@ -1970,7 +1970,8 @@ function updatePlaybackModeUI() {
         // Chord Stab mode: show strum controls, disable note-level variation, show chord progression
         noteVariationSection?.classList.add('disabled');
         if (stabControls) stabControls.style.display = 'flex';
-        if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '0.5';
+        // Octave spread now works in stab mode! (spreads chord across octaves)
+        if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
         if (chordProgressionSection) chordProgressionSection.style.display = 'block';
 
         // Initialize chord change Euclidean circle if not already done
