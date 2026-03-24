@@ -79,6 +79,15 @@ export function isAudioAvailable() {
 }
 
 /**
+ * Get the current audio context time
+ * Used for accurate timing that doesn't get throttled in background tabs
+ * @returns {number} - Current time in seconds, or null if audio not initialized
+ */
+export function getCurrentTime() {
+    return audioContext ? audioContext.currentTime : null;
+}
+
+/**
  * Get current audio context state
  * @returns {string} - 'running', 'suspended', or 'closed'
  */
