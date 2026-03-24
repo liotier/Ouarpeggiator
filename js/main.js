@@ -1007,7 +1007,13 @@ function renderPattern() {
 // Clock / Transport
 // ============================================================================
 
+// ============================================================================
+// Timing & Clock
+// ============================================================================
+
 let masterClockInterval = null;
+let nextTickTime = 0;  // Next tick time in Web Audio clock time
+let scheduleAheadTime = 0.1;  // Schedule events 100ms ahead
 
 function startPlayback() {
     if (appState.isPlaying) return;
@@ -1060,12 +1066,36 @@ function startPlayback() {
         MIDI.sendStart();
     }
 
+    // Initialize Web Audio clock-based timing
+    const audioTime = Audio.getCurrentTime();
+    if (audioTime !== null) {
+        nextTickTime = audioTime;  // Start immediately
+    }
+
+    // Use setInterval at 25ms for scheduling (won't be throttled as badly)
+    // Even if throttled, Web Audio clock keeps accurate time
     masterClockInterval = setInterval(() => {
-        if (MIDI.hasOutputDevice()) {
-            MIDI.sendClock();
+        const audioTime = Audio.getCurrentTime();
+
+        // If Web Audio isn't available, fall back to immediate execution
+        if (audioTime === null) {
+            if (MIDI.hasOutputDevice()) {
+                MIDI.sendClock();
+            }
+            handleClockTick();
+            return;
         }
-        handleClockTick();
-    }, tickInterval);
+
+        // Schedule all ticks that should happen in the next scheduleAheadTime window
+        const tickInterval = 60 / (appState.bpm * 24);  // in seconds
+        while (nextTickTime < audioTime + scheduleAheadTime) {
+            if (MIDI.hasOutputDevice()) {
+                MIDI.sendClock();
+            }
+            handleClockTick();
+            nextTickTime += tickInterval;
+        }
+    }, 25);  // Check every 25ms
 }
 
 function stopPlayback() {
@@ -1075,6 +1105,7 @@ function stopPlayback() {
     }
 
     appState.isPlaying = false;
+    nextTickTime = 0;  // Reset timing
 
     // Stop piano roll
     PianoRoll.stopPianoRoll();
