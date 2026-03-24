@@ -1260,6 +1260,65 @@ button:disabled {
 }
 
 /* ============================================================================
+   Chord Progression Section (Stab Mode)
+   ============================================================================ */
+
+.chord-progression-subsection {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.chord-progression-subsection h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: var(--text);
+}
+
+.euclidean-circle-small-container {
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+}
+
+.euclidean-circle-small-container canvas {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: white;
+}
+
+.progression-preview {
+    padding: 12px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+}
+
+.progression-preview small {
+    display: block;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#progressionPreviewText {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+#regeneratePattern {
+    margin-left: 12px;
+}
+
+/* ============================================================================
    Footer
    ============================================================================ */
 
