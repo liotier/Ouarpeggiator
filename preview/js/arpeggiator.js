@@ -116,8 +116,20 @@ function selectChordStab(state) {
         direction = state.euclideanStepIndex % 2 === 0 ? 'up' : 'down';
     }
 
-    // Build note array with delays
-    const notes = [...currentChord];
+    // Apply octave spread: duplicate chord across multiple octaves
+    let notes = [...currentChord];
+    const octaveSpread = state.octaveSpread ?? 1;
+    if (octaveSpread > 1) {
+        const baseNotes = [...currentChord];
+        notes = [];
+        for (let octave = 0; octave < octaveSpread; octave++) {
+            baseNotes.forEach(note => {
+                notes.push(note + (octave * 12));
+            });
+        }
+    }
+
+    // Apply strum direction
     if (direction === 'down') {
         notes.reverse();
     }
