@@ -1008,15 +1008,37 @@ function renderPattern() {
 // ============================================================================
 
 // ============================================================================
-// Timing & Clock
+// Timing & Clock (Web Worker based for CPU isolation)
 // ============================================================================
 
+let clockWorker = null;
 let masterClockInterval = null;
-let nextTickTime = 0;  // Next tick time in Web Audio clock time
-let scheduleAheadTime = 0.2;  // Schedule events 200ms ahead
-let schedulerLookahead = 25;  // How often to run scheduler (ms)
-let startTime = 0;  // When playback started (Web Audio time)
-let currentTick = 0;  // Current tick number
+let nextTickTime = 0;
+let scheduleAheadTime = 0.2;
+let schedulerLookahead = 25;
+let startTime = 0;
+let currentTick = 0;
+
+// Initialize clock worker
+function initClockWorker() {
+    if (clockWorker) return;
+
+    try {
+        clockWorker = new Worker('js/clockWorker.js');
+        clockWorker.onmessage = function(e) {
+            if (e.data.type === 'tick' && appState.isPlaying) {
+                if (MIDI.hasOutputDevice()) {
+                    MIDI.sendClock();
+                }
+                handleClockTick();
+            }
+        };
+        console.log('Clock worker initialized');
+    } catch (error) {
+        console.warn('Clock worker unavailable, falling back to main thread:', error);
+        clockWorker = null;
+    }
+}
 
 function startPlayback() {
     if (appState.isPlaying) return;
@@ -1069,35 +1091,43 @@ function startPlayback() {
         MIDI.sendStart();
     }
 
-    // Initialize Web Audio clock-based timing
-    const audioTime = Audio.getCurrentTime();
-    if (audioTime !== null) {
-        startTime = audioTime;
-        nextTickTime = audioTime;
-        currentTick = 0;
-    }
+    // Try to use Web Worker for timing (unaffected by main thread CPU load)
+    initClockWorker();
 
-    // Scheduler: Check frequently and schedule ticks ahead using setTimeout
-    masterClockInterval = setInterval(() => {
+    if (clockWorker) {
+        // Web Worker available - best option for CPU isolation
+        clockWorker.postMessage({
+            type: 'start',
+            data: { bpm: appState.bpm }
+        });
+    } else {
+        // Fallback: setTimeout-based scheduling
         const audioTime = Audio.getCurrentTime();
+        if (audioTime !== null) {
+            startTime = audioTime;
+            nextTickTime = audioTime;
+            currentTick = 0;
+        }
 
-        // If Web Audio isn't available, fall back to immediate execution
-        if (audioTime === null) {
-            if (MIDI.hasOutputDevice()) {
-                MIDI.sendClock();
+        masterClockInterval = setInterval(() => {
+            const audioTime = Audio.getCurrentTime();
+
+            if (audioTime === null) {
+                if (MIDI.hasOutputDevice()) {
+                    MIDI.sendClock();
+                }
+                handleClockTick();
+                return;
             }
-            handleClockTick();
-            return;
-        }
 
-        // Schedule all ticks that should happen in the next scheduleAheadTime window
-        const tickInterval = 60 / (appState.bpm * 24);  // in seconds
-        while (nextTickTime < audioTime + scheduleAheadTime) {
-            scheduleTickAtTime(nextTickTime, currentTick);
-            nextTickTime += tickInterval;
-            currentTick++;
-        }
-    }, schedulerLookahead);
+            const tickInterval = 60 / (appState.bpm * 24);
+            while (nextTickTime < audioTime + scheduleAheadTime) {
+                scheduleTickAtTime(nextTickTime, currentTick);
+                nextTickTime += tickInterval;
+                currentTick++;
+            }
+        }, schedulerLookahead);
+    }
 }
 
 /**
@@ -1125,13 +1155,19 @@ function scheduleTickAtTime(time, tickNumber) {
 }
 
 function stopPlayback() {
+    // Stop Web Worker if using it
+    if (clockWorker) {
+        clockWorker.postMessage({ type: 'stop' });
+    }
+
+    // Stop fallback timer
     if (masterClockInterval) {
         clearInterval(masterClockInterval);
         masterClockInterval = null;
     }
 
     appState.isPlaying = false;
-    nextTickTime = 0;  // Reset timing
+    nextTickTime = 0;
     currentTick = 0;
     startTime = 0;
 
