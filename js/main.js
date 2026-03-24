@@ -1879,6 +1879,7 @@ function updatePlaybackModeUI() {
     const stabControls = document.getElementById('stabControls');
     const octaveSpreadGroup = document.getElementById('octaveSpreadGroup');
     const chordProgressionSection = document.getElementById('chordProgressionSection');
+    const chordRhythmControls = document.getElementById('chordRhythmControls');
 
     if (appState.playbackMode === 'stab') {
         // Chord Stab mode: show strum controls, disable note-level variation, show chord progression
@@ -1887,6 +1888,8 @@ function updatePlaybackModeUI() {
         // Octave spread now works in stab mode! (spreads chord across octaves)
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
         if (chordProgressionSection) chordProgressionSection.style.display = 'block';
+        // Show chord rhythm controls next to the circle!
+        if (chordRhythmControls) chordRhythmControls.style.display = 'block';
 
         // Initialize chord change Euclidean circle if not already done
         if (!appState.chordProgressionCircleInitialized) {
@@ -1901,6 +1904,8 @@ function updatePlaybackModeUI() {
         if (stabControls) stabControls.style.display = 'none';
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
         if (chordProgressionSection) chordProgressionSection.style.display = 'none';
+        // Hide chord rhythm controls (not needed in arpeggio mode)
+        if (chordRhythmControls) chordRhythmControls.style.display = 'none';
 
         // Clear chord rhythm from main circle (arpeggio mode doesn't need it)
         EuclideanCircle.updateChordPattern(0, 0, [], -1);

@@ -386,6 +386,33 @@
                         <label>Octave Spread: <span id="octaveValue">1</span></label>
                         <input type="range" id="octaveSpread" min="1" max="4" value="1">
                     </div>
+
+                    <!-- Chord Rhythm Controls (only visible in Stab Mode) -->
+                    <div id="chordRhythmControls" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e0e0;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 13px; color: #f39c12; font-weight: bold;">
+                            ◆ Chord Rhythm (Gold Outer Ring)
+                        </h4>
+                        <div class="filter-group">
+                            <label title="Unlock to create polyrhythmic 'flams' - independent chord change rhythm">
+                                <input type="checkbox" id="unlockChordSteps">
+                                Independent Steps (Flams)
+                            </label>
+                        </div>
+                        <div id="chordStepsSliderContainer" style="display: none;">
+                            <div class="filter-group">
+                                <label>Steps: <span id="chordChangeStepsValue">16</span></label>
+                                <input type="range" id="chordChangeSteps" min="1" max="32" value="16" title="Independent pattern length for chord changes">
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label>Pulses: <span id="chordChangePulsesValue">4</span></label>
+                            <input type="range" id="chordChangePulses" min="1" max="16" value="4" title="How many chord changes in the pattern">
+                        </div>
+                        <div class="filter-group">
+                            <label>Rotation: <span id="chordChangeRotationValue">0</span></label>
+                            <input type="range" id="chordChangeRotation" min="0" max="31" value="0">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Right Column: Euclidean Circle Visualization -->
@@ -555,39 +582,10 @@
                     <div id="chordProgressionSection" class="variation-subsection with-separator" style="display: none;">
                         <h3>Chord Progression</h3>
 
-                        <!-- Chord Change Rhythm -->
-                        <div class="chord-progression-subsection">
-                            <h4>Change Rhythm (Euclidean)</h4>
-                            <p class="help-text">Chord changes shown on main circle as outer gold markers</p>
-                            <div class="control-row">
-                                <div class="filter-group">
-                                    <label title="Unlock to create polyrhythmic 'flams' - independent chord change rhythm">
-                                        <input type="checkbox" id="unlockChordSteps">
-                                        Independent Steps (Flams)
-                                    </label>
-                                </div>
-                            </div>
-                            <div id="chordStepsSliderContainer" style="display: none;">
-                                <div class="control-row">
-                                    <div class="filter-group">
-                                        <label>Steps: <span id="chordChangeStepsValue">16</span></label>
-                                        <input type="range" id="chordChangeSteps" min="1" max="32" value="16" title="Independent pattern length for chord changes">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="control-row">
-                                <div class="filter-group">
-                                    <label>Pulses: <span id="chordChangePulsesValue">4</span></label>
-                                    <input type="range" id="chordChangePulses" min="1" max="16" value="4" title="How many chord changes in the pattern">
-                                </div>
-                            </div>
-                            <div class="control-row">
-                                <div class="filter-group">
-                                    <label>Rotation: <span id="chordChangeRotationValue">0</span></label>
-                                    <input type="range" id="chordChangeRotation" min="0" max="31" value="0">
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Chord Change Rhythm controls MOVED to main pattern area (next to circle) -->
+                        <p class="help-text" style="margin: 0 0 16px 0; font-size: 12px; color: #999;">
+                            ◆ Chord rhythm controls shown above, next to circle visualization
+                        </p>
 
                         <!-- Sequence Method -->
                         <div class="control-row">
