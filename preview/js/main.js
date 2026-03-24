@@ -11,6 +11,7 @@ import * as Audio from './modules/audio.js';
 import * as PianoRoll from './pianoRoll.js';
 import * as EuclideanCircle from './euclideanCircle.js';
 import * as MIDIDiagnostics from './midiDiagnostics.js';
+import ChordProgressionSequencer from './chordProgressionSequencer.js';
 
 // ============================================================================
 // Application State
@@ -71,6 +72,18 @@ const appState = {
     strumSpeed: 0,  // 0-100ms delay between notes
     strumDirection: 'up',  // 'up' | 'down' | 'alternating'
 
+    // Chord progression sequencing (Stab Mode only)
+    chordSequencing: {
+        enabled: true,  // Enable chord progression in stab mode
+        euclidean: {
+            hits: 4,    // Chord changes per pattern
+            steps: 16,  // Locked to main euclidean steps by default
+            rotation: 0,
+            pattern: [],
+        },
+        stepIndex: 0,  // Current position in chord change pattern
+    },
+
     // Velocity/Gate
     velocity: { mode: 'fixed', fixed: 100, randomMin: 60, randomMax: 110, curveType: 'linear-ascending', curveMin: 60, curveMax: 120 },
     gate: { mode: 'fixed', fixed: 0.8, randomMin: 0.5, randomMax: 0.9, curveType: 'linear-ascending', curveMin: 0.3, curveMax: 0.95 },
@@ -85,6 +98,7 @@ const appState = {
 
     // UI initialization tracking
     pianoRollInitialized: false,
+    chordProgressionCircleInitialized: false,
 };
 
 // Timing constants
@@ -1005,6 +1019,14 @@ function startPlayback() {
         Audio.resumeAudio();
     }
 
+    // Initialize chord progression sequencing (Stab Mode only)
+    if (appState.playbackMode === 'stab' && appState.chordSequencing.enabled) {
+        regenerateChordChangePattern();
+        ChordProgressionSequencer.reset();
+        appState.chordSequencing.stepIndex = 0;
+        updateProgressionPreview();
+    }
+
     const tickInterval = 60000 / (appState.bpm * 24);
 
     appState.isPlaying = true;
@@ -1105,6 +1127,23 @@ function handleClockTick() {
 }
 
 function executeStep() {
+    // CHORD PROGRESSION ADVANCEMENT (Stab Mode only)
+    if (appState.playbackMode === 'stab' && appState.chordSequencing.enabled) {
+        // Check if we should advance to next chord
+        const changePattern = appState.chordSequencing.euclidean.pattern;
+        if (changePattern[appState.chordSequencing.stepIndex]) {
+            // This is a chord change trigger - get next chord from sequencer
+            const nextChordIndex = ChordProgressionSequencer.getNextChord(appState.chordProgression);
+            appState.currentChordIndex = nextChordIndex;
+            renderChordGrid(); // Update visual current chord
+        }
+
+        // Advance chord change step index
+        appState.chordSequencing.stepIndex = (appState.chordSequencing.stepIndex + 1) % appState.chordSequencing.euclidean.steps;
+        renderChordChangeCircle();
+    }
+
+    // NOTE/STAB PLAYBACK
     const pattern = appState.euclidean.pattern;
     const chord = appState.chordProgression[appState.currentChordIndex];
 
@@ -1411,12 +1450,16 @@ function bindControls() {
         appState.euclidean.hits = parseInt(this.value);
         document.getElementById('hitsValue').textContent = this.value;
         regeneratePattern();
+        regenerateChordChangePattern();
     });
 
     document.getElementById('stepsSlider').addEventListener('input', function() {
         appState.euclidean.steps = parseInt(this.value);
         document.getElementById('stepsValue').textContent = this.value;
         document.getElementById('rotationSlider').max = appState.euclidean.steps - 1;
+
+        // Sync chord progression steps (locked together)
+        appState.chordSequencing.euclidean.steps = appState.euclidean.steps;
 
         // Constrain hits to not exceed steps
         const hitsSlider = document.getElementById('hitsSlider');
@@ -1428,6 +1471,7 @@ function bindControls() {
         }
 
         regeneratePattern();
+        regenerateChordChangePattern();
     });
 
     document.getElementById('rotationSlider').addEventListener('input', function() {
@@ -1546,6 +1590,229 @@ function bindControls() {
     document.getElementById('curveSyncRotation').addEventListener('change', function() {
         appState.curveSyncRotation = this.checked;
     });
+
+    // Chord Progression Controls (Stab Mode)
+    bindChordProgressionControls();
+}
+
+/**
+ * Bind chord progression sequencing controls
+ */
+function bindChordProgressionControls() {
+    // Chord change Euclidean controls
+    const pulsesSlider = document.getElementById('chordChangePulses');
+    const pulsesValue = document.getElementById('chordChangePulsesValue');
+    const rotationSlider = document.getElementById('chordChangeRotation');
+    const rotationValue = document.getElementById('chordChangeRotationValue');
+
+    if (pulsesSlider) {
+        pulsesSlider.addEventListener('input', function() {
+            appState.chordSequencing.euclidean.hits = parseInt(this.value);
+            pulsesValue.textContent = this.value;
+            regenerateChordChangePattern();
+            renderChordChangeCircle();
+        });
+    }
+
+    if (rotationSlider) {
+        rotationSlider.addEventListener('input', function() {
+            appState.chordSequencing.euclidean.rotation = parseInt(this.value);
+            rotationValue.textContent = this.value;
+            regenerateChordChangePattern();
+            renderChordChangeCircle();
+        });
+    }
+
+    // Sequence method selector
+    const methodSelect = document.getElementById('sequenceMethod');
+    if (methodSelect) {
+        methodSelect.addEventListener('change', function() {
+            ChordProgressionSequencer.method = this.value;
+            renderSequenceMethodControls();
+            updateProgressionPreview();
+        });
+    }
+
+    // Pattern length
+    const lengthSlider = document.getElementById('patternLength');
+    const lengthValue = document.getElementById('patternLengthValue');
+    if (lengthSlider) {
+        lengthSlider.addEventListener('input', function() {
+            ChordProgressionSequencer.patternLength = parseInt(this.value);
+            lengthValue.textContent = this.value;
+            if (!ChordProgressionSequencer.lockPattern) {
+                updateProgressionPreview();
+            }
+        });
+    }
+
+    // Lock pattern checkbox
+    const lockCheckbox = document.getElementById('lockPattern');
+    if (lockCheckbox) {
+        lockCheckbox.addEventListener('change', function() {
+            ChordProgressionSequencer.lockPattern = this.checked;
+        });
+    }
+
+    // Regenerate button
+    const regenerateBtn = document.getElementById('regeneratePattern');
+    if (regenerateBtn) {
+        regenerateBtn.addEventListener('click', function() {
+            ChordProgressionSequencer.regenerate(appState.chordProgression);
+            updateProgressionPreview();
+        });
+    }
+
+    // Initial render of method-specific controls
+    renderSequenceMethodControls();
+}
+
+/**
+ * Initialize chord change Euclidean circle
+ */
+function initializeChordChangeCircle() {
+    EuclideanCircle.initEuclideanCircle('chordChangeCircle');
+}
+
+/**
+ * Regenerate chord change Euclidean pattern
+ */
+function regenerateChordChangePattern() {
+    const { hits, steps, rotation } = appState.chordSequencing.euclidean;
+    const pattern = euclidean(hits, steps);
+    appState.chordSequencing.euclidean.pattern = rotatePattern(pattern, rotation);
+}
+
+/**
+ * Render chord change Euclidean circle visualization
+ */
+function renderChordChangeCircle() {
+    const canvas = document.getElementById('chordChangeCircle');
+    if (!canvas) return;
+
+    const { hits, steps, rotation, pattern } = appState.chordSequencing.euclidean;
+    const currentStep = appState.chordSequencing.stepIndex;
+
+    EuclideanCircle.drawEuclideanCircle(
+        'chordChangeCircle',
+        steps,
+        hits,
+        rotation,
+        currentStep,
+        { radius: 50, showLabels: false }
+    );
+}
+
+/**
+ * Render method-specific controls for selected sequencing method
+ */
+function renderSequenceMethodControls() {
+    const container = document.getElementById('sequenceMethodControls');
+    if (!container) return;
+
+    const method = ChordProgressionSequencer.method;
+    let html = '<div class="control-row">';
+
+    switch (method) {
+        case 'root-melody':
+            html += `
+                <div class="filter-group">
+                    <label>Pattern</label>
+                    <select id="rootMelodyPattern">
+                        <option value="ascending" ${ChordProgressionSequencer.rootMelodyPattern === 'ascending' ? 'selected' : ''}>Ascending</option>
+                        <option value="descending" ${ChordProgressionSequencer.rootMelodyPattern === 'descending' ? 'selected' : ''}>Descending</option>
+                        <option value="up-down" ${ChordProgressionSequencer.rootMelodyPattern === 'up-down' ? 'selected' : ''}>Up-Down</option>
+                        <option value="down-up" ${ChordProgressionSequencer.rootMelodyPattern === 'down-up' ? 'selected' : ''}>Down-Up</option>
+                        <option value="converging" ${ChordProgressionSequencer.rootMelodyPattern === 'converging' ? 'selected' : ''}>Converging</option>
+                        <option value="diverging" ${ChordProgressionSequencer.rootMelodyPattern === 'diverging' ? 'selected' : ''}>Diverging</option>
+                        <option value="random-walk" ${ChordProgressionSequencer.rootMelodyPattern === 'random-walk' ? 'selected' : ''}>Random Walk</option>
+                    </select>
+                </div>
+            `;
+            break;
+
+        case 'circle-fifths':
+            html += `
+                <div class="filter-group">
+                    <label>Direction</label>
+                    <select id="circleFifthsDirection">
+                        <option value="clockwise" ${ChordProgressionSequencer.circleFifthsDirection === 'clockwise' ? 'selected' : ''}>Clockwise</option>
+                        <option value="counter-clockwise" ${ChordProgressionSequencer.circleFifthsDirection === 'counter-clockwise' ? 'selected' : ''}>Counter-clockwise</option>
+                        <option value="random" ${ChordProgressionSequencer.circleFifthsDirection === 'random' ? 'selected' : ''}>Random</option>
+                    </select>
+                </div>
+            `;
+            break;
+
+        case 'voice-leading':
+            html += `
+                <div class="filter-group">
+                    <label>Optimization</label>
+                    <select id="voiceLeadingOptimization">
+                        <option value="smooth" ${ChordProgressionSequencer.voiceLeadingOptimization === 'smooth' ? 'selected' : ''}>Smooth (Minimal)</option>
+                        <option value="interesting" ${ChordProgressionSequencer.voiceLeadingOptimization === 'interesting' ? 'selected' : ''}>Interesting (Moderate)</option>
+                        <option value="contrasting" ${ChordProgressionSequencer.voiceLeadingOptimization === 'contrasting' ? 'selected' : ''}>Contrasting (Maximal)</option>
+                    </select>
+                </div>
+            `;
+            break;
+
+        case 'random':
+        case 'functional':
+        default:
+            html += '<div class="filter-group"><small style="color: var(--muted);">No additional parameters</small></div>';
+            break;
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    // Bind newly created controls
+    const rootMelodySelect = document.getElementById('rootMelodyPattern');
+    if (rootMelodySelect) {
+        rootMelodySelect.addEventListener('change', function() {
+            ChordProgressionSequencer.rootMelodyPattern = this.value;
+            updateProgressionPreview();
+        });
+    }
+
+    const circleFifthsSelect = document.getElementById('circleFifthsDirection');
+    if (circleFifthsSelect) {
+        circleFifthsSelect.addEventListener('change', function() {
+            ChordProgressionSequencer.circleFifthsDirection = this.value;
+            updateProgressionPreview();
+        });
+    }
+
+    const voiceLeadingSelect = document.getElementById('voiceLeadingOptimization');
+    if (voiceLeadingSelect) {
+        voiceLeadingSelect.addEventListener('change', function() {
+            ChordProgressionSequencer.voiceLeadingOptimization = this.value;
+            updateProgressionPreview();
+        });
+    }
+}
+
+/**
+ * Update progression preview display
+ */
+function updateProgressionPreview() {
+    const previewEl = document.getElementById('progressionPreviewText');
+    if (!previewEl) return;
+
+    if (!appState.chordProgression || appState.chordProgression.length === 0) {
+        previewEl.textContent = 'Generate chords first';
+        return;
+    }
+
+    // Regenerate sequence if not locked
+    if (!ChordProgressionSequencer.lockPattern) {
+        ChordProgressionSequencer.regenerate(appState.chordProgression);
+    }
+
+    // Get preview string from sequencer
+    const preview = ChordProgressionSequencer.getPreviewString(appState.chordProgression);
+    previewEl.textContent = preview;
 }
 
 /**
@@ -1555,17 +1822,27 @@ function updatePlaybackModeUI() {
     const noteVariationSection = document.getElementById('noteVariationSection');
     const stabControls = document.getElementById('stabControls');
     const octaveSpreadGroup = document.getElementById('octaveSpreadGroup');
+    const chordProgressionSection = document.getElementById('chordProgressionSection');
 
     if (appState.playbackMode === 'stab') {
-        // Chord Stab mode: show strum controls, disable note-level variation
+        // Chord Stab mode: show strum controls, disable note-level variation, show chord progression
         noteVariationSection?.classList.add('disabled');
         if (stabControls) stabControls.style.display = 'flex';
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '0.5';
+        if (chordProgressionSection) chordProgressionSection.style.display = 'block';
+
+        // Initialize chord change Euclidean circle if not already done
+        if (!appState.chordProgressionCircleInitialized) {
+            initializeChordChangeCircle();
+            appState.chordProgressionCircleInitialized = true;
+        }
+        renderChordChangeCircle();
     } else {
-        // Arpeggio mode: hide strum controls, enable note-level variation
+        // Arpeggio mode: hide strum controls, enable note-level variation, hide chord progression
         noteVariationSection?.classList.remove('disabled');
         if (stabControls) stabControls.style.display = 'none';
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
+        if (chordProgressionSection) chordProgressionSection.style.display = 'none';
     }
 }
 
@@ -1709,6 +1986,9 @@ async function initialize() {
 
     // Generate initial pattern
     regeneratePattern();
+
+    // Initialize chord progression sequencing pattern
+    regenerateChordChangePattern();
 
     // Render velocity/gate controls
     renderVelocityControls();
