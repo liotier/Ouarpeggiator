@@ -14,6 +14,13 @@ import * as MIDIDiagnostics from './midiDiagnostics.js';
 import ChordProgressionSequencer from './chordProgressionSequencer.js';
 
 // ============================================================================
+// Juno-106 Integration
+// ============================================================================
+
+let junoWindow = null;
+const JUNO_URL = 'https://liotier.github.io/juno106-ouarpeggiator/';
+
+// ============================================================================
 // Application State
 // ============================================================================
 
@@ -1088,6 +1095,12 @@ function stopPlayback() {
     }
     Audio.stopAllNotes();
 
+    if (appState.outputMode === 'juno106') {
+        appState.scheduledNotes.forEach(s => {
+            sendToJuno106({ type: 'noteOff', value: s.note });
+        });
+    }
+
     document.getElementById('startBtn').disabled = false;
     document.getElementById('stopBtn').disabled = true;
     document.getElementById('clockStatus').textContent = 'Stopped';
@@ -1262,6 +1275,29 @@ function executeChordStab(notes, velocity, gateLength, humanOffset) {
     }, Math.max(0, humanOffset));
 }
 
+// ============================================================================
+// Juno-106 Helper Functions
+// ============================================================================
+
+function launchJuno106() {
+    if (junoWindow && !junoWindow.closed) return;
+    junoWindow = window.open(JUNO_URL, 'juno106');
+    window.addEventListener('message', function onReady(e) {
+        if (e.origin === 'https://liotier.github.io' && e.data === 'juno106:ready') {
+            window.removeEventListener('message', onReady);
+            console.log('[Juno-106] ready');
+        }
+    });
+}
+
+function sendToJuno106(msg) {
+    if (!junoWindow || junoWindow.closed) {
+        console.warn('[Juno-106] window not available');
+        return;
+    }
+    junoWindow.postMessage(msg, 'https://liotier.github.io');
+}
+
 /**
  * Play a single note via MIDI or Audio
  */
@@ -1283,6 +1319,14 @@ function playNote(note, velocity, gateLength) {
         setTimeout(() => {
             PianoRoll.removeNote(note);
         }, gateLength);
+    } else if (appState.outputMode === 'juno106') {
+        sendToJuno106({ type: 'noteOn', value: note });
+        const handle = setTimeout(() => {
+            sendToJuno106({ type: 'noteOff', value: note });
+            PianoRoll.removeNote(note);
+            appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
+        }, gateLength);
+        appState.scheduledNotes.push({ note, handle });
     }
 }
 
@@ -1340,6 +1384,12 @@ function populateMIDIDevices() {
         option.textContent = device.name;
         outputSelect.appendChild(option);
     });
+
+    // Add Juno-106 option
+    const junoOption = document.createElement('option');
+    junoOption.value = 'juno106';
+    junoOption.textContent = 'Juno-106 (new window)';
+    outputSelect.appendChild(junoOption);
 
     // Restore selection if still valid
     if (currentValue && Array.from(outputSelect.options).some(o => o.value === currentValue)) {
@@ -1441,6 +1491,12 @@ function bindControls() {
             appState.outputMode = 'midi';
             MIDI.selectOutputDevice(deviceId);
             audioConfig.style.display = 'none';
+        } else if (value === 'juno106') {
+            // Juno-106 selected
+            appState.outputMode = 'juno106';
+            MIDI.selectOutputDevice('');
+            audioConfig.style.display = 'none';
+            launchJuno106();
         }
     });
 
