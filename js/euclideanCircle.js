@@ -30,7 +30,13 @@ const circle = {
     rotation: 0,
     pattern: [],
     currentStep: -1,
-    isPlaying: false
+    isPlaying: false,
+
+    // Chord rhythm (outer ring)
+    chordSteps: 13,
+    chordHits: 5,
+    chordPattern: [],
+    chordCurrentStep: -1
 };
 
 // ============================================================================
@@ -108,6 +114,19 @@ export function updatePattern(steps, hits, rotation, pattern) {
     render();
 }
 
+export function updateChordPattern(chordSteps, chordHits, chordPattern, chordCurrentStep = -1) {
+    circle.chordSteps = chordSteps;
+    circle.chordHits = chordHits;
+    circle.chordPattern = chordPattern;
+    circle.chordCurrentStep = chordCurrentStep;
+    render();
+}
+
+export function setChordCurrentStep(step) {
+    circle.chordCurrentStep = step;
+    render();
+}
+
 export function setCurrentStep(step) {
     circle.currentStep = step;
     render();
@@ -148,7 +167,7 @@ function render() {
     clearSVGGroup(arrowGroup);
     clearSVGGroup(labelGroup);
 
-    // Draw guide circle
+    // Draw guide circles (inner for notes, outer for chords)
     const guide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     guide.setAttribute('cx', centerX);
     guide.setAttribute('cy', centerY);
@@ -157,6 +176,18 @@ function render() {
     guide.setAttribute('stroke', '#e0e0e0');
     guide.setAttribute('stroke-width', '1');
     dotsGroup.appendChild(guide);
+
+    // Outer guide circle for chord rhythm
+    const outerRadius = radius + 20;
+    const outerGuide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    outerGuide.setAttribute('cx', centerX);
+    outerGuide.setAttribute('cy', centerY);
+    outerGuide.setAttribute('r', outerRadius);
+    outerGuide.setAttribute('fill', 'none');
+    outerGuide.setAttribute('stroke', '#f0f0f0');
+    outerGuide.setAttribute('stroke-width', '1');
+    outerGuide.setAttribute('stroke-dasharray', '2,2');
+    dotsGroup.appendChild(outerGuide);
 
     // Draw steps around circle
     for (let i = 0; i < circle.steps; i++) {
@@ -214,19 +245,85 @@ function render() {
         arrowGroup.appendChild(arrow);
     }
 
-    // Draw center label showing hits/steps
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', centerX);
-    label.setAttribute('y', centerY);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('dominant-baseline', 'middle');
-    label.setAttribute('fill', '#555555');
-    label.setAttribute('font-size', '14');
-    label.setAttribute('font-weight', 'bold');
-    label.setAttribute('font-family', 'sans-serif');
-    label.textContent = `${circle.hits}/${circle.steps}`;
+    // Draw chord rhythm on outer ring (if in stab mode)
+    if (circle.chordSteps > 0 && circle.chordPattern.length > 0) {
+        const outerRadius = radius + 20;
 
-    labelGroup.appendChild(label);
+        for (let i = 0; i < circle.chordSteps; i++) {
+            const angle = (i / circle.chordSteps) * 2 * Math.PI - Math.PI / 2;
+            const x = centerX + outerRadius * Math.cos(angle);
+            const y = centerY + outerRadius * Math.sin(angle);
+
+            const isChordHit = circle.chordPattern[i];
+            const isChordCurrent = i === circle.chordCurrentStep && circle.isPlaying;
+
+            // Use diamond/triangle shape for chord changes
+            const size = isChordCurrent ? 7 : 5;
+            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+            // Diamond shape: up, right, down, left
+            const d = `M ${x},${y - size} L ${x + size},${y} L ${x},${y + size} L ${x - size},${y} Z`;
+            marker.setAttribute('d', d);
+
+            if (isChordCurrent) {
+                // Current chord change: bright gold
+                marker.setAttribute('fill', '#ffcc00');
+                marker.setAttribute('stroke', '#ff9500');
+                marker.setAttribute('stroke-width', '2');
+            } else if (isChordHit) {
+                // Chord change hit: gold/amber
+                marker.setAttribute('fill', '#f39c12');
+                marker.setAttribute('stroke', '#e67e22');
+                marker.setAttribute('stroke-width', '1.5');
+            } else {
+                // Rest: very light (almost invisible)
+                marker.setAttribute('fill', '#f8f8f8');
+                marker.setAttribute('stroke', '#d0d0d0');
+                marker.setAttribute('stroke-width', '1');
+            }
+
+            dotsGroup.appendChild(marker);
+        }
+    }
+
+    // Draw center label showing hits/steps (two lines if chord rhythm present)
+    if (circle.chordSteps > 0 && circle.chordPattern.length > 0) {
+        // Two-line label: Notes and Chords
+        const label1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label1.setAttribute('x', centerX);
+        label1.setAttribute('y', centerY - 8);
+        label1.setAttribute('text-anchor', 'middle');
+        label1.setAttribute('fill', '#4a90e2');
+        label1.setAttribute('font-size', '11');
+        label1.setAttribute('font-weight', 'bold');
+        label1.setAttribute('font-family', 'sans-serif');
+        label1.textContent = `Notes: ${circle.hits}/${circle.steps}`;
+        labelGroup.appendChild(label1);
+
+        const label2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label2.setAttribute('x', centerX);
+        label2.setAttribute('y', centerY + 8);
+        label2.setAttribute('text-anchor', 'middle');
+        label2.setAttribute('fill', '#f39c12');
+        label2.setAttribute('font-size', '11');
+        label2.setAttribute('font-weight', 'bold');
+        label2.setAttribute('font-family', 'sans-serif');
+        label2.textContent = `Chords: ${circle.chordHits}/${circle.chordSteps}`;
+        labelGroup.appendChild(label2);
+    } else {
+        // Single-line label (arpeggio mode)
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', centerX);
+        label.setAttribute('y', centerY);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'middle');
+        label.setAttribute('fill', '#555555');
+        label.setAttribute('font-size', '14');
+        label.setAttribute('font-weight', 'bold');
+        label.setAttribute('font-family', 'sans-serif');
+        label.textContent = `${circle.hits}/${circle.steps}`;
+        labelGroup.appendChild(label);
+    }
 }
 
 // ============================================================================

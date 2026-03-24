@@ -1727,20 +1727,11 @@ function bindChordProgressionControls() {
 }
 
 /**
- * Initialize chord change Euclidean circle (convert canvas to SVG container)
+ * Initialize chord change Euclidean circle
+ * NOTE: No longer needed - chord rhythm now shown on main circle!
  */
 function initializeChordChangeCircle() {
-    const canvas = document.getElementById('chordChangeCircle');
-    if (!canvas || canvas.tagName !== 'CANVAS') return;
-
-    // Replace canvas with div for SVG
-    const parent = canvas.parentNode;
-    const container = document.createElement('div');
-    container.id = 'chordChangeCircle';
-    container.className = 'euclidean-circle-svg-small';
-    container.style.width = '120px';
-    container.style.height = '120px';
-    parent.replaceChild(container, canvas);
+    // Merged into main Euclidean circle - nothing to do here
 }
 
 /**
@@ -1750,99 +1741,22 @@ function regenerateChordChangePattern() {
     const { hits, steps, rotation } = appState.chordSequencing.euclidean;
     const pattern = euclidean(hits, steps);
     appState.chordSequencing.euclidean.pattern = rotatePattern(pattern, rotation);
+
+    // Update main circle with new chord pattern
+    renderChordChangeCircle();
 }
 
 /**
  * Render chord change Euclidean circle visualization
- * Simple SVG rendering for the small chord change circle
+ * NOTE: Chord rhythm now shown on main circle as outer gold diamonds!
  */
 function renderChordChangeCircle() {
-    const container = document.getElementById('chordChangeCircle');
-    if (!container) return;
-
+    // Update main Euclidean circle with chord rhythm data
     const { hits, steps, pattern } = appState.chordSequencing.euclidean;
     const currentStep = appState.chordSequencing.stepIndex;
 
-    // SVG parameters
-    const size = 120;
-    const centerX = 60;
-    const centerY = 60;
-    const radius = 45;
-
-    // Create SVG
-    let svg = container.querySelector('svg');
-    if (!svg) {
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('width', size);
-        svg.setAttribute('height', size);
-        svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
-        svg.style.display = 'block';
-        container.innerHTML = '';
-        container.appendChild(svg);
-    } else {
-        svg.innerHTML = '';
-    }
-
-    // Background
-    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    bg.setAttribute('width', size);
-    bg.setAttribute('height', size);
-    bg.setAttribute('fill', '#ffffff');
-    svg.appendChild(bg);
-
-    // Guide circle
-    const guide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    guide.setAttribute('cx', centerX);
-    guide.setAttribute('cy', centerY);
-    guide.setAttribute('r', radius);
-    guide.setAttribute('fill', 'none');
-    guide.setAttribute('stroke', '#e0e0e0');
-    guide.setAttribute('stroke-width', '1');
-    svg.appendChild(guide);
-
-    // Draw steps
-    for (let i = 0; i < steps; i++) {
-        const angle = (i / steps) * 2 * Math.PI - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle);
-        const y = centerY + radius * Math.sin(angle);
-
-        const isHit = pattern[i];
-        const isCurrent = i === currentStep && appState.isPlaying;
-
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        dot.setAttribute('cx', x);
-        dot.setAttribute('cy', y);
-        dot.setAttribute('r', isCurrent ? 6 : 4);
-
-        if (isCurrent) {
-            dot.setAttribute('fill', '#ff9500');
-            dot.setAttribute('stroke', '#ff6600');
-            dot.setAttribute('stroke-width', '2');
-        } else if (isHit) {
-            dot.setAttribute('fill', '#4a90e2');
-            dot.setAttribute('stroke', '#357abd');
-            dot.setAttribute('stroke-width', '1.5');
-        } else {
-            dot.setAttribute('fill', '#e8e8e8');
-            dot.setAttribute('stroke', '#aaaaaa');
-            dot.setAttribute('stroke-width', '1.5');
-        }
-
-        svg.appendChild(dot);
-    }
-
-    // Center label
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', centerX);
-    label.setAttribute('y', centerY);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('dominant-baseline', 'middle');
-    label.setAttribute('fill', '#555555');
-    label.setAttribute('font-size', '11');
-    label.setAttribute('font-weight', 'bold');
-    label.setAttribute('font-family', 'sans-serif');
-    label.textContent = `${hits}/${steps}`;
-    svg.appendChild(label);
+    // Call main circle's updateChordPattern function
+    EuclideanCircle.updateChordPattern(steps, hits, pattern, currentStep);
 }
 
 /**
@@ -1979,6 +1893,7 @@ function updatePlaybackModeUI() {
             initializeChordChangeCircle();
             appState.chordProgressionCircleInitialized = true;
         }
+        // Update main circle to show chord rhythm
         renderChordChangeCircle();
     } else {
         // Arpeggio mode: hide strum controls, enable note-level variation, hide chord progression
@@ -1986,6 +1901,9 @@ function updatePlaybackModeUI() {
         if (stabControls) stabControls.style.display = 'none';
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
         if (chordProgressionSection) chordProgressionSection.style.display = 'none';
+
+        // Clear chord rhythm from main circle (arpeggio mode doesn't need it)
+        EuclideanCircle.updateChordPattern(0, 0, [], -1);
     }
 }
 
