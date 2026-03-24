@@ -563,6 +563,22 @@
                             </div>
                             <div class="control-row">
                                 <div class="filter-group">
+                                    <label title="Unlock to create polyrhythmic 'flams' - independent chord change rhythm">
+                                        <input type="checkbox" id="unlockChordSteps">
+                                        Independent Steps (Flams)
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="chordStepsSliderContainer" style="display: none;">
+                                <div class="control-row">
+                                    <div class="filter-group">
+                                        <label>Steps: <span id="chordChangeStepsValue">16</span></label>
+                                        <input type="range" id="chordChangeSteps" min="1" max="32" value="16" title="Independent pattern length for chord changes">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="control-row">
+                                <div class="filter-group">
                                     <label>Pulses: <span id="chordChangePulsesValue">4</span></label>
                                     <input type="range" id="chordChangePulses" min="1" max="16" value="4" title="How many chord changes in the pattern">
                                 </div>

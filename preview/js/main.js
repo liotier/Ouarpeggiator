@@ -75,9 +75,10 @@ const appState = {
     // Chord progression sequencing (Stab Mode only)
     chordSequencing: {
         enabled: true,  // Enable chord progression in stab mode
+        stepsLocked: true,  // Lock steps to main euclidean (false = independent/flams)
         euclidean: {
             hits: 4,    // Chord changes per pattern
-            steps: 16,  // Locked to main euclidean steps by default
+            steps: 16,  // Independent steps (when unlocked)
             rotation: 0,
             pattern: [],
         },
@@ -1131,7 +1132,9 @@ function executeStep() {
     if (appState.playbackMode === 'stab' && appState.chordSequencing.enabled) {
         // Check if we should advance to next chord
         const changePattern = appState.chordSequencing.euclidean.pattern;
-        if (changePattern[appState.chordSequencing.stepIndex]) {
+        const changeStepIndex = appState.chordSequencing.stepIndex;
+
+        if (changePattern[changeStepIndex]) {
             // This is a chord change trigger - get next chord from sequencer
             const nextChordIndex = ChordProgressionSequencer.getNextChord(appState.chordProgression);
             appState.currentChordIndex = nextChordIndex;
@@ -1139,6 +1142,7 @@ function executeStep() {
         }
 
         // Advance chord change step index
+        // IMPORTANT: Use chord change steps, not main steps (for polyrhythm/flams)
         appState.chordSequencing.stepIndex = (appState.chordSequencing.stepIndex + 1) % appState.chordSequencing.euclidean.steps;
         renderChordChangeCircle();
     }
@@ -1458,8 +1462,10 @@ function bindControls() {
         document.getElementById('stepsValue').textContent = this.value;
         document.getElementById('rotationSlider').max = appState.euclidean.steps - 1;
 
-        // Sync chord progression steps (locked together)
-        appState.chordSequencing.euclidean.steps = appState.euclidean.steps;
+        // Sync chord progression steps ONLY if locked
+        if (appState.chordSequencing.stepsLocked) {
+            appState.chordSequencing.euclidean.steps = appState.euclidean.steps;
+        }
 
         // Constrain hits to not exceed steps
         const hitsSlider = document.getElementById('hitsSlider');
@@ -1599,6 +1605,59 @@ function bindControls() {
  * Bind chord progression sequencing controls
  */
 function bindChordProgressionControls() {
+    // Steps lock toggle
+    const unlockCheckbox = document.getElementById('unlockChordSteps');
+    const stepsSliderContainer = document.getElementById('chordStepsSliderContainer');
+
+    if (unlockCheckbox) {
+        unlockCheckbox.addEventListener('change', function() {
+            appState.chordSequencing.stepsLocked = !this.checked;
+
+            // Show/hide independent steps slider
+            if (stepsSliderContainer) {
+                stepsSliderContainer.style.display = this.checked ? 'block' : 'none';
+            }
+
+            // If locking, sync steps back to main
+            if (!this.checked) {
+                appState.chordSequencing.euclidean.steps = appState.euclidean.steps;
+                regenerateChordChangePattern();
+                renderChordChangeCircle();
+            }
+        });
+    }
+
+    // Chord change steps slider (independent mode)
+    const stepsSlider = document.getElementById('chordChangeSteps');
+    const stepsValue = document.getElementById('chordChangeStepsValue');
+
+    if (stepsSlider) {
+        stepsSlider.addEventListener('input', function() {
+            appState.chordSequencing.euclidean.steps = parseInt(this.value);
+            stepsValue.textContent = this.value;
+
+            // Update max values for dependent sliders
+            const pulsesSlider = document.getElementById('chordChangePulses');
+            const rotationSlider = document.getElementById('chordChangeRotation');
+
+            if (pulsesSlider) {
+                pulsesSlider.max = appState.chordSequencing.euclidean.steps;
+                if (appState.chordSequencing.euclidean.hits > appState.chordSequencing.euclidean.steps) {
+                    appState.chordSequencing.euclidean.hits = appState.chordSequencing.euclidean.steps;
+                    pulsesSlider.value = appState.chordSequencing.euclidean.steps;
+                    document.getElementById('chordChangePulsesValue').textContent = appState.chordSequencing.euclidean.steps;
+                }
+            }
+
+            if (rotationSlider) {
+                rotationSlider.max = appState.chordSequencing.euclidean.steps - 1;
+            }
+
+            regenerateChordChangePattern();
+            renderChordChangeCircle();
+        });
+    }
+
     // Chord change Euclidean controls
     const pulsesSlider = document.getElementById('chordChangePulses');
     const pulsesValue = document.getElementById('chordChangePulsesValue');
