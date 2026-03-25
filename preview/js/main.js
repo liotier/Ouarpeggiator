@@ -1016,7 +1016,6 @@ let masterClockInterval = null;
 let nextTickTime = 0;
 let scheduleAheadTime = 0.2;
 let schedulerLookahead = 25;
-let startTime = 0;
 let currentTick = 0;
 
 // Initialize clock worker
@@ -1066,8 +1065,6 @@ function startPlayback() {
         updateProgressionPreview();
     }
 
-    const tickInterval = 60000 / (appState.bpm * 24);
-
     appState.isPlaying = true;
     appState.tickCount = 0;
     appState.euclideanStepIndex = 0;
@@ -1104,7 +1101,6 @@ function startPlayback() {
         // Fallback: setTimeout-based scheduling
         const audioTime = Audio.getCurrentTime();
         if (audioTime !== null) {
-            startTime = audioTime;
             nextTickTime = audioTime;
             currentTick = 0;
         }
@@ -1122,7 +1118,7 @@ function startPlayback() {
 
             const tickInterval = 60 / (appState.bpm * 24);
             while (nextTickTime < audioTime + scheduleAheadTime) {
-                scheduleTickAtTime(nextTickTime, currentTick);
+                scheduleTickAtTime(nextTickTime);
                 nextTickTime += tickInterval;
                 currentTick++;
             }
@@ -1134,7 +1130,7 @@ function startPlayback() {
  * Schedule a tick to execute at a specific time
  * Uses setTimeout with calculated delay from Web Audio time
  */
-function scheduleTickAtTime(time, tickNumber) {
+function scheduleTickAtTime(time) {
     const audioTime = Audio.getCurrentTime();
     if (audioTime === null) {
         // No Web Audio - execute immediately
@@ -1169,7 +1165,6 @@ function stopPlayback() {
     appState.isPlaying = false;
     nextTickTime = 0;
     currentTick = 0;
-    startTime = 0;
 
     // Stop piano roll
     PianoRoll.stopPianoRoll();
