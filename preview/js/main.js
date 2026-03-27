@@ -18,7 +18,7 @@ import ChordProgressionSequencer from './chordProgressionSequencer.js';
 // ============================================================================
 
 let junoWindow = null;
-const JUNO_URL = 'https://liotier.github.io/juno106-ouarpeggiator/';
+const JUNO_URL = 'https://liotier.github.io/Juno-106_maintenance-and-performance-improvements/';
 
 // ============================================================================
 // Application State
