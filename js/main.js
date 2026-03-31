@@ -99,7 +99,6 @@ const appState = {
 
     // Runtime
     euclideanStepIndex: 0,
-    scheduledNotes: [],
 
     // Generation tracking
     hasGeneratedOnce: false,
@@ -1018,6 +1017,9 @@ let scheduleAheadTime = 0.2;
 let schedulerLookahead = 25;
 let currentTick = 0;
 
+// Tick-driven note-off queue (immune to setTimeout throttling in background tabs)
+const pendingNoteOffs = [];
+
 // Initialize clock worker
 function initClockWorker() {
     if (clockWorker) return;
@@ -1171,13 +1173,16 @@ function stopPlayback() {
     // Stop Euclidean circle animation
     EuclideanCircle.setPlaying(false);
 
-    // Stop all notes
-    appState.scheduledNotes.forEach(s => {
-        clearTimeout(s.handle);
-        if (MIDI.hasOutputDevice()) MIDI.sendNoteOff(s.note);
-        if (appState.outputMode === 'juno106') sendToJuno106({ type: 'noteOff', value: s.note });
+    // Stop all pending notes immediately
+    pendingNoteOffs.forEach(noff => {
+        if (noff.outputMode === 'midi' && MIDI.hasOutputDevice()) {
+            MIDI.sendNoteOff(noff.note);
+        } else if (noff.outputMode === 'juno106') {
+            sendToJuno106({ type: 'noteOff', value: noff.note });
+        }
+        PianoRoll.removeNote(noff.note);
     });
-    appState.scheduledNotes = [];
+    pendingNoteOffs.length = 0;
 
     if (MIDI.hasOutputDevice()) {
         MIDI.sendStop();
@@ -1192,8 +1197,30 @@ function stopPlayback() {
     document.getElementById('clockStatus').classList.add('stopped');
 }
 
+/**
+ * Process pending note-offs based on elapsed time.
+ * Called from the tick handler so it works even when setTimeout is throttled.
+ */
+function processPendingNoteOffs() {
+    const now = performance.now();
+    for (let i = pendingNoteOffs.length - 1; i >= 0; i--) {
+        if (now >= pendingNoteOffs[i].offTime) {
+            const noff = pendingNoteOffs.splice(i, 1)[0];
+            if (noff.outputMode === 'midi' && MIDI.hasOutputDevice()) {
+                MIDI.sendNoteOff(noff.note);
+            } else if (noff.outputMode === 'juno106') {
+                sendToJuno106({ type: 'noteOff', value: noff.note });
+            }
+            PianoRoll.removeNote(noff.note);
+        }
+    }
+}
+
 function handleClockTick() {
     if (!appState.isPlaying) return;
+
+    // Process note-offs on every tick (not dependent on setTimeout)
+    processPendingNoteOffs();
 
     appState.tickCount++;
 
@@ -1318,11 +1345,17 @@ function executeArpeggioNote(chord, velocity, gateLength, humanOffset) {
         }
     }
 
-    setTimeout(() => {
-        if (!appState.isPlaying) return;
+    // When tab is hidden, setTimeout is throttled to ~1s — play immediately
+    if (document.hidden || humanOffset <= 0) {
         playNote(note, velocity, gateLength);
         appState.lastPlayedNote = note;
-    }, Math.max(0, humanOffset));
+    } else {
+        setTimeout(() => {
+            if (!appState.isPlaying) return;
+            playNote(note, velocity, gateLength);
+            appState.lastPlayedNote = note;
+        }, humanOffset);
+    }
 }
 
 /**
@@ -1343,20 +1376,28 @@ function executeChordStab(notes, velocity, gateLength, humanOffset) {
     // Calculate delay between notes
     const strumDelay = appState.strumSpeed / Math.max(1, orderedNotes.length - 1);
 
-    setTimeout(() => {
-        if (!appState.isPlaying) return;
-
-        orderedNotes.forEach((note, idx) => {
-            const noteDelay = idx * strumDelay;
-            setTimeout(() => {
-                if (!appState.isPlaying) return;
-                playNote(note, velocity, gateLength);
-            }, noteDelay);
+    // When tab is hidden, setTimeout is throttled to ~1s — play immediately
+    if (document.hidden) {
+        orderedNotes.forEach((note) => {
+            playNote(note, velocity, gateLength);
         });
-
-        // Track the root note as last played
         appState.lastPlayedNote = orderedNotes[0];
-    }, Math.max(0, humanOffset));
+    } else {
+        setTimeout(() => {
+            if (!appState.isPlaying) return;
+
+            orderedNotes.forEach((note, idx) => {
+                const noteDelay = idx * strumDelay;
+                setTimeout(() => {
+                    if (!appState.isPlaying) return;
+                    playNote(note, velocity, gateLength);
+                }, noteDelay);
+            });
+
+            // Track the root note as last played
+            appState.lastPlayedNote = orderedNotes[0];
+        }, Math.max(0, humanOffset));
+    }
 }
 
 // ============================================================================
@@ -1391,27 +1432,20 @@ function playNote(note, velocity, gateLength) {
 
     if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
         MIDI.sendNoteOn(note, velocity);
-        const handle = setTimeout(() => {
-            MIDI.sendNoteOff(note);
-            PianoRoll.removeNote(note);
-            appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
-        }, gateLength);
-        appState.scheduledNotes.push({ note, handle });
     } else if (appState.outputMode === 'audio') {
         Audio.playNote(note, velocity, gateLength);
-        // Audio engine handles note off internally, so schedule removal for piano roll
-        setTimeout(() => {
-            PianoRoll.removeNote(note);
-        }, gateLength);
     } else if (appState.outputMode === 'juno106') {
         sendToJuno106({ type: 'noteOn', value: note });
-        const handle = setTimeout(() => {
-            sendToJuno106({ type: 'noteOff', value: note });
-            PianoRoll.removeNote(note);
-            appState.scheduledNotes = appState.scheduledNotes.filter(s => s.note !== note);
-        }, gateLength);
-        appState.scheduledNotes.push({ note, handle });
     }
+
+    // Schedule note-off via tick-driven queue (immune to background tab throttling).
+    // For 'audio' mode the engine handles its own note-off, but we still need
+    // to remove the piano roll entry.
+    pendingNoteOffs.push({
+        note,
+        offTime: performance.now() + gateLength,
+        outputMode: appState.outputMode
+    });
 }
 
 // ============================================================================
