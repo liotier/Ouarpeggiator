@@ -1116,10 +1116,9 @@ function startPlayback() {
                 return;
             }
 
-            const tickInterval = 60 / (appState.bpm * 24);
             while (nextTickTime < audioTime + scheduleAheadTime) {
                 scheduleTickAtTime(nextTickTime);
-                nextTickTime += tickInterval;
+                nextTickTime += 60 / (appState.bpm * 24);
                 currentTick++;
             }
         }, schedulerLookahead);

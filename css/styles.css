@@ -360,19 +360,8 @@ h1 {
     margin-top: 8px;
 }
 
-.variant-description {
-    font-size: 13px;
-    color: var(--muted);
-    font-style: italic;
-}
-
 .progression-hint {
     margin-top: 8px;
-}
-
-.hint-text {
-    font-size: 12px;
-    color: var(--muted);
 }
 
 /* Chord proximity coloring - handled by vl-reference in voice leading section */
@@ -435,7 +424,8 @@ h1 {
     gap: 8px;
 }
 
-.filter-group label {
+.filter-group label,
+.filter-group .field-label {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
@@ -604,7 +594,7 @@ button:disabled {
 
 .hint-text {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--muted);
     font-style: italic;
 }
 
