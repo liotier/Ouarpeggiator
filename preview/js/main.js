@@ -1011,6 +1011,8 @@ function renderPattern() {
 // ============================================================================
 
 let clockWorker = null;
+let noteSchedulerWorker = null;  // BroadcastChannel-enabled Worker for Juno-106
+let useBroadcastChannel = false;  // Enable when outputMode is juno106
 let masterClockInterval = null;
 let nextTickTime = 0;
 let scheduleAheadTime = 0.2;
@@ -1038,6 +1040,35 @@ function initClockWorker() {
     } catch (error) {
         console.warn('Clock worker unavailable, falling back to main thread:', error);
         clockWorker = null;
+    }
+}
+
+// Initialize note scheduler worker (BroadcastChannel for Juno-106)
+function initNoteSchedulerWorker() {
+    if (noteSchedulerWorker) return;
+
+    try {
+        noteSchedulerWorker = new Worker('js/noteSchedulerWorker.js');
+        noteSchedulerWorker.onmessage = function(e) {
+            const { type, note, velocity, gateLength, chordIndex } = e.data;
+
+            if (type === 'noteOn') {
+                // Update piano roll visualization
+                PianoRoll.addNote(note, velocity, gateLength, chordIndex);
+            } else if (type === 'noteOff') {
+                // Remove from piano roll
+                PianoRoll.removeNote(note);
+            } else if (type === 'tick') {
+                // Update UI with current step
+                renderPattern();
+            }
+        };
+        console.log('Note scheduler worker initialized (BroadcastChannel enabled)');
+        useBroadcastChannel = true;
+    } catch (error) {
+        console.warn('Note scheduler worker unavailable:', error);
+        noteSchedulerWorker = null;
+        useBroadcastChannel = false;
     }
 }
 
@@ -1090,7 +1121,41 @@ function startPlayback() {
         MIDI.sendStart();
     }
 
-    // Try to use Web Worker for timing (unaffected by main thread CPU load)
+    // Try to use BroadcastChannel Worker for Juno-106 (bypasses main thread entirely)
+    if (appState.outputMode === 'juno106') {
+        initNoteSchedulerWorker();
+
+        if (noteSchedulerWorker) {
+            // Send full state to worker
+            noteSchedulerWorker.postMessage({
+                type: 'updateState',
+                data: {
+                    bpm: appState.bpm,
+                    euclidean: appState.euclidean,
+                    euclideanStepIndex: appState.euclideanStepIndex,
+                    chordProgression: appState.chordProgression,
+                    currentChordIndex: appState.currentChordIndex,
+                    playbackMode: appState.playbackMode,
+                    octaveSpread: appState.octaveSpread,
+                    harmonicVariation: appState.harmonicVariation,
+                    rhythmicVariation: appState.rhythmicVariation,
+                    humanization: appState.humanization,
+                    velocity: appState.velocity,
+                    gate: appState.gate,
+                    strumSpeed: appState.strumSpeed,
+                    strumDirection: appState.strumDirection,
+                    outputMode: appState.outputMode
+                }
+            });
+
+            // Start worker
+            noteSchedulerWorker.postMessage({ type: 'start' });
+            console.log('Using BroadcastChannel Worker for Juno-106 output');
+            return;  // Don't start clock worker
+        }
+    }
+
+    // Fallback: use regular clock worker for timing (unaffected by main thread CPU load)
     initClockWorker();
 
     if (clockWorker) {
@@ -1152,7 +1217,12 @@ function scheduleTickAtTime(time) {
 }
 
 function stopPlayback() {
-    // Stop Web Worker if using it
+    // Stop note scheduler worker if using it
+    if (noteSchedulerWorker && useBroadcastChannel) {
+        noteSchedulerWorker.postMessage({ type: 'stop' });
+    }
+
+    // Stop clock worker if using it
     if (clockWorker) {
         clockWorker.postMessage({ type: 'stop' });
     }
