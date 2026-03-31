@@ -1427,6 +1427,7 @@ async function initializeMIDI() {
         console.log('WebMIDI not available');
         MIDIDiagnostics.logError('WebMIDI API not available in this browser');
         MIDIDiagnostics.updateAllStatus();
+        populateMIDIDevices();  // Still add Juno-106 option!
         return;
     }
 
@@ -1435,6 +1436,7 @@ async function initializeMIDI() {
         console.log('Failed to initialize MIDI');
         MIDIDiagnostics.logError('Failed to initialize MIDI - permission denied or error occurred');
         MIDIDiagnostics.updateAllStatus();
+        populateMIDIDevices();  // Still add Juno-106 option!
         return;
     }
 
