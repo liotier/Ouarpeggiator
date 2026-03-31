@@ -41,7 +41,7 @@ const pianoRoll = {
 
     // Timing
     currentTime: 0,
-    lastFrameTime: 0,
+    playbackStartTime: 0,       // performance.now() when playback started
     animationFrame: null,
 
     // Color palette for chords (DAW-style)
@@ -141,6 +141,12 @@ function resizePianoRoll() {
 // ============================================================================
 
 export function addNote(note, velocity, durationMs, chordIndex = 0) {
+    // Use real clock so notes get correct timestamps even when tab is backgrounded
+    // (requestAnimationFrame pauses in background, but notes keep playing via Worker)
+    if (pianoRoll.isPlaying && pianoRoll.playbackStartTime > 0) {
+        pianoRoll.currentTime = (performance.now() - pianoRoll.playbackStartTime) / 1000;
+    }
+
     const noteObj = {
         pitch: note,
         startTime: pianoRoll.currentTime,
@@ -172,16 +178,10 @@ export function clearNotes() {
 // ============================================================================
 
 function startAnimation() {
-    function animate(timestamp) {
-        if (!pianoRoll.lastFrameTime) {
-            pianoRoll.lastFrameTime = timestamp;
-        }
-
-        const deltaTime = (timestamp - pianoRoll.lastFrameTime) / 1000;
-        pianoRoll.lastFrameTime = timestamp;
-
+    function animate() {
         if (pianoRoll.isPlaying) {
-            pianoRoll.currentTime += deltaTime;
+            // Derive currentTime from real clock — immune to rAF pausing in background tabs
+            pianoRoll.currentTime = (performance.now() - pianoRoll.playbackStartTime) / 1000;
         }
 
         render();
@@ -453,9 +453,10 @@ function adjustBrightness(color, factor) {
 
 export function startPianoRoll() {
     pianoRoll.isPlaying = true;
+    pianoRoll.playbackStartTime = performance.now();
+    pianoRoll.currentTime = 0;
     // Restart animation loop if not already running
     if (!pianoRoll.animationFrame) {
-        pianoRoll.lastFrameTime = 0;
         startAnimation();
     }
 }
@@ -468,6 +469,7 @@ export function stopPianoRoll() {
 
 export function resetPianoRoll() {
     pianoRoll.currentTime = 0;
+    pianoRoll.playbackStartTime = 0;
     clearNotes();
 }
 
