@@ -92,7 +92,7 @@
                 </div>
 
                 <div class="filter-group">
-                    <label>Key</label>
+                    <label for="keySelect">Key</label>
                     <select id="keySelect">
                         <option value="0">C</option>
                         <option value="1">C#/D♭</option>
@@ -116,7 +116,7 @@
                 <div class="mode-container palette-mode-container active" id="paletteModeContainer">
                     <div class="mode-container-header">Progression Palette Mode</div>
                     <div class="filter-group">
-                        <label>Progression</label>
+                        <label for="progressionSelect">Progression</label>
                         <select id="progressionSelect" title="Each palette provides 16 unique chords: first N from the progression, remaining pads from extended harmony">
                             <optgroup label="Pop/Rock">
                                 <option value="I—V—vi—IV">I—V—vi—IV (Axis of Awesome)</option>
@@ -258,7 +258,7 @@
                 <div class="mode-container scale-mode-container" id="scaleModeContainer">
                     <div class="mode-container-header">Scale Mode</div>
                     <div class="filter-group">
-                        <label>Mode/Scale</label>
+                        <label for="modeSelect">Mode/Scale</label>
                         <select id="modeSelect">
                             <optgroup label="Common Western Tonal">
                                 <option value="Major">Major (Ionian)</option>
@@ -308,7 +308,7 @@
                 <div class="progression-header">
                     <div class="progression-header-left">
                         <div class="variant-selector-inline">
-                            <label>Variant:</label>
+                            <label for="variantSelect">Variant:</label>
                             <select id="variantSelect" title="Switch between different voicing variants">
                                 <option value="0">Smooth</option>
                             </select>
@@ -330,14 +330,14 @@
             <h2>Output</h2>
             <div class="output-controls-grid">
                 <div class="filter-group">
-                    <label>Output</label>
+                    <label for="outputMode">Output</label>
                     <select id="outputMode" title="Select audio output for chord preview and arpeggiator">
                         <option value="audio">Browser tone</option>
                         <!-- MIDI devices populated dynamically -->
                     </select>
                 </div>
                 <div id="audioConfig" class="filter-group">
-                    <label>Waveform</label>
+                    <label for="synthWaveform">Waveform</label>
                     <select id="synthWaveform">
                         <option value="triangle">Triangle</option>
                         <option value="sine">Sine</option>
@@ -369,21 +369,21 @@
                     </div>
 
                     <div class="filter-group">
-                        <label>Steps: <span id="stepsValue">16</span></label>
+                        <label for="stepsSlider">Steps: <span id="stepsValue">16</span></label>
                         <input type="range" id="stepsSlider" min="1" max="32" value="16">
                     </div>
                     <div class="filter-group">
-                        <label>Hits: <span id="hitsValue">7</span></label>
+                        <label for="hitsSlider">Hits: <span id="hitsValue">7</span></label>
                         <input type="range" id="hitsSlider" min="1" max="16" value="7">
                     </div>
                     <div class="filter-group">
-                        <label>Rotation: <span id="rotationValue">0</span></label>
+                        <label for="rotationSlider">Rotation: <span id="rotationValue">0</span></label>
                         <input type="range" id="rotationSlider" min="0" max="31" value="0">
                     </div>
 
                     <!-- Octave Spread -->
                     <div class="filter-group" id="octaveSpreadGroup">
-                        <label>Octave Spread: <span id="octaveValue">1</span></label>
+                        <label for="octaveSpread">Octave Spread: <span id="octaveValue">1</span></label>
                         <input type="range" id="octaveSpread" min="1" max="4" value="1">
                     </div>
 
@@ -400,16 +400,16 @@
                         </div>
                         <div id="chordStepsSliderContainer" style="display: none;">
                             <div class="filter-group">
-                                <label>Steps: <span id="chordChangeStepsValue">16</span></label>
+                                <label for="chordChangeSteps">Steps: <span id="chordChangeStepsValue">16</span></label>
                                 <input type="range" id="chordChangeSteps" min="1" max="32" value="16" title="Independent pattern length for chord changes">
                             </div>
                         </div>
                         <div class="filter-group">
-                            <label>Pulses: <span id="chordChangePulsesValue">4</span></label>
+                            <label for="chordChangePulses">Pulses: <span id="chordChangePulsesValue">4</span></label>
                             <input type="range" id="chordChangePulses" min="1" max="16" value="4" title="How many chord changes in the pattern">
                         </div>
                         <div class="filter-group">
-                            <label>Rotation: <span id="chordChangeRotationValue">0</span></label>
+                            <label for="chordChangeRotation">Rotation: <span id="chordChangeRotationValue">0</span></label>
                             <input type="range" id="chordChangeRotation" min="0" max="31" value="0">
                         </div>
                     </div>
@@ -449,7 +449,7 @@
                         </div>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>BPM: <span id="bpmValue">120</span></label>
+                                <label for="bpmSlider">BPM: <span id="bpmValue">120</span></label>
                                 <input type="range" id="bpmSlider" min="40" max="240" value="120">
                             </div>
                         </div>
@@ -460,7 +460,7 @@
                         <h3>Chord Variation</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
+                                <label for="harmonicAdherence">Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
                                 <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
                             </div>
                         </div>
@@ -471,18 +471,18 @@
                         <h3>Note Variation</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Note Substitution: <span id="harmonicValue">0%</span></label>
+                                <label for="harmonicVariation">Note Substitution: <span id="harmonicValue">0%</span></label>
                                 <input type="range" id="harmonicVariation" min="0" max="100" value="0" title="Probability of replacing a note with one from the progression pool">
                             </div>
                         </div>
                         <!-- Chord Stab specific controls (shown only in stab mode) -->
                         <div class="control-row stab-controls" id="stabControls" style="display: none;">
                             <div class="filter-group">
-                                <label>Strum Speed: <span id="strumSpeedValue">0</span>ms</label>
+                                <label for="strumSpeed">Strum Speed: <span id="strumSpeedValue">0</span>ms</label>
                                 <input type="range" id="strumSpeed" min="0" max="100" value="0" title="Delay between notes in a chord stab. 0 = instant, 100 = spread arpeggio-like">
                             </div>
                             <div class="filter-group">
-                                <label>Strum Direction</label>
+                                <span class="field-label">Strum Direction</span>
                                 <div class="button-group">
                                     <button class="strum-btn active" data-value="up">Up</button>
                                     <button class="strum-btn" data-value="down">Down</button>
@@ -497,7 +497,7 @@
                         <h3>Voice Leading</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Mode</label>
+                                <span class="field-label">Mode</span>
                                 <div class="button-group">
                                     <button class="voice-btn active" data-value="smooth">Smooth</button>
                                     <button class="voice-btn" data-value="far">Far</button>
@@ -515,7 +515,7 @@
                         <h3>Timing & Humanization</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Bars per Chord</label>
+                                <span class="field-label">Bars per Chord</span>
                                 <div class="button-group">
                                     <button class="bars-btn" data-value="1">1</button>
                                     <button class="bars-btn" data-value="2">2</button>
@@ -526,13 +526,13 @@
                         </div>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Humanize: <span id="humanizationValue">0</span>ms</label>
+                                <label for="humanization">Humanize: <span id="humanizationValue">0</span>ms</label>
                                 <input type="range" id="humanization" min="0" max="50" value="0">
                             </div>
                         </div>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Rhythmic Variation: <span id="rhythmicValue">0%</span></label>
+                                <label for="rhythmicVariation">Rhythmic Variation: <span id="rhythmicValue">0%</span></label>
                                 <input type="range" id="rhythmicVariation" min="0" max="100" value="0" title="Probability of inserting a rest instead of playing">
                             </div>
                         </div>
@@ -543,7 +543,7 @@
                         <h3>Velocity</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Mode</label>
+                                <label for="velocityMode">Mode</label>
                                 <select id="velocityMode" title="How velocity changes across the pattern">
                                     <option value="fixed" title="Same velocity for all notes">Fixed</option>
                                     <option value="random" title="Random velocity for each note within range">Random</option>
@@ -559,7 +559,7 @@
                         <h3>Gate</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Mode</label>
+                                <label for="gateMode">Mode</label>
                                 <select id="gateMode" title="How note duration changes across the pattern">
                                     <option value="fixed" title="Same gate length for all notes">Fixed</option>
                                     <option value="random" title="Random gate length for each note within range">Random</option>
@@ -590,7 +590,7 @@
                         <!-- Sequence Method -->
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Sequence Method</label>
+                                <label for="sequenceMethod">Sequence Method</label>
                                 <select id="sequenceMethod">
                                     <option value="random">Random</option>
                                     <option value="circle-fifths">Circle of 5ths</option>
@@ -607,7 +607,7 @@
                         <!-- Pattern Settings -->
                         <div class="control-row">
                             <div class="filter-group">
-                                <label>Pattern Length: <span id="patternLengthValue">4</span> chords</label>
+                                <label for="patternLength">Pattern Length: <span id="patternLengthValue">4</span> chords</label>
                                 <input type="range" id="patternLength" min="2" max="16" value="4">
                             </div>
                         </div>
