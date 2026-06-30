@@ -1175,6 +1175,7 @@ function startPlayback() {
                     humanization: appState.humanization,
                     velocity: appState.velocity,
                     gate: appState.gate,
+                    curveSyncRotation: appState.curveSyncRotation,
                     strumSpeed: appState.strumSpeed,
                     strumDirection: appState.strumDirection,
                     outputMode: appState.outputMode,
@@ -1831,6 +1832,7 @@ function bindControls() {
     // Curve rotation sync
     document.getElementById('curveSyncRotation').addEventListener('change', function() {
         appState.curveSyncRotation = this.checked;
+        syncWorkerParam({ curveSyncRotation: appState.curveSyncRotation });
     });
 
     // Chord Progression Controls (Stab Mode)
