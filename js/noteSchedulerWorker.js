@@ -128,7 +128,8 @@ function handleTick() {
     // Process pending note-offs
     processPendingNoteOffs();
 
-    state.tickCount++;
+    // tickCount is processed 0-based (incremented at the end), so the first
+    // tick is the downbeat (step 0).
 
     // Bar-based chord advancement (before the step trigger so a chord change
     // takes effect on the same tick as the step).
@@ -147,8 +148,8 @@ function handleTick() {
 
         // Notify main thread only when the step actually advances — matches
         // the main-thread clock's own cadence (once per step, not once per
-        // PPQN tick). Posting on every tick caused up to ~96 full Euclidean
-        // circle SVG rebuilds/sec, starving the main thread and delaying
+        // tick). Posting on every tick caused up to ~96 full Euclidean circle
+        // SVG rebuilds/sec, starving the main thread and delaying
         // noteOn/noteOff processing (piano roll display lag).
         self.postMessage({
             type: 'tick',
@@ -156,6 +157,8 @@ function handleTick() {
             euclideanStepIndex: state.euclideanStepIndex
         });
     }
+
+    state.tickCount++;
 }
 
 /**

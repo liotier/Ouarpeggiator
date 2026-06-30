@@ -23,21 +23,19 @@
 
 import { selectNextChordHarmonically } from './modules/musicTheory.js';
 
-// Pulses Per Quarter-note-equivalent that the clock counts in. One bar = 4
-// "beats" = PPQN ticks. (Single source of truth — see #5 for the step-timing
-// implications of this value.)
-export const PPQN = 96;
+// Clock resolution: ticks per bar. The host clocks run at 24 PPQN (bpm*24),
+// i.e. 24 ticks/beat * 4 beats = 96 ticks/bar. The Euclidean pattern spans
+// exactly one bar, so its steps are distributed across this many ticks.
+// IMPORTANT: tickCount is processed 0-based — the host increments it AFTER
+// handling each tick, so tick 0 is the first downbeat.
+export const TICKS_PER_BAR = 96;
 
 // ============================================================================
 // Tick math
 // ============================================================================
 
 export function getTicksPerChordChange(state) {
-    return PPQN * state.barsPerChord;
-}
-
-export function getTicksPerStep(state) {
-    return Math.floor(PPQN / state.euclidean.steps);
+    return TICKS_PER_BAR * state.barsPerChord;
 }
 
 /** True on the tick where the bar-based chord advance should run. */
@@ -45,9 +43,24 @@ export function isChordChangeTick(state) {
     return state.tickCount > 0 && state.tickCount % getTicksPerChordChange(state) === 0;
 }
 
-/** True on the tick where a Euclidean step should be evaluated. */
+/**
+ * Global step index for a given tick — steps distributed proportionally across
+ * the bar (floor(tick * steps / ticksPerBar)). This is what eliminates drift:
+ * exactly `steps` steps fall in every 96-tick bar and realign on each downbeat,
+ * even for step counts that don't divide 96 (e.g. 7, 14, 20).
+ */
+function globalStepIndex(tickCount, steps) {
+    return Math.floor(tickCount * steps / TICKS_PER_BAR);
+}
+
+/**
+ * True when this tick starts a new Euclidean step (the proportional step index
+ * advanced since the previous tick). Fires step 0 on every downbeat, including
+ * tick 0 (where the previous index is -1).
+ */
 export function isStepTick(state) {
-    return state.tickCount % getTicksPerStep(state) === 0;
+    const steps = state.euclidean.steps;
+    return globalStepIndex(state.tickCount, steps) !== globalStepIndex(state.tickCount - 1, steps);
 }
 
 // ============================================================================
@@ -107,10 +120,6 @@ export function advanceStabChord(state, sequencer) {
 // ============================================================================
 // Per-step note computation
 // ============================================================================
-
-function advanceEuclideanStep(state) {
-    state.euclideanStepIndex = (state.euclideanStepIndex + 1) % state.euclidean.steps;
-}
 
 function computeVelocity(state) {
     let velocity = state.velocity.fixed;
@@ -182,6 +191,11 @@ function orderStabNotes(state, notes) {
  *   from step start (humanization + strum). A rest carries no notes.
  */
 export function computeStepNotes(state) {
+    // Derive the bar-locked step index for this tick (replaces the old
+    // free-running counter that drifted for non-divisor step counts).
+    state.euclideanStepIndex =
+        globalStepIndex(state.tickCount, state.euclidean.steps) % state.euclidean.steps;
+
     const pattern = state.euclidean.pattern;
     const chord = state.chordProgression[state.currentChordIndex];
 
@@ -193,7 +207,6 @@ export function computeStepNotes(state) {
         (state.rhythmicVariation > 0 && Math.random() * 100 < state.rhythmicVariation);
 
     if (isRest) {
-        advanceEuclideanStep(state);
         return { isRest: true, notes: [] };
     }
 
@@ -218,6 +231,5 @@ export function computeStepNotes(state) {
         state.lastPlayedNote = note;
     }
 
-    advanceEuclideanStep(state);
     return { isRest: false, notes };
 }
