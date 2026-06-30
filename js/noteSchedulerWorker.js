@@ -136,6 +136,7 @@ function processPendingNoteOffs() {
             const noff = pendingNoteOffs.splice(i, 1)[0];
 
             // Send noteOff via BroadcastChannel
+            console.log('[Juno-106 worker] BroadcastChannel noteOff note=' + noff.note);
             noteChannel.postMessage({
                 type: 'noteOff',
                 note: noff.note
@@ -252,6 +253,7 @@ function executeChordStab(notes, velocity, gateLength) {
  */
 function playNote(note, velocity, gateLength) {
     // Send noteOn via BroadcastChannel to Juno-106
+    console.log('[Juno-106 worker] BroadcastChannel noteOn note=' + note + ' vel=' + velocity + ' — Juno-106 must listen on BroadcastChannel("ouarpeggiator-notes"), not window.opener postMessage');
     noteChannel.postMessage({
         type: 'noteOn',
         note: note,
