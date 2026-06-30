@@ -8,7 +8,7 @@
  */
 
 // Import Euclidean algorithm
-importScripts('euclidean.js');
+import { euclidean, rotatePattern } from './euclidean.js';
 
 // BroadcastChannel for cross-tab communication (same origin only)
 const noteChannel = new BroadcastChannel('ouarpeggiator-notes');

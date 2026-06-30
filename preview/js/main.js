@@ -1048,16 +1048,18 @@ function initNoteSchedulerWorker() {
     if (noteSchedulerWorker) return;
 
     try {
-        noteSchedulerWorker = new Worker('js/noteSchedulerWorker.js');
+        noteSchedulerWorker = new Worker('js/noteSchedulerWorker.js', { type: 'module' });
         noteSchedulerWorker.onmessage = function(e) {
             const { type, note, velocity, gateLength, chordIndex } = e.data;
 
             if (type === 'noteOn') {
-                console.log('[Juno-106] worker→BroadcastChannel noteOn note=' + note + ' vel=' + velocity + ' (NOT sent via postMessage to junoWindow)');
+                console.log('[Juno-106] worker noteOn note=' + note + ' vel=' + velocity + ' → forwarding via postMessage to junoWindow');
+                sendToJuno106({ type: 'noteOn', value: note });
                 // Update piano roll visualization
                 PianoRoll.addNote(note, velocity, gateLength, chordIndex);
             } else if (type === 'noteOff') {
-                console.log('[Juno-106] worker→BroadcastChannel noteOff note=' + note + ' (NOT sent via postMessage to junoWindow)');
+                console.log('[Juno-106] worker noteOff note=' + note + ' → forwarding via postMessage to junoWindow');
+                sendToJuno106({ type: 'noteOff', value: note });
                 // Remove from piano roll
                 PianoRoll.removeNote(note);
             } else if (type === 'tick') {
