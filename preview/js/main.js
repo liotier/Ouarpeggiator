@@ -1053,9 +1053,11 @@ function initNoteSchedulerWorker() {
             const { type, note, velocity, gateLength, chordIndex } = e.data;
 
             if (type === 'noteOn') {
+                console.log('[Juno-106] worker→BroadcastChannel noteOn note=' + note + ' vel=' + velocity + ' (NOT sent via postMessage to junoWindow)');
                 // Update piano roll visualization
                 PianoRoll.addNote(note, velocity, gateLength, chordIndex);
             } else if (type === 'noteOff') {
+                console.log('[Juno-106] worker→BroadcastChannel noteOff note=' + note + ' (NOT sent via postMessage to junoWindow)');
                 // Remove from piano roll
                 PianoRoll.removeNote(note);
             } else if (type === 'tick') {
@@ -1063,7 +1065,7 @@ function initNoteSchedulerWorker() {
                 renderPattern();
             }
         };
-        console.log('Note scheduler worker initialized (BroadcastChannel enabled)');
+        console.log('[Juno-106] noteSchedulerWorker initialized — notes will go via BroadcastChannel("ouarpeggiator-notes"), NOT postMessage to junoWindow');
         useBroadcastChannel = true;
     } catch (error) {
         console.warn('Note scheduler worker unavailable:', error);
@@ -1150,7 +1152,8 @@ function startPlayback() {
 
             // Start worker
             noteSchedulerWorker.postMessage({ type: 'start' });
-            console.log('Using BroadcastChannel Worker for Juno-106 output');
+            console.log('[Juno-106] playback started via BroadcastChannel Worker — sendToJuno106/postMessage path is BYPASSED');
+            console.log('[Juno-106] junoWindow reference:', junoWindow, 'closed:', junoWindow ? junoWindow.closed : 'n/a');
             return;  // Don't start clock worker
         }
     }
@@ -1477,19 +1480,22 @@ function executeChordStab(notes, velocity, gateLength, humanOffset) {
 function launchJuno106() {
     if (junoWindow && !junoWindow.closed) return;
     junoWindow = window.open(JUNO_URL, 'juno106');
+    console.log('[Juno-106] window opened, reference:', junoWindow);
     window.addEventListener('message', function onReady(e) {
         if (e.origin === 'https://liotier.github.io' && e.data === 'juno106:ready') {
             window.removeEventListener('message', onReady);
-            console.log('[Juno-106] ready');
+            console.log('[Juno-106] ready — junoWindow:', junoWindow, 'closed:', junoWindow ? junoWindow.closed : 'n/a');
+            console.log('[Juno-106] NOTE: notes will be sent via BroadcastChannel (worker) or postMessage (fallback) depending on worker availability');
         }
     });
 }
 
 function sendToJuno106(msg) {
     if (!junoWindow || junoWindow.closed) {
-        console.warn('[Juno-106] window not available');
+        console.warn('[Juno-106] sendToJuno106: window not available, msg dropped:', msg);
         return;
     }
+    console.log('[Juno-106] sendToJuno106 postMessage →', JSON.stringify(msg), 'targetOrigin: https://liotier.github.io');
     junoWindow.postMessage(msg, 'https://liotier.github.io');
 }
 
@@ -1505,6 +1511,7 @@ function playNote(note, velocity, gateLength) {
     } else if (appState.outputMode === 'audio') {
         Audio.playNote(note, velocity, gateLength);
     } else if (appState.outputMode === 'juno106') {
+        console.log('[Juno-106] playNote (main-thread fallback path) noteOn note=' + note + ' vel=' + velocity);
         sendToJuno106({ type: 'noteOn', value: note });
     }
 
