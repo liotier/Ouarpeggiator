@@ -121,11 +121,39 @@ export function advanceStabChord(state, sequencer) {
 // Per-step note computation
 // ============================================================================
 
+/**
+ * Position within the pattern cycle, as a fraction [0, 1). Drives curve modes.
+ * When curveSyncRotation is on, the curve's phase 0 is shifted by the same
+ * rotation applied to the Euclidean pattern, so the curve's shape rotates
+ * along with the pattern instead of staying pinned to raw array position 0.
+ */
+function curvePhase(state) {
+    const steps = state.euclidean.steps;
+    const shift = state.curveSyncRotation ? state.euclidean.rotation : 0;
+    return (((state.euclideanStepIndex + shift) % steps) + steps) % steps / steps;
+}
+
+/** Maps phase [0,1) to shape value [0,1] for a named curve type. */
+function evaluateCurve(curveType, phase) {
+    switch (curveType) {
+        case 'linear-descending': return 1 - phase;
+        case 'exponential': return phase * phase;              // ease-in ramp
+        case 'logarithmic': return Math.sqrt(phase);            // ease-out ramp
+        case 'sinusoidal': return (1 - Math.cos(phase * 2 * Math.PI)) / 2; // smooth swell
+        case 'triangle': return phase < 0.5 ? phase * 2 : (1 - phase) * 2; // linear swell
+        case 'linear-ascending':
+        default: return phase;
+    }
+}
+
 function computeVelocity(state) {
     let velocity = state.velocity.fixed;
     if (state.velocity.mode === 'random') {
         velocity = state.velocity.randomMin +
             Math.random() * (state.velocity.randomMax - state.velocity.randomMin);
+    } else if (state.velocity.mode === 'curve') {
+        const shape = evaluateCurve(state.velocity.curveType, curvePhase(state));
+        velocity = state.velocity.curveMin + shape * (state.velocity.curveMax - state.velocity.curveMin);
     }
     return Math.round(Math.max(1, Math.min(127, velocity)));
 }
@@ -137,6 +165,9 @@ function computeGateLength(state) {
     if (state.gate.mode === 'random') {
         gatePercent = state.gate.randomMin +
             Math.random() * (state.gate.randomMax - state.gate.randomMin);
+    } else if (state.gate.mode === 'curve') {
+        const shape = evaluateCurve(state.gate.curveType, curvePhase(state));
+        gatePercent = state.gate.curveMin + shape * (state.gate.curveMax - state.gate.curveMin);
     }
     return stepDuration * gatePercent;
 }

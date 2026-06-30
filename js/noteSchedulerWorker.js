@@ -63,6 +63,7 @@ let state = {
     // Velocity & Gate
     velocity: { mode: 'fixed', fixed: 100 },
     gate: { mode: 'fixed', fixed: 0.8 },
+    curveSyncRotation: false,
 
     // Stab mode
     strumSpeed: 0,
