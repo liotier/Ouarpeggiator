@@ -276,8 +276,12 @@ function drawGrid(ctx, width, height) {
         // Calculate how many pattern cycles to draw (enough to cover the visible area plus scroll offset)
         const cycleStartTime = Math.floor(pianoRoll.currentTime / totalPatternDuration) * totalPatternDuration;
 
-        // Draw multiple pattern cycles if needed
-        for (let cycle = -1; cycle <= 2; cycle++) {
+        // Draw multiple pattern cycles if needed — current cycle forward only.
+        // Drawing a cycle into the past (cycle = -1) would retroactively repaint
+        // already-played history using whatever pattern is active *now*, which
+        // visibly clashes with note rectangles drawn under a since-changed
+        // pattern (looks like two different rhythms overlaid).
+        for (let cycle = 0; cycle <= 2; cycle++) {
             const cycleTime = cycleStartTime + (cycle * totalPatternDuration);
 
             pianoRoll.euclideanPattern.forEach((isHit, stepIndex) => {
