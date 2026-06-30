@@ -1337,7 +1337,8 @@ function handleClockTick() {
     // Process note-offs on every tick (not dependent on setTimeout)
     processPendingNoteOffs();
 
-    appState.tickCount++;
+    // tickCount is processed 0-based (incremented at the end), so the first
+    // tick is the downbeat (step 0).
 
     // Bar-based chord advancement (must run before the step trigger so a chord
     // change takes effect on the same tick as the step).
@@ -1348,6 +1349,8 @@ function handleClockTick() {
     if (isStepTick(appState)) {
         executeStep();
     }
+
+    appState.tickCount++;
 }
 
 function executeStep() {
