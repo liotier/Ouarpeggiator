@@ -11,6 +11,11 @@
 import { euclidean, rotatePattern } from './euclidean.js';
 // Import harmonic chord selection (same algorithm the main thread uses)
 import { selectNextChordHarmonically } from './modules/musicTheory.js';
+// Import the Stab Mode chord sequencer (own instance, independent of main
+// thread's singleton — settings are synced in via 'updateState')
+import { ChordProgressionSequencer } from './chordProgressionSequencer.js';
+
+const chordSequencer = new ChordProgressionSequencer();
 
 // BroadcastChannel for cross-tab communication (same origin only)
 const noteChannel = new BroadcastChannel('ouarpeggiator-notes');
@@ -35,6 +40,14 @@ let state = {
     currentChordIndex: 0,
     barsPerChord: 4,
     harmonicAdherence: 70,
+
+    // Chord progression sequencing (Stab Mode only) — Euclidean-pattern-driven
+    // chord changes, independent of and in addition to the bar-based advance above
+    chordSequencing: {
+        enabled: true,
+        euclidean: { hits: 4, steps: 16, rotation: 0, pattern: [] },
+        stepIndex: 0
+    },
 
     // Playback mode
     playbackMode: 'arpeggio',  // 'arpeggio' | 'stab'
@@ -136,7 +149,7 @@ function handleTick() {
 
         // Tell the main thread so it can update the chord grid highlight.
         self.postMessage({
-            type: 'chordChange',
+            type: 'chordUpdate',
             currentChordIndex: state.currentChordIndex
         });
     }
@@ -184,6 +197,26 @@ function processPendingNoteOffs() {
  * Execute a step in the Euclidean pattern
  */
 function executeStep() {
+    // CHORD PROGRESSION ADVANCEMENT (Stab Mode only) — mirrors the main thread's
+    // independent Euclidean-pattern-driven chord sequencer (separate from, and
+    // in addition to, the bar-based harmonic advance in handleTick above).
+    if (state.playbackMode === 'stab' && state.chordSequencing.enabled) {
+        const changePattern = state.chordSequencing.euclidean.pattern;
+        const changeStepIndex = state.chordSequencing.stepIndex;
+
+        if (changePattern[changeStepIndex]) {
+            state.currentChordIndex = chordSequencer.getNextChord(state.chordProgression);
+        }
+
+        state.chordSequencing.stepIndex = (state.chordSequencing.stepIndex + 1) % state.chordSequencing.euclidean.steps;
+
+        self.postMessage({
+            type: 'chordUpdate',
+            currentChordIndex: state.currentChordIndex,
+            chordSequencingStepIndex: state.chordSequencing.stepIndex
+        });
+    }
+
     const pattern = state.euclidean.pattern;
     const chord = state.chordProgression[state.currentChordIndex];
 
@@ -314,6 +347,8 @@ self.onmessage = function(e) {
             state.isPlaying = true;
             state.tickCount = 0;
             state.euclideanStepIndex = 0;
+            state.chordSequencing.stepIndex = 0;
+            chordSequencer.reset();
             startClock();
             break;
 
@@ -324,9 +359,16 @@ self.onmessage = function(e) {
             state.euclideanStepIndex = 0;
             break;
 
-        case 'updateState':
+        case 'updateState': {
+            // sequencerSettings targets the chordSequencer instance, not state
+            const { sequencerSettings, ...stateData } = data;
+
             // Merge state update
-            Object.assign(state, data);
+            Object.assign(state, stateData);
+
+            if (sequencerSettings) {
+                Object.assign(chordSequencer, sequencerSettings);
+            }
 
             // Regenerate Euclidean pattern if parameters changed
             if (data.euclidean) {
@@ -335,6 +377,13 @@ self.onmessage = function(e) {
                     state.euclidean.rotation
                 );
             }
+            break;
+        }
+
+        case 'regenerateSequencer':
+            // Manual "regenerate" trigger — forces a fresh sequence even when
+            // lockPattern is on (mirrors ChordProgressionSequencer.regenerate()).
+            chordSequencer.regenerate(state.chordProgression);
             break;
 
         case 'setBPM':
