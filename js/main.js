@@ -5,6 +5,13 @@
  */
 
 import { euclidean, rotatePattern } from './euclidean.js';
+import {
+    isChordChangeTick,
+    isStepTick,
+    advanceBarChord,
+    advanceStabChord,
+    computeStepNotes
+} from './sequencerCore.js';
 import * as MIDI from './midi.js';
 import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
@@ -1332,179 +1339,46 @@ function handleClockTick() {
 
     appState.tickCount++;
 
-    // Check chord advancement
-    const ticksPerBar = 96;
-    const ticksPerChordChange = ticksPerBar * appState.barsPerChord;
-
-    if (appState.tickCount > 0 && appState.tickCount % ticksPerChordChange === 0) {
-        // Use harmonic selection to choose next chord
-        const currentChord = appState.chordProgression[appState.currentChordIndex];
-        const currentChordObj = { notes: currentChord?.notes || [] };
-        const paletteObjs = appState.chordProgression.map(c => ({ notes: c?.notes || [] }));
-
-        appState.currentChordIndex = MusicTheory.selectNextChordHarmonically(
-            currentChordObj,
-            paletteObjs,
-            appState.harmonicAdherence,
-            appState.currentChordIndex
-        );
-        renderChordGrid();
+    // Bar-based chord advancement (must run before the step trigger so a chord
+    // change takes effect on the same tick as the step).
+    if (isChordChangeTick(appState)) {
+        if (advanceBarChord(appState)) renderChordGrid();
     }
 
-    // Check for step trigger
-    const ticksPerStep = Math.floor(96 / appState.euclidean.steps);
-
-    if (appState.tickCount % ticksPerStep === 0) {
+    if (isStepTick(appState)) {
         executeStep();
     }
 }
 
 function executeStep() {
-    // CHORD PROGRESSION ADVANCEMENT (Stab Mode only)
-    if (appState.playbackMode === 'stab' && appState.chordSequencing.enabled) {
-        // Check if we should advance to next chord
-        const changePattern = appState.chordSequencing.euclidean.pattern;
-        const changeStepIndex = appState.chordSequencing.stepIndex;
-
-        if (changePattern[changeStepIndex]) {
-            // This is a chord change trigger - get next chord from sequencer
-            const nextChordIndex = ChordProgressionSequencer.getNextChord(appState.chordProgression);
-            appState.currentChordIndex = nextChordIndex;
-            renderChordGrid(); // Update visual current chord
-        }
-
-        // Advance chord change step index
-        // IMPORTANT: Use chord change steps, not main steps (for polyrhythm/flams)
-        appState.chordSequencing.stepIndex = (appState.chordSequencing.stepIndex + 1) % appState.chordSequencing.euclidean.steps;
+    // Stab-mode chord sequencer advancement (shared core decides; host renders)
+    const stab = advanceStabChord(appState, ChordProgressionSequencer);
+    if (stab.ran) {
+        if (stab.changed) renderChordGrid();
         renderChordChangeCircle();
     }
 
-    // NOTE/STAB PLAYBACK
-    const pattern = appState.euclidean.pattern;
-    const chord = appState.chordProgression[appState.currentChordIndex];
-
-    if (!chord || !chord.notes || chord.empty) {
-        appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
-        renderPattern();
-        return;
+    // Shared core computes the notes for this step and advances the position.
+    const result = computeStepNotes(appState);
+    if (!result.isRest) {
+        result.notes.forEach(scheduleNote);
     }
-
-    // Check if current step is a hit
-    if (!pattern[appState.euclideanStepIndex]) {
-        appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
-        renderPattern();
-        return;
-    }
-
-    // Apply rhythmic variation (both modes)
-    if (appState.rhythmicVariation > 0 && Math.random() * 100 < appState.rhythmicVariation) {
-        appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
-        renderPattern();
-        return;
-    }
-
-    // Calculate velocity
-    let velocity = appState.velocity.fixed;
-    if (appState.velocity.mode === 'random') {
-        velocity = appState.velocity.randomMin + Math.random() * (appState.velocity.randomMax - appState.velocity.randomMin);
-    }
-    velocity = Math.round(Math.max(1, Math.min(127, velocity)));
-
-    // Calculate gate
-    const stepDuration = (60000 / appState.bpm) / (appState.euclidean.steps / 4);
-    let gatePercent = appState.gate.fixed;
-    if (appState.gate.mode === 'random') {
-        gatePercent = appState.gate.randomMin + Math.random() * (appState.gate.randomMax - appState.gate.randomMin);
-    }
-    const gateLength = stepDuration * gatePercent;
-
-    // Humanization
-    const humanOffset = (Math.random() - 0.5) * 2 * appState.humanization;
-
-    if (appState.playbackMode === 'stab') {
-        // CHORD STAB MODE: Play all notes with optional strum
-        executeChordStab(chord.notes, velocity, gateLength, humanOffset);
-    } else {
-        // ARPEGGIO MODE: Play single note
-        executeArpeggioNote(chord, velocity, gateLength, humanOffset);
-    }
-
-    appState.euclideanStepIndex = (appState.euclideanStepIndex + 1) % appState.euclidean.steps;
     renderPattern();
 }
 
 /**
- * Execute a single arpeggio note
+ * Schedule a single note event (from the core) for output. Honors the per-note
+ * timing offset (humanization + strum). When the tab is hidden, setTimeout is
+ * throttled to ~1s, so play immediately and let the offsets collapse.
  */
-function executeArpeggioNote(chord, velocity, gateLength, humanOffset) {
-    const chordSize = chord.notes.length;
-    const baseNoteIndex = appState.euclideanStepIndex % chordSize;
-    const octaveLayer = Math.floor(appState.euclideanStepIndex / chordSize) % appState.octaveSpread;
-    let note = chord.notes[baseNoteIndex] + (octaveLayer * 12);
-
-    // Apply harmonic variation (note substitution)
-    if (appState.harmonicVariation > 0 && Math.random() * 100 < appState.harmonicVariation) {
-        const allNotes = appState.chordProgression.filter(c => c.notes).flatMap(c => c.notes);
-        if (allNotes.length > 0) {
-            let substitute = allNotes[Math.floor(Math.random() * allNotes.length)];
-            while (substitute < note - 12) substitute += 12;
-            while (substitute > note + 12) substitute -= 12;
-            note = substitute;
-        }
-    }
-
-    // When tab is hidden, setTimeout is throttled to ~1s — play immediately
-    if (document.hidden || humanOffset <= 0) {
-        playNote(note, velocity, gateLength);
-        appState.lastPlayedNote = note;
+function scheduleNote(ev) {
+    if (document.hidden || ev.offset <= 0) {
+        playNote(ev.note, ev.velocity, ev.gateLength);
     } else {
         setTimeout(() => {
             if (!appState.isPlaying) return;
-            playNote(note, velocity, gateLength);
-            appState.lastPlayedNote = note;
-        }, humanOffset);
-    }
-}
-
-/**
- * Execute a chord stab (all notes, with optional strum delay)
- */
-function executeChordStab(notes, velocity, gateLength, humanOffset) {
-    // Determine strum order
-    let orderedNotes = [...notes];
-    if (appState.strumDirection === 'down') {
-        orderedNotes.reverse();
-    } else if (appState.strumDirection === 'alternating') {
-        // Alternate based on step index
-        if (appState.euclideanStepIndex % 2 === 1) {
-            orderedNotes.reverse();
-        }
-    }
-
-    // Calculate delay between notes
-    const strumDelay = appState.strumSpeed / Math.max(1, orderedNotes.length - 1);
-
-    // When tab is hidden, setTimeout is throttled to ~1s — play immediately
-    if (document.hidden) {
-        orderedNotes.forEach((note) => {
-            playNote(note, velocity, gateLength);
-        });
-        appState.lastPlayedNote = orderedNotes[0];
-    } else {
-        setTimeout(() => {
-            if (!appState.isPlaying) return;
-
-            orderedNotes.forEach((note, idx) => {
-                const noteDelay = idx * strumDelay;
-                setTimeout(() => {
-                    if (!appState.isPlaying) return;
-                    playNote(note, velocity, gateLength);
-                }, noteDelay);
-            });
-
-            // Track the root note as last played
-            appState.lastPlayedNote = orderedNotes[0];
-        }, Math.max(0, humanOffset));
+            playNote(ev.note, ev.velocity, ev.gateLength);
+        }, ev.offset);
     }
 }
 
