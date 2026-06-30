@@ -512,10 +512,6 @@ export function setOctaveSpread(octaveSpread) {
     }
 }
 
-export function setChordIndex(index) {
-    // Could be used to change color scheme
-}
-
 // ============================================================================
 // Cleanup
 // ============================================================================
