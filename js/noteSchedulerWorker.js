@@ -9,6 +9,8 @@
 
 // Import Euclidean algorithm
 import { euclidean, rotatePattern } from './euclidean.js';
+// Import harmonic chord selection (same algorithm the main thread uses)
+import { selectNextChordHarmonically } from './modules/musicTheory.js';
 
 // BroadcastChannel for cross-tab communication (same origin only)
 const noteChannel = new BroadcastChannel('ouarpeggiator-notes');
@@ -31,6 +33,8 @@ let state = {
     // Chord progression
     chordProgression: [],
     currentChordIndex: 0,
+    barsPerChord: 4,
+    harmonicAdherence: 70,
 
     // Playback mode
     playbackMode: 'arpeggio',  // 'arpeggio' | 'stab'
@@ -110,6 +114,32 @@ function handleTick() {
     processPendingNoteOffs();
 
     state.tickCount++;
+
+    // Chord advancement (bar-based harmonic selection) — must run before the
+    // step trigger so a chord change takes effect on the same tick as the step,
+    // exactly as the main-thread clock does.
+    const ticksPerBar = 96;
+    const ticksPerChordChange = ticksPerBar * state.barsPerChord;
+
+    if (state.tickCount > 0 && state.tickCount % ticksPerChordChange === 0 &&
+        state.chordProgression.length > 1) {
+        const currentChord = state.chordProgression[state.currentChordIndex];
+        const currentChordObj = { notes: currentChord?.notes || [] };
+        const paletteObjs = state.chordProgression.map(c => ({ notes: c?.notes || [] }));
+
+        state.currentChordIndex = selectNextChordHarmonically(
+            currentChordObj,
+            paletteObjs,
+            state.harmonicAdherence,
+            state.currentChordIndex
+        );
+
+        // Tell the main thread so it can update the chord grid highlight.
+        self.postMessage({
+            type: 'chordChange',
+            currentChordIndex: state.currentChordIndex
+        });
+    }
 
     // Check for step trigger
     const ticksPerStep = Math.floor(96 / state.euclidean.steps);
