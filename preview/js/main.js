@@ -106,7 +106,6 @@ const appState = {
 
     // UI initialization tracking
     pianoRollInitialized: false,
-    chordProgressionCircleInitialized: false,
 };
 
 // Timing constants
@@ -2093,14 +2092,6 @@ function bindChordProgressionControls() {
 }
 
 /**
- * Initialize chord change Euclidean circle
- * NOTE: No longer needed - chord rhythm now shown on main circle!
- */
-function initializeChordChangeCircle() {
-    // Merged into main Euclidean circle - nothing to do here
-}
-
-/**
  * Regenerate chord change Euclidean pattern
  */
 function regenerateChordChangePattern() {
@@ -2263,11 +2254,6 @@ function updatePlaybackModeUI() {
         // Show chord rhythm controls next to the circle!
         if (chordRhythmControls) chordRhythmControls.style.display = 'block';
 
-        // Initialize chord change Euclidean circle if not already done
-        if (!appState.chordProgressionCircleInitialized) {
-            initializeChordChangeCircle();
-            appState.chordProgressionCircleInitialized = true;
-        }
         // Update main circle to show chord rhythm
         renderChordChangeCircle();
     } else {
