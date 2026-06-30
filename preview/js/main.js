@@ -686,12 +686,7 @@ function generateProgression() {
     // Update variant selector
     updateVariantSelector();
     renderChordGrid();
-    // Push the new progression to the worker if playing (deliberate reset, so
-    // currentChordIndex is sent too).
-    syncWorkerParam({
-        chordProgression: appState.chordProgression,
-        currentChordIndex: appState.currentChordIndex
-    });
+    syncChordProgressionToWorker();
     console.log('[Ouarpeggiator] generateProgression complete:', appState.generationMode, '→', appState.variants.length, 'variant(s),', appState.chordProgression.length, 'chords');
 }
 
@@ -730,11 +725,7 @@ function switchVariant(index) {
     updateProgressionTitle();
 
     renderChordGrid();
-    // Push the switched progression to the worker if playing.
-    syncWorkerParam({
-        chordProgression: appState.chordProgression,
-        currentChordIndex: appState.currentChordIndex
-    });
+    syncChordProgressionToWorker();
 }
 
 function getChordType(notes) {
@@ -1086,10 +1077,16 @@ function initNoteSchedulerWorker() {
                 sendToJuno106({ type: 'noteOff', value: note });
                 // Remove from piano roll
                 PianoRoll.removeNote(note);
-            } else if (type === 'chordChange') {
-                // Worker advanced the chord progression — mirror it for the UI
+            } else if (type === 'chordUpdate') {
+                // Worker advanced the chord progression — mirror it for the UI.
+                // chordSequencingStepIndex is only present when the Stab Mode
+                // Euclidean chord sequencer fired (vs. the bar-based advance).
                 appState.currentChordIndex = e.data.currentChordIndex;
                 renderChordGrid();
+                if (e.data.chordSequencingStepIndex !== undefined) {
+                    appState.chordSequencing.stepIndex = e.data.chordSequencingStepIndex;
+                    renderChordChangeCircle();
+                }
             } else if (type === 'tick') {
                 // Update UI with current step
                 renderPattern();
@@ -1171,7 +1168,16 @@ function startPlayback() {
                     gate: appState.gate,
                     strumSpeed: appState.strumSpeed,
                     strumDirection: appState.strumDirection,
-                    outputMode: appState.outputMode
+                    outputMode: appState.outputMode,
+                    chordSequencing: appState.chordSequencing,
+                    sequencerSettings: {
+                        method: ChordProgressionSequencer.method,
+                        patternLength: ChordProgressionSequencer.patternLength,
+                        lockPattern: ChordProgressionSequencer.lockPattern,
+                        rootMelodyPattern: ChordProgressionSequencer.rootMelodyPattern,
+                        circleFifthsDirection: ChordProgressionSequencer.circleFifthsDirection,
+                        voiceLeadingOptimization: ChordProgressionSequencer.voiceLeadingOptimization
+                    }
                 }
             });
 
@@ -1524,6 +1530,38 @@ function syncWorkerParam(data) {
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
         noteSchedulerWorker.postMessage({ type: 'updateState', data });
     }
+}
+
+/**
+ * Push a freshly generated/switched chord progression to the worker, and force
+ * its Stab Mode sequencer to regenerate — a stale sequence holds indices into
+ * the OLD palette, which would point at the wrong chords once swapped in.
+ */
+function syncChordProgressionToWorker() {
+    syncWorkerParam({
+        chordProgression: appState.chordProgression,
+        currentChordIndex: appState.currentChordIndex
+    });
+    if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
+        noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });
+    }
+}
+
+/**
+ * Push the Stab Mode chord sequencer's settings (method, pattern length, etc.)
+ * to the worker's own ChordProgressionSequencer instance.
+ */
+function syncSequencerSettings() {
+    syncWorkerParam({
+        sequencerSettings: {
+            method: ChordProgressionSequencer.method,
+            patternLength: ChordProgressionSequencer.patternLength,
+            lockPattern: ChordProgressionSequencer.lockPattern,
+            rootMelodyPattern: ChordProgressionSequencer.rootMelodyPattern,
+            circleFifthsDirection: ChordProgressionSequencer.circleFifthsDirection,
+            voiceLeadingOptimization: ChordProgressionSequencer.voiceLeadingOptimization
+        }
+    });
 }
 
 function sendToJuno106(msg) {
@@ -2008,6 +2046,7 @@ function bindChordProgressionControls() {
             ChordProgressionSequencer.method = this.value;
             renderSequenceMethodControls();
             updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 
@@ -2021,6 +2060,7 @@ function bindChordProgressionControls() {
             if (!ChordProgressionSequencer.lockPattern) {
                 updateProgressionPreview();
             }
+            syncSequencerSettings();
         });
     }
 
@@ -2029,6 +2069,7 @@ function bindChordProgressionControls() {
     if (lockCheckbox) {
         lockCheckbox.addEventListener('change', function() {
             ChordProgressionSequencer.lockPattern = this.checked;
+            syncSequencerSettings();
         });
     }
 
@@ -2038,6 +2079,9 @@ function bindChordProgressionControls() {
         regenerateBtn.addEventListener('click', function() {
             ChordProgressionSequencer.regenerate(appState.chordProgression);
             updateProgressionPreview();
+            if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
+                noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });
+            }
         });
     }
 
@@ -2063,6 +2107,9 @@ function regenerateChordChangePattern() {
 
     // Update main circle with new chord pattern
     renderChordChangeCircle();
+    // Push the up-to-date chord sequencing struct (including freshly computed
+    // pattern) to the worker for live update during playback.
+    syncWorkerParam({ chordSequencing: appState.chordSequencing });
 }
 
 /**
@@ -2148,6 +2195,7 @@ function renderSequenceMethodControls() {
         rootMelodySelect.addEventListener('change', function() {
             ChordProgressionSequencer.rootMelodyPattern = this.value;
             updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 
@@ -2156,6 +2204,7 @@ function renderSequenceMethodControls() {
         circleFifthsSelect.addEventListener('change', function() {
             ChordProgressionSequencer.circleFifthsDirection = this.value;
             updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 
@@ -2164,6 +2213,7 @@ function renderSequenceMethodControls() {
         voiceLeadingSelect.addEventListener('change', function() {
             ChordProgressionSequencer.voiceLeadingOptimization = this.value;
             updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 }
