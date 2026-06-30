@@ -1,10 +1,9 @@
 /**
  * Note Scheduler Worker - Runs sequencer logic in separate thread
  *
- * Uses BroadcastChannel to send notes directly to Juno-106 tab,
- * bypassing the main thread entirely when backgrounded.
- *
- * This ensures perfect timing regardless of tab throttling.
+ * Runs the sequencer clock off the main thread so timing is immune to tab
+ * throttling. Notes are reported to the main thread via postMessage, which
+ * forwards them on to the Juno-106 window and updates the piano roll.
  */
 
 // Import Euclidean algorithm
@@ -16,9 +15,6 @@ import { selectNextChordHarmonically } from './modules/musicTheory.js';
 import { ChordProgressionSequencer } from './chordProgressionSequencer.js';
 
 const chordSequencer = new ChordProgressionSequencer();
-
-// BroadcastChannel for cross-tab communication (same origin only)
-const noteChannel = new BroadcastChannel('ouarpeggiator-notes');
 
 // Sequencer state
 let state = {
@@ -109,7 +105,7 @@ function stopClock() {
 
     // Send immediate note-offs for any pending notes
     pendingNoteOffs.forEach(noff => {
-        noteChannel.postMessage({
+        self.postMessage({
             type: 'noteOff',
             note: noff.note
         });
@@ -182,13 +178,6 @@ function processPendingNoteOffs() {
         if (now >= pendingNoteOffs[i].offTime) {
             const noff = pendingNoteOffs.splice(i, 1)[0];
 
-            // Send noteOff via BroadcastChannel
-            noteChannel.postMessage({
-                type: 'noteOff',
-                note: noff.note
-            });
-
-            // Also notify main thread for piano roll
             self.postMessage({
                 type: 'noteOff',
                 note: noff.note
@@ -318,13 +307,6 @@ function executeChordStab(notes, velocity, gateLength) {
  * Play a note
  */
 function playNote(note, velocity, gateLength) {
-    noteChannel.postMessage({
-        type: 'noteOn',
-        note: note,
-        velocity: velocity
-    });
-
-    // Also notify main thread for piano roll / other outputs
     self.postMessage({
         type: 'noteOn',
         note: note,
