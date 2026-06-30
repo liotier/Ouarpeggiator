@@ -159,14 +159,18 @@ function handleTick() {
 
     if (state.tickCount % ticksPerStep === 0) {
         executeStep();
-    }
 
-    // Notify main thread about progress (for UI updates)
-    self.postMessage({
-        type: 'tick',
-        tickCount: state.tickCount,
-        euclideanStepIndex: state.euclideanStepIndex
-    });
+        // Notify main thread only when the step actually advances — matches
+        // the main-thread clock's own cadence (once per step, not once per
+        // PPQN tick). Posting on every tick caused up to ~96 full Euclidean
+        // circle SVG rebuilds/sec, starving the main thread and delaying
+        // noteOn/noteOff processing (piano roll display lag).
+        self.postMessage({
+            type: 'tick',
+            tickCount: state.tickCount,
+            euclideanStepIndex: state.euclideanStepIndex
+        });
+    }
 }
 
 /**

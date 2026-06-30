@@ -1088,7 +1088,10 @@ function initNoteSchedulerWorker() {
                     renderChordChangeCircle();
                 }
             } else if (type === 'tick') {
-                // Update UI with current step
+                // Mirror the worker's step position so the Euclidean circle's
+                // current-step highlight actually advances (previously left
+                // stuck at its startPlayback() value).
+                appState.euclideanStepIndex = e.data.euclideanStepIndex;
                 renderPattern();
             }
         };
