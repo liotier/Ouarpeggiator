@@ -686,6 +686,12 @@ function generateProgression() {
     // Update variant selector
     updateVariantSelector();
     renderChordGrid();
+    // Push the new progression to the worker if playing (deliberate reset, so
+    // currentChordIndex is sent too).
+    syncWorkerParam({
+        chordProgression: appState.chordProgression,
+        currentChordIndex: appState.currentChordIndex
+    });
     console.log('[Ouarpeggiator] generateProgression complete:', appState.generationMode, '→', appState.variants.length, 'variant(s),', appState.chordProgression.length, 'chords');
 }
 
@@ -724,6 +730,11 @@ function switchVariant(index) {
     updateProgressionTitle();
 
     renderChordGrid();
+    // Push the switched progression to the worker if playing.
+    syncWorkerParam({
+        chordProgression: appState.chordProgression,
+        currentChordIndex: appState.currentChordIndex
+    });
 }
 
 function getChordType(notes) {
@@ -1075,6 +1086,10 @@ function initNoteSchedulerWorker() {
                 sendToJuno106({ type: 'noteOff', value: note });
                 // Remove from piano roll
                 PianoRoll.removeNote(note);
+            } else if (type === 'chordChange') {
+                // Worker advanced the chord progression — mirror it for the UI
+                appState.currentChordIndex = e.data.currentChordIndex;
+                renderChordGrid();
             } else if (type === 'tick') {
                 // Update UI with current step
                 renderPattern();
@@ -1145,6 +1160,8 @@ function startPlayback() {
                     euclideanStepIndex: appState.euclideanStepIndex,
                     chordProgression: appState.chordProgression,
                     currentChordIndex: appState.currentChordIndex,
+                    barsPerChord: appState.barsPerChord,
+                    harmonicAdherence: appState.harmonicAdherence,
                     playbackMode: appState.playbackMode,
                     octaveSpread: appState.octaveSpread,
                     harmonicVariation: appState.harmonicVariation,
@@ -1793,6 +1810,7 @@ function bindControls() {
             document.querySelectorAll('.bars-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             appState.barsPerChord = parseInt(this.dataset.value);
+            syncWorkerParam({ barsPerChord: appState.barsPerChord });
         });
     });
 
@@ -1827,6 +1845,7 @@ function bindControls() {
     document.getElementById('harmonicAdherence').addEventListener('input', function() {
         appState.harmonicAdherence = parseInt(this.value);
         document.getElementById('harmonicAdherenceValue').textContent = this.value + '%';
+        syncWorkerParam({ harmonicAdherence: appState.harmonicAdherence });
     });
 
     // Note Variation
