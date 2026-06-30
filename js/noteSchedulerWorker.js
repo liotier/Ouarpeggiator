@@ -67,16 +67,16 @@ let nextTickTime = 0;
 function startClock() {
     if (clockInterval) return;
 
-    const tickInterval = 60000 / (state.bpm * 24);  // ms per tick
     nextTickTime = performance.now();
 
     clockInterval = setInterval(() => {
         const currentTime = performance.now();
 
-        // Fire all ticks that should have happened
+        // Fire all ticks that should have happened.
+        // tickInterval is recomputed each tick so BPM changes take effect live.
         while (state.isPlaying && nextTickTime <= currentTime) {
             handleTick();
-            nextTickTime += tickInterval;
+            nextTickTime += 60000 / (state.bpm * 24);  // ms per tick
         }
     }, 5);  // 5ms precision
 }

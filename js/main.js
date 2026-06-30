@@ -988,6 +988,15 @@ function regeneratePattern() {
     const basePattern = euclidean(appState.euclidean.hits, appState.euclidean.steps);
     appState.euclidean.pattern = rotatePattern(basePattern, appState.euclidean.rotation);
     renderPattern();
+    // Push Euclidean changes to the worker for live update (worker regenerates
+    // its own pattern from hits/steps/rotation).
+    syncWorkerParam({
+        euclidean: {
+            hits: appState.euclidean.hits,
+            steps: appState.euclidean.steps,
+            rotation: appState.euclidean.rotation
+        }
+    });
 }
 
 function renderPattern() {
@@ -1488,6 +1497,18 @@ function launchJuno106() {
     });
 }
 
+/**
+ * Push a live parameter change to the note scheduler worker while playing.
+ * Only sends user-facing params — never playback-position fields (tickCount,
+ * euclideanStepIndex, currentChordIndex), which the worker owns and advances
+ * on its own. Lets parameter tweaks take effect without stop/start.
+ */
+function syncWorkerParam(data) {
+    if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
+        noteSchedulerWorker.postMessage({ type: 'updateState', data });
+    }
+}
+
 function sendToJuno106(msg) {
     if (!junoWindow || junoWindow.closed) {
         console.warn('[Juno-106] sendToJuno106: window not available, msg dropped:', msg);
@@ -1744,6 +1765,7 @@ function bindControls() {
         if (appState.pianoRollInitialized) {
             PianoRoll.setOctaveSpread(appState.octaveSpread);
         }
+        syncWorkerParam({ octaveSpread: appState.octaveSpread });
     });
 
     // Timing
@@ -1754,10 +1776,15 @@ function bindControls() {
         // Update piano roll BPM
         PianoRoll.setBPM(appState.bpm);
 
-        // Restart if playing
         if (appState.isPlaying) {
-            stopPlayback();
-            startPlayback();
+            if (noteSchedulerWorker && useBroadcastChannel) {
+                // Worker recomputes tempo each tick — update live, no restart glitch
+                syncWorkerParam({ bpm: appState.bpm });
+            } else {
+                // Main-thread clock tempo is fixed at start; restart to apply
+                stopPlayback();
+                startPlayback();
+            }
         }
     });
 
@@ -1772,6 +1799,7 @@ function bindControls() {
     document.getElementById('humanization').addEventListener('input', function() {
         appState.humanization = parseInt(this.value);
         document.getElementById('humanizationValue').textContent = this.value;
+        syncWorkerParam({ humanization: appState.humanization });
     });
 
     // Transport
@@ -1783,6 +1811,7 @@ function bindControls() {
         if (this.checked) {
             appState.playbackMode = 'arpeggio';
             updatePlaybackModeUI();
+            syncWorkerParam({ playbackMode: appState.playbackMode });
         }
     });
 
@@ -1790,6 +1819,7 @@ function bindControls() {
         if (this.checked) {
             appState.playbackMode = 'stab';
             updatePlaybackModeUI();
+            syncWorkerParam({ playbackMode: appState.playbackMode });
         }
     });
 
@@ -1803,12 +1833,14 @@ function bindControls() {
     document.getElementById('harmonicVariation').addEventListener('input', function() {
         appState.harmonicVariation = parseInt(this.value);
         document.getElementById('harmonicValue').textContent = this.value + '%';
+        syncWorkerParam({ harmonicVariation: appState.harmonicVariation });
     });
 
     // Strum controls (for Chord Stab mode)
     document.getElementById('strumSpeed')?.addEventListener('input', function() {
         appState.strumSpeed = parseInt(this.value);
         document.getElementById('strumSpeedValue').textContent = this.value;
+        syncWorkerParam({ strumSpeed: appState.strumSpeed });
     });
 
     document.querySelectorAll('.strum-btn').forEach(btn => {
@@ -1816,12 +1848,14 @@ function bindControls() {
             document.querySelectorAll('.strum-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             appState.strumDirection = this.dataset.value;
+            syncWorkerParam({ strumDirection: appState.strumDirection });
         });
     });
 
     document.getElementById('rhythmicVariation').addEventListener('input', function() {
         appState.rhythmicVariation = parseInt(this.value);
         document.getElementById('rhythmicValue').textContent = this.value + '%';
+        syncWorkerParam({ rhythmicVariation: appState.rhythmicVariation });
     });
 
     document.querySelectorAll('.voice-btn').forEach(btn => {
@@ -1836,11 +1870,26 @@ function bindControls() {
     document.getElementById('velocityMode').addEventListener('change', function() {
         appState.velocity.mode = this.value;
         renderVelocityControls();
+        syncWorkerParam({ velocity: appState.velocity });
     });
 
     document.getElementById('gateMode').addEventListener('change', function() {
         appState.gate.mode = this.value;
         renderGateControls();
+        syncWorkerParam({ gate: appState.gate });
+    });
+
+    // Delegated sync for the dynamically-rendered velocity/gate sub-controls.
+    // These containers persist across innerHTML re-renders, so a listener added
+    // once here catches every inner slider/select change (which mutate
+    // appState.velocity/appState.gate in place) and pushes them to the worker.
+    ['input', 'change'].forEach(evt => {
+        document.getElementById('velocityControls').addEventListener(evt, function() {
+            syncWorkerParam({ velocity: appState.velocity });
+        });
+        document.getElementById('gateControls').addEventListener(evt, function() {
+            syncWorkerParam({ gate: appState.gate });
+        });
     });
 
     // Curve rotation sync
