@@ -19,6 +19,7 @@ import ChordProgressionSequencer from './chordProgressionSequencer.js';
 
 let junoWindow = null;
 const JUNO_URL = 'https://liotier.github.io/Juno-106_maintenance-and-performance-improvements/';
+const activeJunoNotes = new Set();
 
 // ============================================================================
 // Application State
@@ -971,6 +972,11 @@ function playChordWithFeedback(index, padElement) {
             MIDI.sendNoteOn(note, 80);
             setTimeout(() => MIDI.sendNoteOff(note), 350);
         });
+    } else if (appState.outputMode === 'juno106') {
+        chord.notes.forEach(note => {
+            sendToJuno106({ type: 'noteOn', value: note });
+            setTimeout(() => sendToJuno106({ type: 'noteOff', value: note }), 350);
+        });
     }
 }
 
@@ -1079,12 +1085,6 @@ function initNoteSchedulerWorker() {
 function startPlayback() {
     if (appState.isPlaying) return;
 
-    // Lazy-load piano roll on first playback
-    if (!appState.pianoRollInitialized) {
-        PianoRoll.initPianoRoll('pianoRollContainer');
-        PianoRoll.setOctaveSpread(appState.octaveSpread);
-        appState.pianoRollInitialized = true;
-    }
 
     // Initialize audio if browser tone is selected
     if (appState.outputMode === 'audio') {
@@ -1264,6 +1264,10 @@ function stopPlayback() {
         MIDI.stopAllNotes();
     }
     Audio.stopAllNotes();
+
+    // Flush any notes stuck on in Juno-106
+    activeJunoNotes.forEach(note => sendToJuno106({ type: 'noteOff', value: note }));
+    activeJunoNotes.clear();
 
     document.getElementById('startBtn').disabled = false;
     document.getElementById('stopBtn').disabled = true;
@@ -1498,6 +1502,8 @@ function sendToJuno106(msg) {
         return;
     }
     console.log('[Juno-106] sendToJuno106 postMessage →', JSON.stringify(msg), 'targetOrigin: https://liotier.github.io');
+    if (msg.type === 'noteOn') activeJunoNotes.add(msg.value);
+    else if (msg.type === 'noteOff') activeJunoNotes.delete(msg.value);
     junoWindow.postMessage(msg, 'https://liotier.github.io');
 }
 
@@ -2321,7 +2327,10 @@ async function initialize() {
     // Initialize MIDI (async, lower priority)
     await initializeMIDI();
 
-    // Piano roll is initialized lazily on first playback (lowest priority)
+    // Initialize piano roll on load so it's visible before first playback
+    PianoRoll.initPianoRoll('pianoRollContainer');
+    PianoRoll.setOctaveSpread(appState.octaveSpread);
+    appState.pianoRollInitialized = true;
 
     console.log('Ouarpeggiator ready');
 }
