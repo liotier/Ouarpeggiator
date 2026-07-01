@@ -68,6 +68,15 @@ export function isStepTick(state) {
 // ============================================================================
 
 /**
+ * True when the Stab-mode chord sequencer (gold-ring Euclidean pattern) is
+ * driving chord changes. When it is, the bar-based advance must NOT also run —
+ * otherwise the two fight and the gold-ring controls appear not to take effect.
+ */
+export function isStabSequencerActive(state) {
+    return state.playbackMode === 'stab' && state.chordSequencing.enabled;
+}
+
+/**
  * Bar-based harmonic chord advancement. Mutates state.currentChordIndex.
  * @returns {boolean} true if the progression (>1 chord) was advanced — the
  *   host should refresh the chord-grid highlight in that case.
@@ -96,7 +105,7 @@ export function advanceBarChord(state) {
  *   this step; changed = the chord actually advanced.
  */
 export function advanceStabChord(state, sequencer) {
-    if (state.playbackMode !== 'stab' || !state.chordSequencing.enabled) {
+    if (!isStabSequencerActive(state)) {
         return { ran: false, changed: false };
     }
 

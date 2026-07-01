@@ -10,7 +10,7 @@ import { appState, TIMING } from './appState.js';
 import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
 import * as MIDI from './midi.js';
-import { sendToJuno106, syncChordProgressionToWorker } from './transport.js';
+import { sendToJuno106, syncChordProgressionToWorker, jumpToChord } from './transport.js';
 
 function triggerSparkle() {
     const btn = document.getElementById('generateBtn');
@@ -729,12 +729,19 @@ function playChordWithFeedback(index, padElement) {
     padElement.classList.add('playing');
     setTimeout(() => padElement.classList.remove('playing'), 300);
 
-    // Initialize audio if needed
+    // While playing, a pad press jumps the arpeggio/stab to that chord instead
+    // of blasting a one-shot preview on top of the running sequence — the
+    // sequencer voices the new chord on the next step.
+    if (appState.isPlaying) {
+        jumpToChord(index);
+        return;
+    }
+
+    // Stopped: audition the chord as a one-shot preview.
     if (!Audio.isAudioAvailable()) {
         Audio.initAudio();
     }
 
-    // Play sound
     if (appState.outputMode === 'audio') {
         Audio.playChord(chord.notes, 80, 400);
     } else if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
