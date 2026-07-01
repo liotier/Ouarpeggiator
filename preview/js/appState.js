@@ -47,7 +47,7 @@ export const appState = {
     bpm: 120,
     isPlaying: false,
     tickCount: 0,
-    barsPerChord: 4,
+    barsPerChord: 1,
     humanization: 0,
 
     // Playback mode
