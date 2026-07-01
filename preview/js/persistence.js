@@ -47,6 +47,7 @@ export function collectSettings() {
         prog: $('progressionSelect')?.value ?? s.progressionTemplate,
         h: s.euclidean.hits, st: s.euclidean.steps, rot: s.euclidean.rotation,
         oct: s.octaveSpread,
+        tr: s.transposeOctaves,
         bpm: s.bpm, bpc: s.barsPerChord, hum: s.humanization,
         pm: s.playbackMode,
         ha: s.harmonicAdherence, hv: s.harmonicVariation, rv: s.rhythmicVariation, vl: s.voiceLeading,
@@ -99,6 +100,11 @@ export function applySettings(s) {
     if (s.h != null) { appState.euclidean.hits = int(s.h, appState.euclidean.hits); setVal('hitsSlider', appState.euclidean.hits); setSpan('hitsValue', appState.euclidean.hits); }
     if (s.rot != null) { appState.euclidean.rotation = int(s.rot, appState.euclidean.rotation); setVal('rotationSlider', appState.euclidean.rotation); setSpan('rotationValue', appState.euclidean.rotation); }
     if (s.oct != null) { appState.octaveSpread = int(s.oct, appState.octaveSpread); setVal('octaveSpread', appState.octaveSpread); setSpan('octaveValue', appState.octaveSpread); }
+    if (s.tr != null) {
+        appState.transposeOctaves = int(s.tr, appState.transposeOctaves);
+        setVal('transposeSlider', appState.transposeOctaves);
+        setSpan('transposeValue', appState.transposeOctaves > 0 ? `+${appState.transposeOctaves}` : String(appState.transposeOctaves));
+    }
 
     // Timing
     if (s.bpm != null) { appState.bpm = int(s.bpm, appState.bpm); setVal('bpmSlider', appState.bpm); setSpan('bpmValue', appState.bpm); }

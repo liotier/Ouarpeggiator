@@ -201,6 +201,16 @@ function bindControls() {
         }
     });
 
+    // Live transpose (whole octaves). Applied per-note in sequencerCore, so no
+    // restart is needed in either playback path — just keep the worker's copy
+    // of the value in sync.
+    document.getElementById('transposeSlider').addEventListener('input', function() {
+        appState.transposeOctaves = Number.parseInt(this.value);
+        const v = appState.transposeOctaves;
+        document.getElementById('transposeValue').textContent = v > 0 ? `+${v}` : String(v);
+        syncWorkerParam({ transposeOctaves: appState.transposeOctaves });
+    });
+
     document.querySelectorAll('.bars-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             setActiveRadioButton('.bars-btn', this);

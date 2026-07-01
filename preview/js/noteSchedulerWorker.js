@@ -55,6 +55,7 @@ let state = {
     // Playback mode
     playbackMode: 'arpeggio',  // 'arpeggio' | 'stab'
     octaveSpread: 1,
+    transposeOctaves: 0,
 
     // Variation
     harmonicVariation: 0,
