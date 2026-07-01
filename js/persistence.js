@@ -72,7 +72,6 @@ export function collectSettings() {
 // ============================================================================
 
 const int = (v, d) => { const n = Number.parseInt(v, 10); return Number.isFinite(n) ? n : d; };
-const flt = (v, d) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? n : d; };
 
 export function applySettings(s) {
     if (!s || typeof s !== 'object') return;

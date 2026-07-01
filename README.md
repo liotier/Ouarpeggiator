@@ -12,22 +12,19 @@
 - **Production**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
 - **Development Preview**: [https://liotier.github.io/Ouarpeggiator/preview/](https://liotier.github.io/Ouarpeggiator/preview/)
 
-## Quick Start: Batteries Included! 🔋
+## Quick Start: Batteries Included!&nbsp;🔋
 
-**No MIDI hardware? No problem!** Experience Ouarpeggiator in seconds with browser-based synthesizers:
+**No MIDI hardware, no MIDI drivers, no setup&nbsp;!** Ouarpeggiator can drive a [Juno-106](https://juno-106.js.org/) emulator running in another browser tab with nothing else installed - no WebMIDI permission, no virtual MIDI port, no OS-level MIDI plumbing of any kind.
 
 ### ⚡ 30-Second Setup
 
 1. **Open Ouarpeggiator**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
-2. **Open a Web Synth in another tab** (pick one):
-   - **[Juno-106](https://juno-106.js.org/)** ⭐ **Recommended** - Classic analog sound, everybody loves the Juno 106 !
-   - **[Cardboard Synth](https://www.gsn-lib.org/apps/cardboardsynth/index.html)** - Full-featured subtractive synth with extensive controls
-   - **[FM Synthesizer](https://notes.ameo.design/fm.html)** - 6-operator FM synthesis for complex, evolving timbres
-3. **Connect the two tabs**:
-   - In Ouarpeggiator, select the synth from the **MIDI Output** dropdown
-   - Click **Start** and hear music instantly!
+2. **Select "Juno-106 (new window)"** from the **Output** dropdown - this opens the [Juno-106](https://juno-106.js.org/) emulator automatically and connects to it
+3. **Click Start** and hear music instantly&nbsp;!
 
-> 💡 **Pro Tip**: Both tabs must use the same browser. Chromium, Edge, or Firefox recommended for best WebMIDI support.
+> 💡 **No MIDI setup needed**: Ouarpeggiator and the Juno-106 emulator talk directly, browser tab to browser tab - they never touch the operating system's MIDI subsystem. That is what makes this path work on any machine, even one with no MIDI drivers or virtual ports installed.
+
+Want to route into other synths - Cardboard Synth, FM Synthesizer, DX7, or real hardware - over genuine WebMIDI instead? See [WebMIDI Targets](#webmidi-targets) for the recommended synths and the virtual MIDI loopback those connections require.
 
 ## What is Ouarpeggiator?
 
@@ -171,18 +168,21 @@ This project is an evolution of the [Akai MPC Chord Progression Generator](https
 
 ## WebMIDI Targets
 
-Transform your browser into a complete music workstation! No hardware required.
+Transform your browser into a complete music workstation&nbsp;! No hardware required - but unlike the [Juno-106 quick start](#quick-start-batteries-included), these synths connect over genuine WebMIDI, which means they need an actual MIDI environment.
+
+> 💡 Looking for the Juno-106? It is not a WebMIDI target - see [Quick Start](#quick-start-batteries-included) for its zero-setup, direct browser-to-browser connection.
+
+### 🔌 The MIDI Loopback Requirement
+
+Two browser tabs cannot see each other over WebMIDI directly - WebMIDI only exposes ports the operating system already knows about. To route Ouarpeggiator's output into a synth running in another tab, you need a **virtual MIDI loopback port** that both tabs can see:
+
+- **Windows**: [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html)
+- **macOS**: IAC Driver (built into Audio MIDI Setup, no install needed)
+- **Linux**: `virmidi` (via ALSA) or a JACK-based virtual port
+
+Once the loopback port exists, select it as Ouarpeggiator's MIDI output, then select the same port as the synth tab's MIDI input.
 
 ### 🎵 Recommended Synthesizers
-
-#### Classic Analog Sound
-
-**[Juno-106](https://juno-106.js.org/)** ⭐ **Best for Beginners**
-- Faithful emulation of the iconic Roland Juno-106
-- Warm, lush analog sound that's universally loved
-- Simple, intuitive interface
-- Perfect for pads, strings, and classic synth sounds
-- Instant gratification, zero learning curve
 
 #### Full-Featured Synthesis
 
