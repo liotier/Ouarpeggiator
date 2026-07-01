@@ -17,6 +17,7 @@ import { appState } from './appState.js';
 import {
     isChordChangeTick,
     isStepTick,
+    isStabSequencerActive,
     advanceBarChord,
     advanceStabChord,
     computeStepNotes
@@ -397,8 +398,10 @@ function handleClockTick() {
     // tick is the downbeat (step 0).
 
     // Bar-based chord advancement (must run before the step trigger so a chord
-    // change takes effect on the same tick as the step).
-    if (isChordChangeTick(appState)) {
+    // change takes effect on the same tick as the step). Skipped when the
+    // Stab-mode chord sequencer is driving chord changes (gold-ring pattern),
+    // so the two don't fight for control of the progression.
+    if (isChordChangeTick(appState) && !isStabSequencerActive(appState)) {
         if (advanceBarChord(appState)) renderChordGrid();
     }
 
@@ -517,6 +520,26 @@ function syncChordProgressionToWorker() {
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
         noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });
     }
+    // Clear the piano roll's rolling history so it doesn't show a blend of the
+    // old and new progressions' notes for the ~6s until the old ones scroll off.
+    if (appState.isPlaying) {
+        PianoRoll.clearNotes();
+    }
+}
+
+/**
+ * Jump the arpeggio to a specific chord immediately (e.g. clicking a pad while
+ * playing). Overrides the sequencer's current position until the next scheduled
+ * chord change. The worker owns currentChordIndex during playback, so push the
+ * override to it explicitly.
+ */
+function jumpToChord(index) {
+    if (index < 0 || index >= appState.chordProgression.length) return;
+    appState.currentChordIndex = index;
+    if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
+        noteSchedulerWorker.postMessage({ type: 'updateState', data: { currentChordIndex: index } });
+    }
+    renderChordGrid();
 }
 
 /**
@@ -595,6 +618,7 @@ export {
     syncWorkerParam,
     syncChordProgressionToWorker,
     syncSequencerSettings,
+    jumpToChord,
     launchJuno106,
     clearJunoStatus,
     noteSchedulerWorker,

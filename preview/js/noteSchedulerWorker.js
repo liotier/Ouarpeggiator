@@ -12,6 +12,7 @@ import { euclidean, rotatePattern } from './euclidean.js';
 import {
     isChordChangeTick,
     isStepTick,
+    isStabSequencerActive,
     advanceBarChord,
     advanceStabChord,
     computeStepNotes
@@ -133,8 +134,9 @@ function handleTick() {
     // tick is the downbeat (step 0).
 
     // Bar-based chord advancement (before the step trigger so a chord change
-    // takes effect on the same tick as the step).
-    if (isChordChangeTick(state)) {
+    // takes effect on the same tick as the step). Skipped when the Stab-mode
+    // chord sequencer (gold-ring pattern) is driving chord changes.
+    if (isChordChangeTick(state) && !isStabSequencerActive(state)) {
         if (advanceBarChord(state)) {
             // Tell the main thread so it can update the chord grid highlight.
             self.postMessage({
