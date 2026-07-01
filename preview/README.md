@@ -9,9 +9,9 @@
 - **Production**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
 - **Development Preview**: [https://liotier.github.io/Ouarpeggiator/preview/](https://liotier.github.io/Ouarpeggiator/preview/)
 
-## Quick Start: Batteries Included!&nbsp;🔋
+## Quick Start: Batteries Included&nbsp;!&nbsp;🔋
 
-**No MIDI hardware, no MIDI drivers, no setup&nbsp;!** Ouarpeggiator can drive a [Juno-106](https://juno-106.js.org/) emulator running in another browser tab with nothing else installed - no WebMIDI permission, no virtual MIDI port, no OS-level MIDI plumbing of any kind. [It does optionnaly speak WebMIDI though !](#webmidi-targets)
+**No MIDI hardware, no MIDI drivers, no setup&nbsp;!** Ouarpeggiator can drive a [Juno-106](https://juno-106.js.org/) emulator running in another browser tab with nothing else installed - no WebMIDI permission, no virtual MIDI port, no OS-level MIDI plumbing of any kind. [It does optionnaly speak WebMIDI though&nbsp;!](#webmidi-targets)
 
 ### ⚡ 30-Second Setup
 
@@ -21,9 +21,9 @@
 
 > 💡 **No MIDI setup needed**: Ouarpeggiator and the Juno-106 emulator talk directly, browser tab to browser tab - they never touch the operating system's MIDI subsystem. That is what makes this path work on any machine, even one with no MIDI drivers or virtual ports installed.
 
-Want to route into other synths - Cardboard Synth, FM Synthesizer, DX7, or real hardware - over genuine WebMIDI instead ? See [WebMIDI Targets](#webmidi-targets) for the recommended synths and the virtual MIDI loopback those connections require.
+Want to route into other synths - Cardboard Synth, FM Synthesizer, DX7, or real hardware - over genuine WebMIDI instead&nbsp;? See [WebMIDI Targets](#webmidi-targets) for the recommended synths and the virtual MIDI loopback those connections require.
 
-## What is Ouarpeggiator?
+## What is Ouarpeggiator&nbsp;?
 
 Unlike typical arpeggiators that arpeggiate individual chords, Ouarpeggiator arpeggiates **entire chord progressions**. It generates melodic lines that traverse harmonic structures over time, creating evolving patterns through chord changes.
 
@@ -117,7 +117,7 @@ Ouarpeggiator/
    - Rotation: Shift pattern start position
 5. **Click Start** to begin playback
 
-> 💡 **First time?** Just click **Start** with default settings - you'll hear sound immediately via browser tone !
+> 💡 **First time?** Just click **Start** with default settings - you'll hear sound immediately via browser tone&nbsp;!
 
 ### MIDI Clock Slave Mode
 
@@ -127,14 +127,14 @@ Ouarpeggiator/
 
 ### Troubleshooting MIDI Issues
 
-**No MIDI devices appearing?** Ouarpeggiator includes built-in diagnostics:
+**No MIDI devices appearing&nbsp;?** Ouarpeggiator includes built-in diagnostics:
 
 1. **Open "MIDI Diagnostics"** section (collapsible panel above footer)
 2. **Check status indicators**:
-   - ✓ WebMIDI API Available?
-   - ✓ Initialized successfully?
-   - ✓ Permission granted?
-   - ✓ Secure context (HTTPS/localhost)?
+   - ✓ WebMIDI API Available&nbsp;?
+   - ✓ Initialized successfully&nbsp;?
+   - ✓ Permission granted&nbsp;?
+   - ✓ Secure context (HTTPS/localhost)&nbsp;?
 3. **Review device lists** - shows all detected inputs/outputs
 4. **Try actions**:
    - Click **"Refresh Devices"** to rescan
@@ -167,7 +167,7 @@ This project is an evolution of the [Akai MPC Chord Progression Generator](https
 
 Transform your browser into a complete music workstation&nbsp;! No hardware required - but unlike the [Juno-106 quick start](#quick-start-batteries-included), these synths connect over genuine WebMIDI, which means they need an actual MIDI environment.
 
-> 💡 Looking for the Juno-106 ? It is not a WebMIDI target - see [Quick Start](#quick-start-batteries-included) for its zero-setup, direct browser-to-browser connection.
+> 💡 Looking for the Juno-106&nbsp;? It is not a WebMIDI target - see [Quick Start](#quick-start-batteries-included) for its zero-setup, direct browser-to-browser connection.
 
 ### 🔌 The MIDI Loopback Requirement
 
