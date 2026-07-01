@@ -201,6 +201,12 @@ function startPlayback() {
 
     // Try to use BroadcastChannel Worker for Juno-106 (bypasses main thread entirely)
     if (appState.outputMode === 'juno106') {
+        // Ensure the Juno-106 window is open (idempotent). Covers the case where
+        // juno106 was restored from persistence without going through the
+        // output-mode change handler — this Start click is a valid user gesture,
+        // so the popup won't be blocked.
+        launchJuno106();
+
         initNoteSchedulerWorker();
 
         if (noteSchedulerWorker) {

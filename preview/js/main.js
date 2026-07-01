@@ -14,8 +14,9 @@ import * as EuclideanCircle from './euclideanCircle.js';
 import { updateSuggestions } from './chordMatcher.js';
 import { generateProgression } from './chordProgression.js';
 import { regeneratePattern } from './transport.js';
-import { bindControls, regenerateChordChangePattern, renderVelocityControls, renderGateControls } from './ui.js';
+import { bindControls, regenerateChordChangePattern, renderVelocityControls, renderGateControls, updatePlaybackModeUI, renderSequenceMethodControls } from './ui.js';
 import { initializeMIDI } from './midiSetup.js';
+import { loadSettings, applySettings, restoreOutputSelection, startAutosave } from './persistence.js';
 
 // ============================================================================
 // Initialization
@@ -26,6 +27,11 @@ async function initialize() {
 
     // Bind all controls first (no rendering)
     bindControls();
+
+    // Restore persisted settings (URL > localStorage) into state + controls
+    // BEFORE the initial render/generation so everything reflects them.
+    const restored = loadSettings();
+    if (restored) applySettings(restored);
 
     // Generate initial progression (priority: render chord palette ASAP)
     generateProgression();
@@ -39,6 +45,13 @@ async function initialize() {
     // Initialize chord progression sequencing pattern
     regenerateChordChangePattern();
 
+    // Reflect restored playback mode + sequencer method in the UI (safe now
+    // that the Euclidean circle is initialized).
+    if (restored) {
+        updatePlaybackModeUI();
+        renderSequenceMethodControls();
+    }
+
     // Render velocity/gate controls
     renderVelocityControls();
     renderGateControls();
@@ -49,10 +62,16 @@ async function initialize() {
     // Initialize MIDI (async, lower priority)
     await initializeMIDI();
 
+    // Now that MIDI devices are populated, restore the output selection
+    if (restored) restoreOutputSelection();
+
     // Initialize piano roll on load so it's visible before first playback
     PianoRoll.initPianoRoll('pianoRollContainer');
     PianoRoll.setOctaveSpread(appState.octaveSpread);
     appState.pianoRollInitialized = true;
+
+    // Start autosave (localStorage + URL) on any control interaction
+    startAutosave();
 
     console.log('Ouarpeggiator ready');
 }
@@ -62,6 +81,16 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
 } else {
     initialize();
+}
+
+// Register service worker for offline / installable PWA (relative path so it
+// works under the GitHub Pages sub-path, e.g. /Ouarpeggiator/preview/).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(err => {
+            console.warn('Service worker registration failed:', err);
+        });
+    });
 }
 
 // Debug
