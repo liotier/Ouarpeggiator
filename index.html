@@ -340,6 +340,7 @@
                         <option value="audio">Browser tone</option>
                         <!-- MIDI devices populated dynamically -->
                     </select>
+                    <div id="junoStatus" class="juno-status" hidden></div>
                 </div>
                 <div id="audioConfig" class="filter-group">
                     <label for="synthWaveform">Waveform</label>
@@ -450,6 +451,14 @@
                                 </svg>
                                 Stop
                             </button>
+                            <button id="panicBtn" class="danger" title="Panic: immediately stop all sound and silence any stuck notes (MIDI, browser tone, and Juno-106)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M12 2 L22 20 L2 20 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <rect x="11" y="9" width="2" height="6" fill="currentColor"/>
+                                    <rect x="11" y="16" width="2" height="2" fill="currentColor"/>
+                                </svg>
+                                Panic
+                            </button>
                             <div id="clockStatus" class="clock-status">Stopped</div>
                         </div>
                         <div class="control-row">
@@ -487,11 +496,11 @@
                                 <input type="range" id="strumSpeed" min="0" max="100" value="0" title="Delay between notes in a chord stab. 0 = instant, 100 = spread arpeggio-like">
                             </div>
                             <div class="filter-group">
-                                <span class="field-label">Strum Direction</span>
-                                <div class="button-group">
-                                    <button class="strum-btn active" data-value="up">Up</button>
-                                    <button class="strum-btn" data-value="down">Down</button>
-                                    <button class="strum-btn" data-value="alternating">Alt</button>
+                                <span class="field-label" id="strumDirectionLabel">Strum Direction</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="strumDirectionLabel">
+                                    <button class="strum-btn active" data-value="up" role="radio" aria-checked="true">Up</button>
+                                    <button class="strum-btn" data-value="down" role="radio" aria-checked="false">Down</button>
+                                    <button class="strum-btn" data-value="alternating" role="radio" aria-checked="false">Alt</button>
                                 </div>
                             </div>
                         </div>
@@ -502,11 +511,11 @@
                         <h3>Voice Leading</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <span class="field-label">Mode</span>
-                                <div class="button-group">
-                                    <button class="voice-btn active" data-value="smooth">Smooth</button>
-                                    <button class="voice-btn" data-value="far">Far</button>
-                                    <button class="voice-btn" data-value="none">None</button>
+                                <span class="field-label" id="voiceLeadingModeLabel">Mode</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="voiceLeadingModeLabel">
+                                    <button class="voice-btn active" data-value="smooth" role="radio" aria-checked="true">Smooth</button>
+                                    <button class="voice-btn" data-value="far" role="radio" aria-checked="false">Far</button>
+                                    <button class="voice-btn" data-value="none" role="radio" aria-checked="false">None</button>
                                 </div>
                             </div>
                         </div>
@@ -520,12 +529,12 @@
                         <h3>Timing & Humanization</h3>
                         <div class="control-row">
                             <div class="filter-group">
-                                <span class="field-label">Bars per Chord</span>
-                                <div class="button-group">
-                                    <button class="bars-btn" data-value="1">1</button>
-                                    <button class="bars-btn" data-value="2">2</button>
-                                    <button class="bars-btn active" data-value="4">4</button>
-                                    <button class="bars-btn" data-value="8">8</button>
+                                <span class="field-label" id="barsPerChordLabel">Bars per Chord</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="barsPerChordLabel">
+                                    <button class="bars-btn" data-value="1" role="radio" aria-checked="false">1</button>
+                                    <button class="bars-btn" data-value="2" role="radio" aria-checked="false">2</button>
+                                    <button class="bars-btn active" data-value="4" role="radio" aria-checked="true">4</button>
+                                    <button class="bars-btn" data-value="8" role="radio" aria-checked="false">8</button>
                                 </div>
                             </div>
                         </div>
