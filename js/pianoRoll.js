@@ -438,10 +438,10 @@ function renderKeyboard() {
 
 function adjustBrightness(color, factor) {
     // Parse hex color
-    const hex = color.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
+    const hex = color.replaceAll('#', '');
+    const r = Number.parseInt(hex.substr(0, 2), 16);
+    const g = Number.parseInt(hex.substr(2, 2), 16);
+    const b = Number.parseInt(hex.substr(4, 2), 16);
 
     // Adjust brightness
     const newR = Math.min(255, Math.floor(r * factor));

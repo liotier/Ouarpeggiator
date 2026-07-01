@@ -152,13 +152,13 @@ function getChordDescription(symbol) {
     }
 
     // Try base symbol (strip extensions)
-    const baseSymbol = symbol.replace(/[0-9]+|M7|m7|maj7|°7|ø7/g, '');
+    const baseSymbol = symbol.replaceAll(/[0-9]+|M7|m7|maj7|°7|ø7/g, '');
     if (CHORD_DESCRIPTIONS[baseSymbol]) {
         return CHORD_DESCRIPTIONS[baseSymbol];
     }
 
     // Try simplified version
-    const simplified = symbol.replace(/7|maj|min|°|ø|\+/g, '');
+    const simplified = symbol.replaceAll(/7|maj|min|°|ø|\+/g, '');
     if (CHORD_DESCRIPTIONS[simplified]) {
         return CHORD_DESCRIPTIONS[simplified];
     }
@@ -167,7 +167,7 @@ function getChordDescription(symbol) {
 }
 
 function generateProgression() {
-    const key = parseInt(document.getElementById('keySelect').value);
+    const key = Number.parseInt(document.getElementById('keySelect').value);
     appState.key = key;
 
     if (appState.generationMode === 'template') {
@@ -575,7 +575,7 @@ function renderChordGrid() {
         pad.dataset.notes = chord.notes ? chord.notes.join(',') : '';
         pad.dataset.roman = chord.symbol || '';
         pad.dataset.quality = qualityLabel;
-        pad.dataset.role = roleText.replace(/"/g, '&quot;');
+        pad.dataset.role = roleText.replaceAll(/"/g, '&quot;');
         pad.dataset.padId = padId;
         pad.dataset.originalVlClass = voiceLeadingClass;
 
@@ -632,7 +632,7 @@ function getChordRoleTooltip(symbol) {
     }
 
     // Try base symbol (strip extensions like 7, M7, etc.)
-    const baseSymbol = symbol.replace(/[0-9]+|M7|m7|maj7|°7|ø7/g, '');
+    const baseSymbol = symbol.replaceAll(/[0-9]+|M7|m7|maj7|°7|ø7/g, '');
     if (CHORD_ROLE_TOOLTIPS[baseSymbol]) {
         return CHORD_ROLE_TOOLTIPS[baseSymbol];
     }

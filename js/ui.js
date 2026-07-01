@@ -54,7 +54,7 @@ function bindControls() {
 
     // Key select - auto-regenerate on change
     document.getElementById('keySelect').addEventListener('change', function() {
-        appState.key = parseInt(this.value);
+        appState.key = Number.parseInt(this.value);
         if (appState.hasGeneratedOnce) {
             triggerSparkle();
             generateProgression();
@@ -84,7 +84,7 @@ function bindControls() {
 
     // Variant selector
     document.getElementById('variantSelect').addEventListener('change', function() {
-        switchVariant(parseInt(this.value));
+        switchVariant(Number.parseInt(this.value));
     });
 
     // Output mode - now directly includes MIDI devices
@@ -120,14 +120,14 @@ function bindControls() {
 
     // Pattern controls
     document.getElementById('hitsSlider').addEventListener('input', function() {
-        appState.euclidean.hits = parseInt(this.value);
+        appState.euclidean.hits = Number.parseInt(this.value);
         document.getElementById('hitsValue').textContent = this.value;
         regeneratePattern();
         regenerateChordChangePattern();
     });
 
     document.getElementById('stepsSlider').addEventListener('input', function() {
-        appState.euclidean.steps = parseInt(this.value);
+        appState.euclidean.steps = Number.parseInt(this.value);
         document.getElementById('stepsValue').textContent = this.value;
         document.getElementById('rotationSlider').max = appState.euclidean.steps - 1;
 
@@ -150,13 +150,13 @@ function bindControls() {
     });
 
     document.getElementById('rotationSlider').addEventListener('input', function() {
-        appState.euclidean.rotation = parseInt(this.value);
+        appState.euclidean.rotation = Number.parseInt(this.value);
         document.getElementById('rotationValue').textContent = this.value;
         regeneratePattern();
     });
 
     document.getElementById('octaveSpread').addEventListener('input', function() {
-        appState.octaveSpread = parseInt(this.value);
+        appState.octaveSpread = Number.parseInt(this.value);
         document.getElementById('octaveValue').textContent = this.value;
         // Update piano roll pitch range if initialized
         if (appState.pianoRollInitialized) {
@@ -167,7 +167,7 @@ function bindControls() {
 
     // Timing
     document.getElementById('bpmSlider').addEventListener('input', function() {
-        appState.bpm = parseInt(this.value);
+        appState.bpm = Number.parseInt(this.value);
         document.getElementById('bpmValue').textContent = this.value;
 
         // Update piano roll BPM
@@ -189,13 +189,13 @@ function bindControls() {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.bars-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            appState.barsPerChord = parseInt(this.dataset.value);
+            appState.barsPerChord = Number.parseInt(this.dataset.value);
             syncWorkerParam({ barsPerChord: appState.barsPerChord });
         });
     });
 
     document.getElementById('humanization').addEventListener('input', function() {
-        appState.humanization = parseInt(this.value);
+        appState.humanization = Number.parseInt(this.value);
         document.getElementById('humanizationValue').textContent = this.value;
         syncWorkerParam({ humanization: appState.humanization });
     });
@@ -223,21 +223,21 @@ function bindControls() {
 
     // Chord Variation - Harmonic Adherence
     document.getElementById('harmonicAdherence').addEventListener('input', function() {
-        appState.harmonicAdherence = parseInt(this.value);
+        appState.harmonicAdherence = Number.parseInt(this.value);
         document.getElementById('harmonicAdherenceValue').textContent = this.value + '%';
         syncWorkerParam({ harmonicAdherence: appState.harmonicAdherence });
     });
 
     // Note Variation
     document.getElementById('harmonicVariation').addEventListener('input', function() {
-        appState.harmonicVariation = parseInt(this.value);
+        appState.harmonicVariation = Number.parseInt(this.value);
         document.getElementById('harmonicValue').textContent = this.value + '%';
         syncWorkerParam({ harmonicVariation: appState.harmonicVariation });
     });
 
     // Strum controls (for Chord Stab mode)
     document.getElementById('strumSpeed')?.addEventListener('input', function() {
-        appState.strumSpeed = parseInt(this.value);
+        appState.strumSpeed = Number.parseInt(this.value);
         document.getElementById('strumSpeedValue').textContent = this.value;
         syncWorkerParam({ strumSpeed: appState.strumSpeed });
     });
@@ -252,7 +252,7 @@ function bindControls() {
     });
 
     document.getElementById('rhythmicVariation').addEventListener('input', function() {
-        appState.rhythmicVariation = parseInt(this.value);
+        appState.rhythmicVariation = Number.parseInt(this.value);
         document.getElementById('rhythmicValue').textContent = this.value + '%';
         syncWorkerParam({ rhythmicVariation: appState.rhythmicVariation });
     });
@@ -333,7 +333,7 @@ function bindChordProgressionControls() {
 
     if (stepsSlider) {
         stepsSlider.addEventListener('input', function() {
-            appState.chordSequencing.euclidean.steps = parseInt(this.value);
+            appState.chordSequencing.euclidean.steps = Number.parseInt(this.value);
             stepsValue.textContent = this.value;
 
             // Update max values for dependent sliders
@@ -366,7 +366,7 @@ function bindChordProgressionControls() {
 
     if (pulsesSlider) {
         pulsesSlider.addEventListener('input', function() {
-            appState.chordSequencing.euclidean.hits = parseInt(this.value);
+            appState.chordSequencing.euclidean.hits = Number.parseInt(this.value);
             pulsesValue.textContent = this.value;
             regenerateChordChangePattern();
             renderChordChangeCircle();
@@ -375,7 +375,7 @@ function bindChordProgressionControls() {
 
     if (rotationSlider) {
         rotationSlider.addEventListener('input', function() {
-            appState.chordSequencing.euclidean.rotation = parseInt(this.value);
+            appState.chordSequencing.euclidean.rotation = Number.parseInt(this.value);
             rotationValue.textContent = this.value;
             regenerateChordChangePattern();
             renderChordChangeCircle();
@@ -398,7 +398,7 @@ function bindChordProgressionControls() {
     const lengthValue = document.getElementById('patternLengthValue');
     if (lengthSlider) {
         lengthSlider.addEventListener('input', function() {
-            ChordProgressionSequencer.patternLength = parseInt(this.value);
+            ChordProgressionSequencer.patternLength = Number.parseInt(this.value);
             lengthValue.textContent = this.value;
             if (!ChordProgressionSequencer.lockPattern) {
                 updateProgressionPreview();
@@ -620,7 +620,7 @@ function renderVelocityControls() {
             </label>
         `;
         document.getElementById('velFixed')?.addEventListener('input', function() {
-            appState.velocity.fixed = parseInt(this.value);
+            appState.velocity.fixed = Number.parseInt(this.value);
             document.getElementById('velFixedValue').textContent = this.value;
         });
     } else if (appState.velocity.mode === 'random') {
@@ -629,10 +629,10 @@ function renderVelocityControls() {
             <label>Max: ${appState.velocity.randomMax} <input type="range" min="1" max="127" value="${appState.velocity.randomMax}" id="velMax"></label>
         `;
         document.getElementById('velMin')?.addEventListener('input', function() {
-            appState.velocity.randomMin = parseInt(this.value);
+            appState.velocity.randomMin = Number.parseInt(this.value);
         });
         document.getElementById('velMax')?.addEventListener('input', function() {
-            appState.velocity.randomMax = parseInt(this.value);
+            appState.velocity.randomMax = Number.parseInt(this.value);
         });
     } else if (appState.velocity.mode === 'curve') {
         container.innerHTML = `
@@ -661,11 +661,11 @@ function renderVelocityControls() {
             appState.velocity.curveType = this.value;
         });
         document.getElementById('velocityCurveMin')?.addEventListener('input', function() {
-            appState.velocity.curveMin = parseInt(this.value);
+            appState.velocity.curveMin = Number.parseInt(this.value);
             document.getElementById('velocityCurveMinValue').textContent = this.value;
         });
         document.getElementById('velocityCurveMax')?.addEventListener('input', function() {
-            appState.velocity.curveMax = parseInt(this.value);
+            appState.velocity.curveMax = Number.parseInt(this.value);
             document.getElementById('velocityCurveMaxValue').textContent = this.value;
         });
     }
@@ -682,7 +682,7 @@ function renderGateControls() {
             </label>
         `;
         document.getElementById('gateFixed')?.addEventListener('input', function() {
-            appState.gate.fixed = parseFloat(this.value);
+            appState.gate.fixed = Number.parseFloat(this.value);
             document.getElementById('gateFixedValue').textContent = toPercent(appState.gate.fixed);
         });
     } else if (appState.gate.mode === 'random') {
@@ -691,10 +691,10 @@ function renderGateControls() {
             <label>Max: ${toPercent(appState.gate.randomMax)} <input type="range" min="0.1" max="1" step="0.05" value="${appState.gate.randomMax}" id="gateMax"></label>
         `;
         document.getElementById('gateMin')?.addEventListener('input', function() {
-            appState.gate.randomMin = parseFloat(this.value);
+            appState.gate.randomMin = Number.parseFloat(this.value);
         });
         document.getElementById('gateMax')?.addEventListener('input', function() {
-            appState.gate.randomMax = parseFloat(this.value);
+            appState.gate.randomMax = Number.parseFloat(this.value);
         });
     } else if (appState.gate.mode === 'curve') {
         container.innerHTML = `
@@ -723,11 +723,11 @@ function renderGateControls() {
             appState.gate.curveType = this.value;
         });
         document.getElementById('gateCurveMin')?.addEventListener('input', function() {
-            appState.gate.curveMin = parseFloat(this.value);
+            appState.gate.curveMin = Number.parseFloat(this.value);
             document.getElementById('gateCurveMinValue').textContent = toPercent(appState.gate.curveMin);
         });
         document.getElementById('gateCurveMax')?.addEventListener('input', function() {
-            appState.gate.curveMax = parseFloat(this.value);
+            appState.gate.curveMax = Number.parseFloat(this.value);
             document.getElementById('gateCurveMaxValue').textContent = toPercent(appState.gate.curveMax);
         });
     }
