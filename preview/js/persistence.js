@@ -67,8 +67,8 @@ export function collectSettings() {
 // Apply (defensive — every field optional)
 // ============================================================================
 
-const int = (v, d) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : d; };
-const flt = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
+const int = (v, d) => { const n = Number.parseInt(v, 10); return Number.isFinite(n) ? n : d; };
+const flt = (v, d) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? n : d; };
 
 export function applySettings(s) {
     if (!s || typeof s !== 'object') return;

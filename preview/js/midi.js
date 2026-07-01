@@ -441,7 +441,7 @@ function noteNameToMidi(name) {
     if (match[2] === '#') note += 1;
     if (match[2] === 'b') note -= 1;
 
-    const octave = parseInt(match[3]) + 1;
+    const octave = Number.parseInt(match[3]) + 1;
     return (octave * 12) + note;
 }
 

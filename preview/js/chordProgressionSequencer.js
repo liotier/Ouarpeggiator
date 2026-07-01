@@ -356,7 +356,7 @@ export class ChordProgressionSequencer {
                 }
                 break;
 
-            case 'diverging':
+            case 'diverging': {
                 // Inside to outside (start from middle)
                 const mid = Math.floor(indexed.length / 2);
                 for (let i = 0; i < length; i++) {
@@ -367,8 +367,9 @@ export class ChordProgressionSequencer {
                     sequence.push(indexed[pos].idx);
                 }
                 break;
+            }
 
-            case 'random-walk':
+            case 'random-walk': {
                 // Start from random position, walk ±1-3 steps
                 let currentPos = Math.floor(Math.random() * indexed.length);
                 for (let i = 0; i < length; i++) {
@@ -378,6 +379,7 @@ export class ChordProgressionSequencer {
                     currentPos = (currentPos + step * direction + indexed.length) % indexed.length;
                 }
                 break;
+            }
 
             default:
                 // Default to ascending
