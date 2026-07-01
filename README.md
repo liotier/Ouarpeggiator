@@ -71,7 +71,6 @@ The core innovation is combining:
 - **Built-in MIDI diagnostics** with real-time device monitoring and troubleshooting
 - **CSS Grid** for responsive layout
 - **"Batteries included"** - works immediately with browser tone or Web MIDI synths
-- Optimized for Chromium, Edge, Firefox, and other WebMIDI-enabled browsers
 
 ## File Structure
 
