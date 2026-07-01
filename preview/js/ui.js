@@ -1,878 +1,747 @@
 /**
- * UI Module
+ * UI Bindings & Control Rendering
  *
- * Handles all user interface bindings, dynamic control rendering,
- * and visual feedback updates.
- *
- * Adapted from AkaiMPC Chord Progression Generator with significant
- * extensions for arpeggiator-specific controls.
+ * Wires up all DOM controls (sliders, buttons, selects) to appState + transport,
+ * and renders the dynamic control panels (velocity/gate, sequence method,
+ * chord-change circle, playback-mode UI). This is the top of the UI layer:
+ * nothing imports it except main.js and (for view-update callbacks) transport.js.
  */
 
-import { euclidean, rotatePattern, patternToString } from './euclidean.js';
-import { analyzeChord, getChordClass } from './arpeggiator.js';
+import { appState } from './appState.js';
+import { euclidean, rotatePattern } from './euclidean.js';
+import * as MIDI from './midi.js';
+import * as Audio from './modules/audio.js';
+import * as PianoRoll from './pianoRoll.js';
+import * as EuclideanCircle from './euclideanCircle.js';
+import ChordProgressionSequencer from './chordProgressionSequencer.js';
+import { generateProgression, switchVariant, triggerSparkle } from './chordProgression.js';
+import { switchGenerationMode } from './chordMatcher.js';
+import {
+    startPlayback,
+    stopPlayback,
+    regeneratePattern,
+    syncWorkerParam,
+    syncSequencerSettings,
+    launchJuno106,
+    noteSchedulerWorker,
+    useBroadcastChannel
+} from './transport.js';
 
+// UI Bindings
 // ============================================================================
-// UI State
-// ============================================================================
 
-let uiState = {
-    animationFrameId: null,
-    lastActiveStep: -1,
-};
+function bindControls() {
+    // Generation mode toggle
+    document.getElementById('paletteModeRadio').addEventListener('change', function() {
+        if (this.checked) {
+            switchGenerationMode('template');
+            if (appState.hasGeneratedOnce) {
+                triggerSparkle();
+                generateProgression();
+            }
+        }
+    });
 
-// ============================================================================
-// Main Initialization
-// ============================================================================
+    document.getElementById('scaleModeRadio').addEventListener('change', function() {
+        if (this.checked) {
+            switchGenerationMode('scale');
+            if (appState.hasGeneratedOnce) {
+                triggerSparkle();
+                generateProgression();
+            }
+        }
+    });
 
-/**
- * Initialize all UI components and bindings
- *
- * @param {Object} state - Application state
- * @param {Object} callbacks - Callback functions for state changes
- */
-function initializeUI(state, callbacks) {
-    bindPatternControls(state, callbacks);
-    bindTimingControls(state, callbacks);
-    bindVariationControls(state);
-    bindOutputControls(state);
-    bindChordProgressionControls(state, callbacks);
+    // Key select - auto-regenerate on change
+    document.getElementById('keySelect').addEventListener('change', function() {
+        appState.key = parseInt(this.value);
+        if (appState.hasGeneratedOnce) {
+            triggerSparkle();
+            generateProgression();
+        }
+    });
 
-    // Initial render
-    regeneratePattern(state);
-    updatePadDisplay(state);
-    renderVelocityControls(state);
-    renderGateControls(state);
+    // Progression select - auto-regenerate on change
+    document.getElementById('progressionSelect').addEventListener('change', function() {
+        appState.progressionTemplate = this.value;
+        if (appState.hasGeneratedOnce) {
+            triggerSparkle();
+            generateProgression();
+        }
+    });
+
+    // Mode select - auto-regenerate on change
+    document.getElementById('modeSelect').addEventListener('change', function() {
+        appState.mode = this.value;
+        if (appState.hasGeneratedOnce) {
+            triggerSparkle();
+            generateProgression();
+        }
+    });
+
+    // Generate button
+    document.getElementById('generateBtn').addEventListener('click', generateProgression);
+
+    // Variant selector
+    document.getElementById('variantSelect').addEventListener('change', function() {
+        switchVariant(parseInt(this.value));
+    });
+
+    // Output mode - now directly includes MIDI devices
+    document.getElementById('outputMode').addEventListener('change', function() {
+        const value = this.value;
+        const audioConfig = document.getElementById('audioConfig');
+
+        if (value === 'audio') {
+            // Browser tone selected
+            appState.outputMode = 'audio';
+            MIDI.selectOutputDevice(''); // Deselect MIDI device
+            audioConfig.style.display = 'block';
+            Audio.initAudio();
+        } else if (value.startsWith('midi:')) {
+            // MIDI device selected
+            const deviceId = value.substring(5);
+            appState.outputMode = 'midi';
+            MIDI.selectOutputDevice(deviceId);
+            audioConfig.style.display = 'none';
+        } else if (value === 'juno106') {
+            // Juno-106 selected
+            appState.outputMode = 'juno106';
+            MIDI.selectOutputDevice('');
+            audioConfig.style.display = 'none';
+            launchJuno106();
+        }
+    });
+
+    // Synth waveform
+    document.getElementById('synthWaveform').addEventListener('change', function() {
+        Audio.setWaveform(this.value);
+    });
+
+    // Pattern controls
+    document.getElementById('hitsSlider').addEventListener('input', function() {
+        appState.euclidean.hits = parseInt(this.value);
+        document.getElementById('hitsValue').textContent = this.value;
+        regeneratePattern();
+        regenerateChordChangePattern();
+    });
+
+    document.getElementById('stepsSlider').addEventListener('input', function() {
+        appState.euclidean.steps = parseInt(this.value);
+        document.getElementById('stepsValue').textContent = this.value;
+        document.getElementById('rotationSlider').max = appState.euclidean.steps - 1;
+
+        // Sync chord progression steps ONLY if locked
+        if (appState.chordSequencing.stepsLocked) {
+            appState.chordSequencing.euclidean.steps = appState.euclidean.steps;
+        }
+
+        // Constrain hits to not exceed steps
+        const hitsSlider = document.getElementById('hitsSlider');
+        hitsSlider.max = appState.euclidean.steps;
+        if (appState.euclidean.hits > appState.euclidean.steps) {
+            appState.euclidean.hits = appState.euclidean.steps;
+            hitsSlider.value = appState.euclidean.steps;
+            document.getElementById('hitsValue').textContent = appState.euclidean.steps;
+        }
+
+        regeneratePattern();
+        regenerateChordChangePattern();
+    });
+
+    document.getElementById('rotationSlider').addEventListener('input', function() {
+        appState.euclidean.rotation = parseInt(this.value);
+        document.getElementById('rotationValue').textContent = this.value;
+        regeneratePattern();
+    });
+
+    document.getElementById('octaveSpread').addEventListener('input', function() {
+        appState.octaveSpread = parseInt(this.value);
+        document.getElementById('octaveValue').textContent = this.value;
+        // Update piano roll pitch range if initialized
+        if (appState.pianoRollInitialized) {
+            PianoRoll.setOctaveSpread(appState.octaveSpread);
+        }
+        syncWorkerParam({ octaveSpread: appState.octaveSpread });
+    });
+
+    // Timing
+    document.getElementById('bpmSlider').addEventListener('input', function() {
+        appState.bpm = parseInt(this.value);
+        document.getElementById('bpmValue').textContent = this.value;
+
+        // Update piano roll BPM
+        PianoRoll.setBPM(appState.bpm);
+
+        if (appState.isPlaying) {
+            if (noteSchedulerWorker && useBroadcastChannel) {
+                // Worker recomputes tempo each tick — update live, no restart glitch
+                syncWorkerParam({ bpm: appState.bpm });
+            } else {
+                // Main-thread clock tempo is fixed at start; restart to apply
+                stopPlayback();
+                startPlayback();
+            }
+        }
+    });
+
+    document.querySelectorAll('.bars-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.bars-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            appState.barsPerChord = parseInt(this.dataset.value);
+            syncWorkerParam({ barsPerChord: appState.barsPerChord });
+        });
+    });
+
+    document.getElementById('humanization').addEventListener('input', function() {
+        appState.humanization = parseInt(this.value);
+        document.getElementById('humanizationValue').textContent = this.value;
+        syncWorkerParam({ humanization: appState.humanization });
+    });
+
+    // Transport
+    document.getElementById('startBtn').addEventListener('click', startPlayback);
+    document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+
+    // Playback Mode Toggle (Arpeggio/Chord Stab)
+    document.getElementById('arpeggioModeRadio').addEventListener('change', function() {
+        if (this.checked) {
+            appState.playbackMode = 'arpeggio';
+            updatePlaybackModeUI();
+            syncWorkerParam({ playbackMode: appState.playbackMode });
+        }
+    });
+
+    document.getElementById('stabModeRadio').addEventListener('change', function() {
+        if (this.checked) {
+            appState.playbackMode = 'stab';
+            updatePlaybackModeUI();
+            syncWorkerParam({ playbackMode: appState.playbackMode });
+        }
+    });
+
+    // Chord Variation - Harmonic Adherence
+    document.getElementById('harmonicAdherence').addEventListener('input', function() {
+        appState.harmonicAdherence = parseInt(this.value);
+        document.getElementById('harmonicAdherenceValue').textContent = this.value + '%';
+        syncWorkerParam({ harmonicAdherence: appState.harmonicAdherence });
+    });
+
+    // Note Variation
+    document.getElementById('harmonicVariation').addEventListener('input', function() {
+        appState.harmonicVariation = parseInt(this.value);
+        document.getElementById('harmonicValue').textContent = this.value + '%';
+        syncWorkerParam({ harmonicVariation: appState.harmonicVariation });
+    });
+
+    // Strum controls (for Chord Stab mode)
+    document.getElementById('strumSpeed')?.addEventListener('input', function() {
+        appState.strumSpeed = parseInt(this.value);
+        document.getElementById('strumSpeedValue').textContent = this.value;
+        syncWorkerParam({ strumSpeed: appState.strumSpeed });
+    });
+
+    document.querySelectorAll('.strum-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.strum-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            appState.strumDirection = this.dataset.value;
+            syncWorkerParam({ strumDirection: appState.strumDirection });
+        });
+    });
+
+    document.getElementById('rhythmicVariation').addEventListener('input', function() {
+        appState.rhythmicVariation = parseInt(this.value);
+        document.getElementById('rhythmicValue').textContent = this.value + '%';
+        syncWorkerParam({ rhythmicVariation: appState.rhythmicVariation });
+    });
+
+    document.querySelectorAll('.voice-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            appState.voiceLeading = this.dataset.value;
+        });
+    });
+
+    // Velocity/Gate modes
+    document.getElementById('velocityMode').addEventListener('change', function() {
+        appState.velocity.mode = this.value;
+        renderVelocityControls();
+        syncWorkerParam({ velocity: appState.velocity });
+    });
+
+    document.getElementById('gateMode').addEventListener('change', function() {
+        appState.gate.mode = this.value;
+        renderGateControls();
+        syncWorkerParam({ gate: appState.gate });
+    });
+
+    // Delegated sync for the dynamically-rendered velocity/gate sub-controls.
+    // These containers persist across innerHTML re-renders, so a listener added
+    // once here catches every inner slider/select change (which mutate
+    // appState.velocity/appState.gate in place) and pushes them to the worker.
+    ['input', 'change'].forEach(evt => {
+        document.getElementById('velocityControls').addEventListener(evt, function() {
+            syncWorkerParam({ velocity: appState.velocity });
+        });
+        document.getElementById('gateControls').addEventListener(evt, function() {
+            syncWorkerParam({ gate: appState.gate });
+        });
+    });
+
+    // Curve rotation sync
+    document.getElementById('curveSyncRotation').addEventListener('change', function() {
+        appState.curveSyncRotation = this.checked;
+        syncWorkerParam({ curveSyncRotation: appState.curveSyncRotation });
+    });
+
+    // Chord Progression Controls (Stab Mode)
+    bindChordProgressionControls();
 }
 
-// ============================================================================
-// Pattern Controls
-// ============================================================================
-
 /**
- * Bind pattern control elements
+ * Bind chord progression sequencing controls
  */
-function bindPatternControls(state, callbacks) {
-    const hitsSlider = document.getElementById('hits-slider');
-    const stepsSlider = document.getElementById('steps-slider');
-    const rotationSlider = document.getElementById('rotation-slider');
-    const octaveSlider = document.getElementById('octave-spread');
+function bindChordProgressionControls() {
+    // Steps lock toggle
+    const unlockCheckbox = document.getElementById('unlockChordSteps');
+    const stepsSliderContainer = document.getElementById('chordStepsSliderContainer');
 
-    if (hitsSlider) {
-        hitsSlider.value = state.euclidean.hits;
-        document.getElementById('hits-value').textContent = state.euclidean.hits;
+    if (unlockCheckbox) {
+        unlockCheckbox.addEventListener('change', function() {
+            appState.chordSequencing.stepsLocked = !this.checked;
 
-        hitsSlider.addEventListener('input', (e) => {
-            state.euclidean.hits = parseInt(e.target.value);
-            document.getElementById('hits-value').textContent = state.euclidean.hits;
-
-            // Ensure hits <= steps
-            if (state.euclidean.hits > state.euclidean.steps) {
-                state.euclidean.steps = state.euclidean.hits;
-                stepsSlider.value = state.euclidean.steps;
-                document.getElementById('steps-value').textContent = state.euclidean.steps;
+            // Show/hide independent steps slider
+            if (stepsSliderContainer) {
+                stepsSliderContainer.style.display = this.checked ? 'block' : 'none';
             }
 
-            regeneratePattern(state);
-            callbacks?.onPatternChange?.(state);
+            // If locking, sync steps back to main
+            if (!this.checked) {
+                appState.chordSequencing.euclidean.steps = appState.euclidean.steps;
+                regenerateChordChangePattern();
+                renderChordChangeCircle();
+            }
         });
     }
 
+    // Chord change steps slider (independent mode)
+    const stepsSlider = document.getElementById('chordChangeSteps');
+    const stepsValue = document.getElementById('chordChangeStepsValue');
+
     if (stepsSlider) {
-        stepsSlider.value = state.euclidean.steps;
-        document.getElementById('steps-value').textContent = state.euclidean.steps;
+        stepsSlider.addEventListener('input', function() {
+            appState.chordSequencing.euclidean.steps = parseInt(this.value);
+            stepsValue.textContent = this.value;
 
-        stepsSlider.addEventListener('input', (e) => {
-            state.euclidean.steps = parseInt(e.target.value);
-            document.getElementById('steps-value').textContent = state.euclidean.steps;
+            // Update max values for dependent sliders
+            const pulsesSlider = document.getElementById('chordChangePulses');
+            const rotationSlider = document.getElementById('chordChangeRotation');
 
-            // Ensure hits <= steps
-            if (state.euclidean.hits > state.euclidean.steps) {
-                state.euclidean.hits = state.euclidean.steps;
-                hitsSlider.value = state.euclidean.hits;
-                document.getElementById('hits-value').textContent = state.euclidean.hits;
+            if (pulsesSlider) {
+                pulsesSlider.max = appState.chordSequencing.euclidean.steps;
+                if (appState.chordSequencing.euclidean.hits > appState.chordSequencing.euclidean.steps) {
+                    appState.chordSequencing.euclidean.hits = appState.chordSequencing.euclidean.steps;
+                    pulsesSlider.value = appState.chordSequencing.euclidean.steps;
+                    document.getElementById('chordChangePulsesValue').textContent = appState.chordSequencing.euclidean.steps;
+                }
             }
 
-            // Update rotation max
-            rotationSlider.max = state.euclidean.steps - 1;
-            if (state.euclidean.rotation >= state.euclidean.steps) {
-                state.euclidean.rotation = 0;
-                rotationSlider.value = 0;
-                document.getElementById('rotation-value').textContent = 0;
+            if (rotationSlider) {
+                rotationSlider.max = appState.chordSequencing.euclidean.steps - 1;
             }
 
-            regeneratePattern(state);
-            callbacks?.onPatternChange?.(state);
+            regenerateChordChangePattern();
+            renderChordChangeCircle();
+        });
+    }
+
+    // Chord change Euclidean controls
+    const pulsesSlider = document.getElementById('chordChangePulses');
+    const pulsesValue = document.getElementById('chordChangePulsesValue');
+    const rotationSlider = document.getElementById('chordChangeRotation');
+    const rotationValue = document.getElementById('chordChangeRotationValue');
+
+    if (pulsesSlider) {
+        pulsesSlider.addEventListener('input', function() {
+            appState.chordSequencing.euclidean.hits = parseInt(this.value);
+            pulsesValue.textContent = this.value;
+            regenerateChordChangePattern();
+            renderChordChangeCircle();
         });
     }
 
     if (rotationSlider) {
-        rotationSlider.value = state.euclidean.rotation;
-        rotationSlider.max = state.euclidean.steps - 1;
-        document.getElementById('rotation-value').textContent = state.euclidean.rotation;
-
-        rotationSlider.addEventListener('input', (e) => {
-            state.euclidean.rotation = parseInt(e.target.value);
-            document.getElementById('rotation-value').textContent = state.euclidean.rotation;
-            regeneratePattern(state);
-            callbacks?.onPatternChange?.(state);
+        rotationSlider.addEventListener('input', function() {
+            appState.chordSequencing.euclidean.rotation = parseInt(this.value);
+            rotationValue.textContent = this.value;
+            regenerateChordChangePattern();
+            renderChordChangeCircle();
         });
     }
 
-    if (octaveSlider) {
-        octaveSlider.value = state.octaveSpread;
-        document.getElementById('octave-value').textContent = state.octaveSpread;
-
-        octaveSlider.addEventListener('input', (e) => {
-            state.octaveSpread = parseInt(e.target.value);
-            document.getElementById('octave-value').textContent = state.octaveSpread;
+    // Sequence method selector
+    const methodSelect = document.getElementById('sequenceMethod');
+    if (methodSelect) {
+        methodSelect.addEventListener('change', function() {
+            ChordProgressionSequencer.method = this.value;
+            renderSequenceMethodControls();
+            updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
+
+    // Pattern length
+    const lengthSlider = document.getElementById('patternLength');
+    const lengthValue = document.getElementById('patternLengthValue');
+    if (lengthSlider) {
+        lengthSlider.addEventListener('input', function() {
+            ChordProgressionSequencer.patternLength = parseInt(this.value);
+            lengthValue.textContent = this.value;
+            if (!ChordProgressionSequencer.lockPattern) {
+                updateProgressionPreview();
+            }
+            syncSequencerSettings();
+        });
+    }
+
+    // Lock pattern checkbox
+    const lockCheckbox = document.getElementById('lockPattern');
+    if (lockCheckbox) {
+        lockCheckbox.addEventListener('change', function() {
+            ChordProgressionSequencer.lockPattern = this.checked;
+            syncSequencerSettings();
+        });
+    }
+
+    // Regenerate button
+    const regenerateBtn = document.getElementById('regeneratePattern');
+    if (regenerateBtn) {
+        regenerateBtn.addEventListener('click', function() {
+            ChordProgressionSequencer.regenerate(appState.chordProgression);
+            updateProgressionPreview();
+            if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
+                noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });
+            }
+        });
+    }
+
+    // Initial render of method-specific controls
+    renderSequenceMethodControls();
 }
 
 /**
- * Regenerate Euclidean pattern and update display
+ * Regenerate chord change Euclidean pattern
  */
-function regeneratePattern(state) {
-    const basePattern = euclidean(state.euclidean.hits, state.euclidean.steps);
-    state.euclidean.pattern = rotatePattern(basePattern, state.euclidean.rotation);
-    updatePatternDisplay(state);
+function regenerateChordChangePattern() {
+    const { hits, steps, rotation } = appState.chordSequencing.euclidean;
+    const pattern = euclidean(hits, steps);
+    appState.chordSequencing.euclidean.pattern = rotatePattern(pattern, rotation);
+
+    // Update main circle with new chord pattern
+    renderChordChangeCircle();
+    // Push the up-to-date chord sequencing struct (including freshly computed
+    // pattern) to the worker for live update during playback.
+    syncWorkerParam({ chordSequencing: appState.chordSequencing });
 }
 
 /**
- * Update pattern visualization
+ * Render chord change Euclidean circle visualization
+ * NOTE: Chord rhythm now shown on main circle as outer gold diamonds!
  */
-function updatePatternDisplay(state) {
-    const display = document.getElementById('pattern-display');
-    if (!display) return;
+function renderChordChangeCircle() {
+    // Update main Euclidean circle with chord rhythm data
+    const { hits, steps, pattern } = appState.chordSequencing.euclidean;
+    const currentStep = appState.chordSequencing.stepIndex;
 
-    display.innerHTML = '';
-
-    state.euclidean.pattern.forEach((isHit, index) => {
-        const step = document.createElement('div');
-        step.className = 'step' + (isHit ? ' hit' : '');
-        step.dataset.index = index;
-
-        if (index === state.euclideanStepIndex) {
-            step.classList.add('active');
-        }
-
-        display.appendChild(step);
-    });
-
-    // Update pattern string display if present
-    const patternString = document.getElementById('pattern-string');
-    if (patternString) {
-        patternString.textContent = patternToString(state.euclidean.pattern);
-    }
+    // Call main circle's updateChordPattern function
+    EuclideanCircle.updateChordPattern(steps, hits, pattern, currentStep);
 }
 
 /**
- * Highlight current step in pattern display
+ * Render method-specific controls for selected sequencing method
  */
-function highlightCurrentStep(state) {
-    const display = document.getElementById('pattern-display');
-    if (!display) return;
+function renderSequenceMethodControls() {
+    const container = document.getElementById('sequenceMethodControls');
+    if (!container) return;
 
-    const steps = display.querySelectorAll('.step');
+    const method = ChordProgressionSequencer.method;
+    let html = '<div class="control-row">';
 
-    // Remove previous active
-    if (uiState.lastActiveStep >= 0 && steps[uiState.lastActiveStep]) {
-        steps[uiState.lastActiveStep].classList.remove('active');
-    }
-
-    // Add new active
-    if (steps[state.euclideanStepIndex]) {
-        steps[state.euclideanStepIndex].classList.add('active');
-    }
-
-    uiState.lastActiveStep = state.euclideanStepIndex;
-}
-
-// ============================================================================
-// Timing Controls
-// ============================================================================
-
-/**
- * Bind timing control elements
- */
-function bindTimingControls(state, callbacks) {
-    const clockToggle = document.getElementById('clock-mode-toggle');
-    const bpmSlider = document.getElementById('bpm-slider');
-    const startBtn = document.getElementById('start-button');
-    const stopBtn = document.getElementById('stop-button');
-    const barsButtons = document.querySelectorAll('.bars-btn');
-    const humanizationSlider = document.getElementById('humanization');
-
-    if (clockToggle) {
-        clockToggle.checked = state.clock.mode === 'slave';
-        updateClockModeDisplay(state);
-
-        clockToggle.addEventListener('change', (e) => {
-            state.clock.mode = e.target.checked ? 'slave' : 'master';
-            updateClockModeDisplay(state);
-            callbacks?.onClockModeChange?.(state);
-        });
-    }
-
-    if (bpmSlider) {
-        bpmSlider.value = state.clock.bpm;
-        document.getElementById('bpm-value').textContent = state.clock.bpm;
-
-        bpmSlider.addEventListener('input', (e) => {
-            state.clock.bpm = parseInt(e.target.value);
-            document.getElementById('bpm-value').textContent = state.clock.bpm;
-            callbacks?.onBPMChange?.(state);
-        });
-    }
-
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            callbacks?.onStart?.();
-        });
-    }
-
-    if (stopBtn) {
-        stopBtn.addEventListener('click', () => {
-            callbacks?.onStop?.();
-        });
-    }
-
-    barsButtons.forEach(btn => {
-        if (parseInt(btn.dataset.value) === state.barsPerChord) {
-            btn.classList.add('active');
-        }
-
-        btn.addEventListener('click', () => {
-            barsButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.barsPerChord = parseInt(btn.dataset.value);
-        });
-    });
-
-    if (humanizationSlider) {
-        humanizationSlider.value = state.humanization;
-        document.getElementById('humanization-value').textContent = state.humanization;
-
-        humanizationSlider.addEventListener('input', (e) => {
-            state.humanization = parseInt(e.target.value);
-            document.getElementById('humanization-value').textContent = state.humanization;
-        });
-    }
-}
-
-/**
- * Update clock mode display
- */
-function updateClockModeDisplay(state) {
-    const label = document.getElementById('clock-mode-label');
-    const bpmControl = document.getElementById('bpm-control');
-    const transport = document.getElementById('transport');
-
-    if (label) {
-        label.textContent = state.clock.mode === 'master' ? 'Master' : 'Slave';
-    }
-
-    if (bpmControl) {
-        bpmControl.style.display = state.clock.mode === 'master' ? 'block' : 'none';
-    }
-
-    if (transport) {
-        transport.style.display = state.clock.mode === 'master' ? 'flex' : 'none';
-    }
-}
-
-/**
- * Update clock status indicator
- */
-function updateClockStatus(status) {
-    const element = document.getElementById('clock-status');
-    if (!element) return;
-
-    element.className = 'status ' + status;
-
-    switch (status) {
-        case 'playing':
-            element.textContent = 'Clock: Playing';
+    switch (method) {
+        case 'root-melody':
+            html += `
+                <div class="filter-group">
+                    <label>Pattern</label>
+                    <select id="rootMelodyPattern">
+                        <option value="ascending" ${ChordProgressionSequencer.rootMelodyPattern === 'ascending' ? 'selected' : ''}>Ascending</option>
+                        <option value="descending" ${ChordProgressionSequencer.rootMelodyPattern === 'descending' ? 'selected' : ''}>Descending</option>
+                        <option value="up-down" ${ChordProgressionSequencer.rootMelodyPattern === 'up-down' ? 'selected' : ''}>Up-Down</option>
+                        <option value="down-up" ${ChordProgressionSequencer.rootMelodyPattern === 'down-up' ? 'selected' : ''}>Down-Up</option>
+                        <option value="converging" ${ChordProgressionSequencer.rootMelodyPattern === 'converging' ? 'selected' : ''}>Converging</option>
+                        <option value="diverging" ${ChordProgressionSequencer.rootMelodyPattern === 'diverging' ? 'selected' : ''}>Diverging</option>
+                        <option value="random-walk" ${ChordProgressionSequencer.rootMelodyPattern === 'random-walk' ? 'selected' : ''}>Random Walk</option>
+                    </select>
+                </div>
+            `;
             break;
-        case 'stopped':
-            element.textContent = 'Clock: Stopped';
+
+        case 'circle-fifths':
+            html += `
+                <div class="filter-group">
+                    <label>Direction</label>
+                    <select id="circleFifthsDirection">
+                        <option value="clockwise" ${ChordProgressionSequencer.circleFifthsDirection === 'clockwise' ? 'selected' : ''}>Clockwise</option>
+                        <option value="counter-clockwise" ${ChordProgressionSequencer.circleFifthsDirection === 'counter-clockwise' ? 'selected' : ''}>Counter-clockwise</option>
+                        <option value="random" ${ChordProgressionSequencer.circleFifthsDirection === 'random' ? 'selected' : ''}>Random</option>
+                    </select>
+                </div>
+            `;
             break;
-        case 'synced':
-            element.textContent = 'Clock: Synced';
+
+        case 'voice-leading':
+            html += `
+                <div class="filter-group">
+                    <label>Optimization</label>
+                    <select id="voiceLeadingOptimization">
+                        <option value="smooth" ${ChordProgressionSequencer.voiceLeadingOptimization === 'smooth' ? 'selected' : ''}>Smooth (Minimal)</option>
+                        <option value="interesting" ${ChordProgressionSequencer.voiceLeadingOptimization === 'interesting' ? 'selected' : ''}>Interesting (Moderate)</option>
+                        <option value="contrasting" ${ChordProgressionSequencer.voiceLeadingOptimization === 'contrasting' ? 'selected' : ''}>Contrasting (Maximal)</option>
+                    </select>
+                </div>
+            `;
             break;
-        case 'lost':
-            element.textContent = 'Clock: Lost';
-            break;
-        case 'disconnected':
+
+        case 'random':
+        case 'functional':
         default:
-            element.textContent = 'Clock: Disconnected';
-    }
-}
-
-/**
- * Update transport button states
- */
-function updateTransportButtons(isPlaying) {
-    const startBtn = document.getElementById('start-button');
-    const stopBtn = document.getElementById('stop-button');
-
-    if (startBtn) {
-        startBtn.disabled = isPlaying;
-        startBtn.classList.toggle('active', isPlaying);
-    }
-
-    if (stopBtn) {
-        stopBtn.disabled = !isPlaying;
-    }
-}
-
-// ============================================================================
-// Variation Controls
-// ============================================================================
-
-/**
- * Bind variation control elements
- */
-function bindVariationControls(state) {
-    const harmonicSlider = document.getElementById('harmonic-variation');
-    const rhythmicSlider = document.getElementById('rhythmic-variation');
-    const voiceButtons = document.querySelectorAll('.voice-btn');
-
-    if (harmonicSlider) {
-        harmonicSlider.value = state.harmonicVariation;
-        document.getElementById('harmonic-value').textContent =
-            state.harmonicVariation.toFixed(2);
-
-        harmonicSlider.addEventListener('input', (e) => {
-            state.harmonicVariation = parseFloat(e.target.value);
-            document.getElementById('harmonic-value').textContent =
-                state.harmonicVariation.toFixed(2);
-        });
-    }
-
-    if (rhythmicSlider) {
-        rhythmicSlider.value = state.rhythmicVariation;
-        document.getElementById('rhythmic-value').textContent =
-            state.rhythmicVariation.toFixed(2);
-
-        rhythmicSlider.addEventListener('input', (e) => {
-            state.rhythmicVariation = parseFloat(e.target.value);
-            document.getElementById('rhythmic-value').textContent =
-                state.rhythmicVariation.toFixed(2);
-        });
-    }
-
-    voiceButtons.forEach(btn => {
-        if (btn.dataset.value === state.voiceLeading) {
-            btn.classList.add('active');
-        }
-
-        btn.addEventListener('click', () => {
-            voiceButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.voiceLeading = btn.dataset.value;
-        });
-    });
-}
-
-// ============================================================================
-// Output Controls (Velocity/Gate)
-// ============================================================================
-
-/**
- * Bind output control elements
- */
-function bindOutputControls(state) {
-    const velocityMode = document.getElementById('velocity-mode');
-    const gateMode = document.getElementById('gate-mode');
-
-    if (velocityMode) {
-        velocityMode.value = state.velocity.mode;
-
-        velocityMode.addEventListener('change', (e) => {
-            state.velocity.mode = e.target.value;
-            renderVelocityControls(state);
-        });
-    }
-
-    if (gateMode) {
-        gateMode.value = state.gate.mode;
-
-        gateMode.addEventListener('change', (e) => {
-            state.gate.mode = e.target.value;
-            renderGateControls(state);
-        });
-    }
-}
-
-/**
- * Render velocity controls based on mode
- */
-function renderVelocityControls(state) {
-    const container = document.getElementById('velocity-controls');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    switch (state.velocity.mode) {
-        case 'fixed':
-            container.innerHTML = `
-                <label>
-                    Velocity: <span id="velocity-fixed-value">${state.velocity.fixed}</span>
-                    <input type="range" id="velocity-fixed" min="1" max="127" value="${state.velocity.fixed}">
-                </label>
-            `;
-            document.getElementById('velocity-fixed').addEventListener('input', (e) => {
-                state.velocity.fixed = parseInt(e.target.value);
-                document.getElementById('velocity-fixed-value').textContent = state.velocity.fixed;
-            });
-            break;
-
-        case 'random':
-            container.innerHTML = `
-                <label>
-                    Min: <span id="velocity-min-value">${state.velocity.randomMin}</span>
-                    <input type="range" id="velocity-min" min="1" max="127" value="${state.velocity.randomMin}">
-                </label>
-                <label>
-                    Max: <span id="velocity-max-value">${state.velocity.randomMax}</span>
-                    <input type="range" id="velocity-max" min="1" max="127" value="${state.velocity.randomMax}">
-                </label>
-            `;
-            document.getElementById('velocity-min').addEventListener('input', (e) => {
-                state.velocity.randomMin = parseInt(e.target.value);
-                document.getElementById('velocity-min-value').textContent = state.velocity.randomMin;
-            });
-            document.getElementById('velocity-max').addEventListener('input', (e) => {
-                state.velocity.randomMax = parseInt(e.target.value);
-                document.getElementById('velocity-max-value').textContent = state.velocity.randomMax;
-            });
-            break;
-
-        case 'curve':
-            container.innerHTML = `
-                <label>
-                    Curve Type:
-                    <select id="velocity-curve-type">
-                        <option value="linear-ascending">Linear Ascending</option>
-                        <option value="linear-descending">Linear Descending</option>
-                        <option value="exponential">Exponential</option>
-                        <option value="logarithmic">Logarithmic</option>
-                        <option value="sinusoidal">Sinusoidal</option>
-                        <option value="triangle">Triangle</option>
-                    </select>
-                </label>
-                <label>
-                    Min: <span id="velocity-curve-min-value">${state.velocity.curveMin}</span>
-                    <input type="range" id="velocity-curve-min" min="1" max="127" value="${state.velocity.curveMin}">
-                </label>
-                <label>
-                    Max: <span id="velocity-curve-max-value">${state.velocity.curveMax}</span>
-                    <input type="range" id="velocity-curve-max" min="1" max="127" value="${state.velocity.curveMax}">
-                </label>
-            `;
-            document.getElementById('velocity-curve-type').value = state.velocity.curveType;
-            document.getElementById('velocity-curve-type').addEventListener('change', (e) => {
-                state.velocity.curveType = e.target.value;
-            });
-            document.getElementById('velocity-curve-min').addEventListener('input', (e) => {
-                state.velocity.curveMin = parseInt(e.target.value);
-                document.getElementById('velocity-curve-min-value').textContent = state.velocity.curveMin;
-            });
-            document.getElementById('velocity-curve-max').addEventListener('input', (e) => {
-                state.velocity.curveMax = parseInt(e.target.value);
-                document.getElementById('velocity-curve-max-value').textContent = state.velocity.curveMax;
-            });
+            html += '<div class="filter-group"><small style="color: var(--muted);">No additional parameters</small></div>';
             break;
     }
-}
 
-/**
- * Render gate controls based on mode
- */
-function renderGateControls(state) {
-    const container = document.getElementById('gate-controls');
-    if (!container) return;
+    html += '</div>';
+    container.innerHTML = html;
 
-    container.innerHTML = '';
-
-    const toPercent = (val) => (val * 100).toFixed(0) + '%';
-
-    switch (state.gate.mode) {
-        case 'fixed':
-            container.innerHTML = `
-                <label>
-                    Gate: <span id="gate-fixed-value">${toPercent(state.gate.fixed)}</span>
-                    <input type="range" id="gate-fixed" min="0.05" max="1" step="0.01" value="${state.gate.fixed}">
-                </label>
-            `;
-            document.getElementById('gate-fixed').addEventListener('input', (e) => {
-                state.gate.fixed = parseFloat(e.target.value);
-                document.getElementById('gate-fixed-value').textContent = toPercent(state.gate.fixed);
-            });
-            break;
-
-        case 'random':
-            container.innerHTML = `
-                <label>
-                    Min: <span id="gate-min-value">${toPercent(state.gate.randomMin)}</span>
-                    <input type="range" id="gate-min" min="0.05" max="1" step="0.01" value="${state.gate.randomMin}">
-                </label>
-                <label>
-                    Max: <span id="gate-max-value">${toPercent(state.gate.randomMax)}</span>
-                    <input type="range" id="gate-max" min="0.05" max="1" step="0.01" value="${state.gate.randomMax}">
-                </label>
-            `;
-            document.getElementById('gate-min').addEventListener('input', (e) => {
-                state.gate.randomMin = parseFloat(e.target.value);
-                document.getElementById('gate-min-value').textContent = toPercent(state.gate.randomMin);
-            });
-            document.getElementById('gate-max').addEventListener('input', (e) => {
-                state.gate.randomMax = parseFloat(e.target.value);
-                document.getElementById('gate-max-value').textContent = toPercent(state.gate.randomMax);
-            });
-            break;
-
-        case 'curve':
-            container.innerHTML = `
-                <label>
-                    Curve Type:
-                    <select id="gate-curve-type">
-                        <option value="linear-ascending">Linear Ascending</option>
-                        <option value="linear-descending">Linear Descending</option>
-                        <option value="exponential">Exponential</option>
-                        <option value="logarithmic">Logarithmic</option>
-                        <option value="sinusoidal">Sinusoidal</option>
-                        <option value="triangle">Triangle</option>
-                    </select>
-                </label>
-                <label>
-                    Min: <span id="gate-curve-min-value">${toPercent(state.gate.curveMin)}</span>
-                    <input type="range" id="gate-curve-min" min="0.05" max="1" step="0.01" value="${state.gate.curveMin}">
-                </label>
-                <label>
-                    Max: <span id="gate-curve-max-value">${toPercent(state.gate.curveMax)}</span>
-                    <input type="range" id="gate-curve-max" min="0.05" max="1" step="0.01" value="${state.gate.curveMax}">
-                </label>
-            `;
-            document.getElementById('gate-curve-type').value = state.gate.curveType;
-            document.getElementById('gate-curve-type').addEventListener('change', (e) => {
-                state.gate.curveType = e.target.value;
-            });
-            document.getElementById('gate-curve-min').addEventListener('input', (e) => {
-                state.gate.curveMin = parseFloat(e.target.value);
-                document.getElementById('gate-curve-min-value').textContent = toPercent(state.gate.curveMin);
-            });
-            document.getElementById('gate-curve-max').addEventListener('input', (e) => {
-                state.gate.curveMax = parseFloat(e.target.value);
-                document.getElementById('gate-curve-max-value').textContent = toPercent(state.gate.curveMax);
-            });
-            break;
-    }
-}
-
-// ============================================================================
-// Chord Progression Controls
-// ============================================================================
-
-/**
- * Bind chord progression control elements
- */
-function bindChordProgressionControls(state, callbacks) {
-    const loadBtn = document.getElementById('load-chords');
-    const chordInput = document.getElementById('chord-input');
-
-    if (loadBtn && chordInput) {
-        // Set initial value
-        chordInput.value = JSON.stringify(state.chordProgression);
-
-        loadBtn.addEventListener('click', () => {
-            try {
-                const chords = JSON.parse(chordInput.value);
-                if (validateChordProgression(chords)) {
-                    state.chordProgression = chords;
-                    state.currentChordIndex = 0;
-                    updatePadDisplay(state);
-                    updateChordStatus(state);
-                    showNotification('Chord progression loaded successfully', 'success');
-                    callbacks?.onChordsChange?.(state);
-                } else {
-                    showNotification('Invalid chord format. Expected: [[60,64,67],[57,60,64],...]', 'error');
-                }
-            } catch (e) {
-                showNotification('JSON parsing error: ' + e.message, 'error');
-            }
+    // Bind newly created controls
+    const rootMelodySelect = document.getElementById('rootMelodyPattern');
+    if (rootMelodySelect) {
+        rootMelodySelect.addEventListener('change', function() {
+            ChordProgressionSequencer.rootMelodyPattern = this.value;
+            updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 
-    createPadGrid(state);
-}
-
-/**
- * Validate chord progression data structure
- */
-function validateChordProgression(data) {
-    if (!Array.isArray(data)) return false;
-    if (data.length === 0) return false;
-
-    for (const chord of data) {
-        if (!Array.isArray(chord)) return false;
-        if (chord.length === 0) return false;
-        for (const note of chord) {
-            if (typeof note !== 'number') return false;
-            if (note < 0 || note > 127) return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * Create the 4x4 pad grid (MPC-style layout)
- */
-function createPadGrid(state) {
-    const container = document.getElementById('pad-display');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    // Create 16 pads in MPC layout (bottom to top rows)
-    for (let i = 0; i < 16; i++) {
-        const pad = document.createElement('div');
-        pad.className = 'pad';
-        pad.dataset.index = i;
-
-        // Click to select chord manually
-        pad.addEventListener('click', () => {
-            if (i < state.chordProgression.length) {
-                state.currentChordIndex = i;
-                updatePadDisplay(state);
-                updateChordStatus(state);
-            }
-        });
-
-        container.appendChild(pad);
-    }
-
-    updatePadDisplay(state);
-}
-
-/**
- * Update pad display with chord information
- */
-function updatePadDisplay(state) {
-    const pads = document.querySelectorAll('#pad-display .pad');
-    if (!pads.length) return;
-
-    pads.forEach((pad, index) => {
-        // Clear all classes except 'pad'
-        pad.className = 'pad';
-
-        if (index < state.chordProgression.length) {
-            const chord = state.chordProgression[index];
-            const analysis = analyzeChord(chord);
-
-            pad.textContent = analysis.name;
-            pad.classList.add(getChordClass(analysis.type));
-
-            if (index === state.currentChordIndex) {
-                pad.classList.add('current');
-            }
-
-            pad.title = `${analysis.name} - Notes: ${chord.join(', ')}`;
-        } else {
-            pad.textContent = '';
-            pad.classList.add('empty');
-            pad.title = '';
-        }
-    });
-}
-
-/**
- * Update current chord status display
- */
-function updateChordStatus(state) {
-    const display = document.getElementById('current-chord-display');
-    if (!display) return;
-
-    const chord = state.chordProgression[state.currentChordIndex];
-    const analysis = analyzeChord(chord);
-
-    display.textContent = `${analysis.name} (${state.currentChordIndex + 1}/${state.chordProgression.length})`;
-}
-
-// ============================================================================
-// MIDI Device UI
-// ============================================================================
-
-/**
- * Populate MIDI device select elements
- */
-function populateMIDIDevices(inputs, outputs) {
-    const inputSelect = document.getElementById('midi-input');
-    const outputSelect = document.getElementById('midi-output');
-
-    if (inputSelect) {
-        // Preserve first option
-        const firstOption = inputSelect.firstElementChild;
-        inputSelect.innerHTML = '';
-        inputSelect.appendChild(firstOption);
-
-        inputs.forEach(device => {
-            const option = document.createElement('option');
-            option.value = device.id;
-            option.textContent = device.name;
-            inputSelect.appendChild(option);
+    const circleFifthsSelect = document.getElementById('circleFifthsDirection');
+    if (circleFifthsSelect) {
+        circleFifthsSelect.addEventListener('change', function() {
+            ChordProgressionSequencer.circleFifthsDirection = this.value;
+            updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 
-    if (outputSelect) {
-        // Preserve first option
-        const firstOption = outputSelect.firstElementChild;
-        outputSelect.innerHTML = '';
-        outputSelect.appendChild(firstOption);
-
-        outputs.forEach(device => {
-            const option = document.createElement('option');
-            option.value = device.id;
-            option.textContent = device.name;
-            outputSelect.appendChild(option);
+    const voiceLeadingSelect = document.getElementById('voiceLeadingOptimization');
+    if (voiceLeadingSelect) {
+        voiceLeadingSelect.addEventListener('change', function() {
+            ChordProgressionSequencer.voiceLeadingOptimization = this.value;
+            updateProgressionPreview();
+            syncSequencerSettings();
         });
     }
 }
 
 /**
- * Bind MIDI device selection handlers
+ * Update progression preview display
  */
-function bindMIDIDeviceSelectors(callbacks) {
-    const inputSelect = document.getElementById('midi-input');
-    const outputSelect = document.getElementById('midi-output');
+function updateProgressionPreview() {
+    const previewEl = document.getElementById('progressionPreviewText');
+    if (!previewEl) return;
 
-    if (inputSelect) {
-        inputSelect.addEventListener('change', (e) => {
-            callbacks?.onInputSelect?.(e.target.value);
-        });
+    if (!appState.chordProgression || appState.chordProgression.length === 0) {
+        previewEl.textContent = 'Generate chords first';
+        return;
     }
 
-    if (outputSelect) {
-        outputSelect.addEventListener('change', (e) => {
-            callbacks?.onOutputSelect?.(e.target.value);
-        });
+    // Regenerate sequence if not locked
+    if (!ChordProgressionSequencer.lockPattern) {
+        ChordProgressionSequencer.regenerate(appState.chordProgression);
     }
+
+    // Get preview string from sequencer
+    const preview = ChordProgressionSequencer.getPreviewString(appState.chordProgression);
+    previewEl.textContent = preview;
 }
-
-// ============================================================================
-// Keyboard Visualization (Recycled from AkaiMPC)
-// ============================================================================
 
 /**
- * Generate keyboard SVG for chord visualization
- * Adapted from AkaiMPC Chord Progression Generator rendering.js
- *
- * @param {number[]} notes - MIDI note numbers
- * @returns {string} - SVG markup
+ * Update UI based on playback mode (arpeggio/stab)
  */
-function generateKeyboardSVG(notes) {
-    if (!notes || notes.length === 0) return '';
+function updatePlaybackModeUI() {
+    const noteVariationSection = document.getElementById('noteVariationSection');
+    const stabControls = document.getElementById('stabControls');
+    const octaveSpreadGroup = document.getElementById('octaveSpreadGroup');
+    const chordProgressionSection = document.getElementById('chordProgressionSection');
+    const chordRhythmControls = document.getElementById('chordRhythmControls');
 
-    // Determine octave range to display
-    const minNote = Math.min(...notes);
-    const startOctave = Math.floor(minNote / 12);
-    const startNote = startOctave * 12;
+    if (appState.playbackMode === 'stab') {
+        // Chord Stab mode: show strum controls, disable note-level variation, show chord progression
+        noteVariationSection?.classList.add('disabled');
+        if (stabControls) stabControls.style.display = 'flex';
+        // Octave spread now works in stab mode! (spreads chord across octaves)
+        if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
+        if (chordProgressionSection) chordProgressionSection.style.display = 'block';
+        // Show chord rhythm controls next to the circle!
+        if (chordRhythmControls) chordRhythmControls.style.display = 'block';
 
-    const activeNotes = new Set(notes);
+        // Update main circle to show chord rhythm
+        renderChordChangeCircle();
+    } else {
+        // Arpeggio mode: hide strum controls, enable note-level variation, hide chord progression
+        noteVariationSection?.classList.remove('disabled');
+        if (stabControls) stabControls.style.display = 'none';
+        if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
+        if (chordProgressionSection) chordProgressionSection.style.display = 'none';
+        // Hide chord rhythm controls (not needed in arpeggio mode)
+        if (chordRhythmControls) chordRhythmControls.style.display = 'none';
 
-    const whiteKeyPattern = [0, 2, 4, 5, 7, 9, 11];
-    const blackKeyPattern = [1, 3, 6, 8, 10];
-
-    let svg = '<svg viewBox="0 0 196 35" xmlns="http://www.w3.org/2000/svg">';
-
-    // Draw two octaves of white keys
-    for (let octave = 0; octave < 2; octave++) {
-        whiteKeyPattern.forEach((note, i) => {
-            const x = (octave * 7 + i) * 14;
-            const absoluteNote = startNote + (octave * 12) + note;
-            const active = activeNotes.has(absoluteNote);
-            svg += `<rect x="${x}" y="0" width="13" height="35" fill="${active ? '#f59e0b' : 'white'}" stroke="#333" stroke-width="1"/>`;
-        });
+        // Clear chord rhythm from main circle (arpeggio mode doesn't need it)
+        EuclideanCircle.updateChordPattern(0, 0, [], -1);
     }
-
-    // Draw two octaves of black keys
-    const whiteKeyIndices = [0, 1, 3, 4, 5];
-    for (let octave = 0; octave < 2; octave++) {
-        blackKeyPattern.forEach((note, i) => {
-            const x = (octave * 7 + whiteKeyIndices[i]) * 14 + 8.5;
-            const absoluteNote = startNote + (octave * 12) + note;
-            const active = activeNotes.has(absoluteNote);
-            svg += `<rect x="${x}" y="0" width="10" height="21" fill="${active ? '#dc2626' : '#333'}" stroke="#000" stroke-width="1"/>`;
-        });
-    }
-
-    svg += '</svg>';
-    return svg;
 }
 
-// ============================================================================
-// Notifications
-// ============================================================================
-
-/**
- * Show a notification message
- */
-function showNotification(message, type = 'info') {
-    // Remove existing notification
-    const existing = document.querySelector('.notification');
-    if (existing) {
-        existing.remove();
+function renderVelocityControls() {
+    const container = document.getElementById('velocityControls');
+    if (appState.velocity.mode === 'fixed') {
+        container.innerHTML = `
+            <label>Value: <span id="velFixedValue">${appState.velocity.fixed}</span>
+                <input type="range" id="velFixed" min="1" max="127" value="${appState.velocity.fixed}">
+            </label>
+        `;
+        document.getElementById('velFixed')?.addEventListener('input', function() {
+            appState.velocity.fixed = parseInt(this.value);
+            document.getElementById('velFixedValue').textContent = this.value;
+        });
+    } else if (appState.velocity.mode === 'random') {
+        container.innerHTML = `
+            <label>Min: ${appState.velocity.randomMin} <input type="range" min="1" max="127" value="${appState.velocity.randomMin}" id="velMin"></label>
+            <label>Max: ${appState.velocity.randomMax} <input type="range" min="1" max="127" value="${appState.velocity.randomMax}" id="velMax"></label>
+        `;
+        document.getElementById('velMin')?.addEventListener('input', function() {
+            appState.velocity.randomMin = parseInt(this.value);
+        });
+        document.getElementById('velMax')?.addEventListener('input', function() {
+            appState.velocity.randomMax = parseInt(this.value);
+        });
+    } else if (appState.velocity.mode === 'curve') {
+        container.innerHTML = `
+            <label>
+                Curve Type:
+                <select id="velocityCurveType">
+                    <option value="linear-ascending">Linear Ascending</option>
+                    <option value="linear-descending">Linear Descending</option>
+                    <option value="exponential">Exponential</option>
+                    <option value="logarithmic">Logarithmic</option>
+                    <option value="sinusoidal">Sinusoidal</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </label>
+            <label>
+                Min: <span id="velocityCurveMinValue">${appState.velocity.curveMin}</span>
+                <input type="range" id="velocityCurveMin" min="1" max="127" value="${appState.velocity.curveMin}">
+            </label>
+            <label>
+                Max: <span id="velocityCurveMaxValue">${appState.velocity.curveMax}</span>
+                <input type="range" id="velocityCurveMax" min="1" max="127" value="${appState.velocity.curveMax}">
+            </label>
+        `;
+        document.getElementById('velocityCurveType').value = appState.velocity.curveType;
+        document.getElementById('velocityCurveType')?.addEventListener('change', function() {
+            appState.velocity.curveType = this.value;
+        });
+        document.getElementById('velocityCurveMin')?.addEventListener('input', function() {
+            appState.velocity.curveMin = parseInt(this.value);
+            document.getElementById('velocityCurveMinValue').textContent = this.value;
+        });
+        document.getElementById('velocityCurveMax')?.addEventListener('input', function() {
+            appState.velocity.curveMax = parseInt(this.value);
+            document.getElementById('velocityCurveMaxValue').textContent = this.value;
+        });
     }
-
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-
-    document.body.appendChild(notification);
-
-    // Auto-remove after delay
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
 }
 
-// ============================================================================
-// Exports
-// ============================================================================
+function renderGateControls() {
+    const container = document.getElementById('gateControls');
+    const toPercent = v => Math.round(v * 100) + '%';
+
+    if (appState.gate.mode === 'fixed') {
+        container.innerHTML = `
+            <label>Value: <span id="gateFixedValue">${toPercent(appState.gate.fixed)}</span>
+                <input type="range" id="gateFixed" min="0.1" max="1" step="0.05" value="${appState.gate.fixed}">
+            </label>
+        `;
+        document.getElementById('gateFixed')?.addEventListener('input', function() {
+            appState.gate.fixed = parseFloat(this.value);
+            document.getElementById('gateFixedValue').textContent = toPercent(appState.gate.fixed);
+        });
+    } else if (appState.gate.mode === 'random') {
+        container.innerHTML = `
+            <label>Min: ${toPercent(appState.gate.randomMin)} <input type="range" min="0.1" max="1" step="0.05" value="${appState.gate.randomMin}" id="gateMin"></label>
+            <label>Max: ${toPercent(appState.gate.randomMax)} <input type="range" min="0.1" max="1" step="0.05" value="${appState.gate.randomMax}" id="gateMax"></label>
+        `;
+        document.getElementById('gateMin')?.addEventListener('input', function() {
+            appState.gate.randomMin = parseFloat(this.value);
+        });
+        document.getElementById('gateMax')?.addEventListener('input', function() {
+            appState.gate.randomMax = parseFloat(this.value);
+        });
+    } else if (appState.gate.mode === 'curve') {
+        container.innerHTML = `
+            <label>
+                Curve Type:
+                <select id="gateCurveType">
+                    <option value="linear-ascending">Linear Ascending</option>
+                    <option value="linear-descending">Linear Descending</option>
+                    <option value="exponential">Exponential</option>
+                    <option value="logarithmic">Logarithmic</option>
+                    <option value="sinusoidal">Sinusoidal</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </label>
+            <label>
+                Min: <span id="gateCurveMinValue">${toPercent(appState.gate.curveMin)}</span>
+                <input type="range" id="gateCurveMin" min="0.05" max="1" step="0.01" value="${appState.gate.curveMin}">
+            </label>
+            <label>
+                Max: <span id="gateCurveMaxValue">${toPercent(appState.gate.curveMax)}</span>
+                <input type="range" id="gateCurveMax" min="0.05" max="1" step="0.01" value="${appState.gate.curveMax}">
+            </label>
+        `;
+        document.getElementById('gateCurveType').value = appState.gate.curveType;
+        document.getElementById('gateCurveType')?.addEventListener('change', function() {
+            appState.gate.curveType = this.value;
+        });
+        document.getElementById('gateCurveMin')?.addEventListener('input', function() {
+            appState.gate.curveMin = parseFloat(this.value);
+            document.getElementById('gateCurveMinValue').textContent = toPercent(appState.gate.curveMin);
+        });
+        document.getElementById('gateCurveMax')?.addEventListener('input', function() {
+            appState.gate.curveMax = parseFloat(this.value);
+            document.getElementById('gateCurveMaxValue').textContent = toPercent(appState.gate.curveMax);
+        });
+    }
+}
+
 
 export {
-    initializeUI,
-
-    // Pattern
-    regeneratePattern,
-    updatePatternDisplay,
-    highlightCurrentStep,
-
-    // Timing
-    updateClockModeDisplay,
-    updateClockStatus,
-    updateTransportButtons,
-
-    // Output
+    bindControls,
+    bindChordProgressionControls,
+    regenerateChordChangePattern,
+    renderChordChangeCircle,
+    renderSequenceMethodControls,
+    updateProgressionPreview,
+    updatePlaybackModeUI,
     renderVelocityControls,
-    renderGateControls,
-
-    // Chords
-    updatePadDisplay,
-    updateChordStatus,
-    createPadGrid,
-    validateChordProgression,
-
-    // MIDI
-    populateMIDIDevices,
-    bindMIDIDeviceSelectors,
-
-    // Visualization
-    generateKeyboardSVG,
-
-    // Utils
-    showNotification
+    renderGateControls
 };
