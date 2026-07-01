@@ -161,7 +161,7 @@ Ouarpeggiator/
 
 ## Related Projects
 
-This project is an evolution of the [Akai MPC Chord Progression Generator](https://liotier.github.io/AkaiMPC/AkaiMPCChordProgressionGenerator/), specifically recycling and extending its Keyboard tab functionality.
+This project is an evolution of the [Akai MPC Chord Progression Generator](https://liotier.github.io/AkaiMPC/AkaiMPCChordProgressionGenerator/), specifically recycling and extending its core functionality.
 
 ## WebMIDI Targets
 
