@@ -39,6 +39,10 @@ export const appState = {
     },
     octaveSpread: 1,
 
+    // Live transpose (whole octaves; key select regenerates the progression
+    // itself and isn't a substitute for this — see index.html Transpose slider)
+    transposeOctaves: 0,
+
     // Timing
     bpm: 120,
     isPlaying: false,

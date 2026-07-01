@@ -226,6 +226,7 @@ function startPlayback() {
                     harmonicAdherence: appState.harmonicAdherence,
                     playbackMode: appState.playbackMode,
                     octaveSpread: appState.octaveSpread,
+                    transposeOctaves: appState.transposeOctaves,
                     harmonicVariation: appState.harmonicVariation,
                     rhythmicVariation: appState.rhythmicVariation,
                     humanization: appState.humanization,

@@ -210,6 +210,17 @@ function selectArpeggioNote(state, chord) {
     return note;
 }
 
+/**
+ * Live octave transpose, applied to every note right before output. Whole
+ * octaves only (key select regenerates the progression's own voicings — this
+ * is a separate, real-time shift on top of whatever was generated). Clamped
+ * to the valid MIDI note range.
+ */
+export function applyTranspose(note, state) {
+    const shifted = note + (state.transposeOctaves || 0) * 12;
+    return Math.max(0, Math.min(127, shifted));
+}
+
 function orderStabNotes(state, notes) {
     const orderedNotes = [...notes];
     if (state.strumDirection === 'down') {
@@ -259,14 +270,14 @@ export function computeStepNotes(state) {
         const ordered = orderStabNotes(state, chord.notes);
         const strumDelay = state.strumSpeed / Math.max(1, ordered.length - 1);
         notes = ordered.map((note, idx) => ({
-            note,
+            note: applyTranspose(note, state),
             velocity,
             gateLength,
             offset: humanizeOffset + idx * strumDelay
         }));
-        state.lastPlayedNote = ordered[0];
+        state.lastPlayedNote = notes[0].note;
     } else {
-        const note = selectArpeggioNote(state, chord);
+        const note = applyTranspose(selectArpeggioNote(state, chord), state);
         notes = [{ note, velocity, gateLength, offset: humanizeOffset }];
         state.lastPlayedNote = note;
     }

@@ -11,6 +11,7 @@ import * as MusicTheory from './modules/musicTheory.js';
 import * as Audio from './modules/audio.js';
 import * as MIDI from './midi.js';
 import { sendToJuno106, syncChordProgressionToWorker, jumpToChord } from './transport.js';
+import { applyTranspose } from './sequencerCore.js';
 
 function triggerSparkle() {
     const btn = document.getElementById('generateBtn');
@@ -737,20 +738,23 @@ function playChordWithFeedback(index, padElement) {
         return;
     }
 
-    // Stopped: audition the chord as a one-shot preview.
+    // Stopped: audition the chord as a one-shot preview, matching the live
+    // transpose so the preview reflects what will actually play.
     if (!Audio.isAudioAvailable()) {
         Audio.initAudio();
     }
 
+    const notes = chord.notes.map(note => applyTranspose(note, appState));
+
     if (appState.outputMode === 'audio') {
-        Audio.playChord(chord.notes, 80, 400);
+        Audio.playChord(notes, 80, 400);
     } else if (appState.outputMode === 'midi' && MIDI.hasOutputDevice()) {
-        chord.notes.forEach(note => {
+        notes.forEach(note => {
             MIDI.sendNoteOn(note, 80);
             setTimeout(() => MIDI.sendNoteOff(note), 350);
         });
     } else if (appState.outputMode === 'juno106') {
-        chord.notes.forEach(note => {
+        notes.forEach(note => {
             sendToJuno106({ type: 'noteOn', value: note });
             setTimeout(() => sendToJuno106({ type: 'noteOff', value: note }), 350);
         });
