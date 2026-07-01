@@ -140,12 +140,33 @@ function resizePianoRoll() {
 // Note Management
 // ============================================================================
 
+/**
+ * Scroll the pitch window (never resize it) so `pitch` is visible. Shifts
+ * minPitch/maxPitch together by the minimal amount needed, which leaves the
+ * note flush against whichever edge it was outside of. A no-op when the note
+ * already fits — so the view only moves when something would otherwise be
+ * clipped (e.g. by the live transpose control), never gratuitously.
+ */
+function ensurePitchVisible(pitch) {
+    if (pitch < pianoRoll.minPitch) {
+        const shift = pianoRoll.minPitch - pitch;
+        pianoRoll.minPitch -= shift;
+        pianoRoll.maxPitch -= shift;
+    } else if (pitch > pianoRoll.maxPitch) {
+        const shift = pitch - pianoRoll.maxPitch;
+        pianoRoll.minPitch += shift;
+        pianoRoll.maxPitch += shift;
+    }
+}
+
 export function addNote(note, velocity, durationMs, chordIndex = 0) {
     // Use real clock so notes get correct timestamps even when tab is backgrounded
     // (requestAnimationFrame pauses in background, but notes keep playing via Worker)
     if (pianoRoll.isPlaying && pianoRoll.playbackStartTime > 0) {
         pianoRoll.currentTime = (performance.now() - pianoRoll.playbackStartTime) / 1000;
     }
+
+    ensurePitchVisible(note);
 
     const noteObj = {
         pitch: note,

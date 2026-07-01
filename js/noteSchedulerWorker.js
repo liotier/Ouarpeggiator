@@ -41,7 +41,7 @@ let state = {
     // Chord progression
     chordProgression: [],
     currentChordIndex: 0,
-    barsPerChord: 4,
+    barsPerChord: 1,
     harmonicAdherence: 70,
 
     // Chord progression sequencing (Stab Mode only) — Euclidean-pattern-driven
