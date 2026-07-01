@@ -505,6 +505,17 @@ button.primary:hover {
     background: var(--accent-dark);
 }
 
+button.danger {
+    background: transparent;
+    color: var(--error);
+    border-color: var(--error);
+}
+
+button.danger:hover {
+    background: var(--error);
+    color: white;
+}
+
 button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -1155,6 +1166,29 @@ button:disabled {
 .clock-status.stopped {
     background: var(--pad-bg);
     color: var(--muted);
+}
+
+.juno-status {
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.juno-status.pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+}
+
+.juno-status.connected {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.juno-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
 }
 
 /* Playback Mode Toggle (Arpeggio/Chord Stab) */

@@ -32,6 +32,8 @@ import { renderChordChangeCircle, regenerateChordChangePattern, updateProgressio
 
 // Juno-106 window integration
 let junoWindow = null;
+let junoReady = false;          // true once we've received 'juno106:ready'
+let junoDisconnectNotified = false;  // avoid spamming the status on every dropped note
 const JUNO_URL = 'https://liotier.github.io/Juno-106_maintenance-and-performance-improvements/';
 const activeJunoNotes = new Set();
 
@@ -443,12 +445,49 @@ function scheduleNote(ev) {
 // Juno-106 Helper Functions
 // ============================================================================
 
+/**
+ * Show/update the Juno-106 connection status message near the output selector.
+ * @param {string} text
+ * @param {'pending'|'connected'|'error'} type
+ */
+function setJunoStatus(text, type) {
+    const el = document.getElementById('junoStatus');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'juno-status ' + type;
+    el.hidden = false;
+}
+
+function clearJunoStatus() {
+    const el = document.getElementById('junoStatus');
+    if (el) el.hidden = true;
+}
+
 function launchJuno106() {
     if (junoWindow && !junoWindow.closed) return;
+
+    // Starting a fresh window session — any notes tracked against the old
+    // session are moot (nothing left to send an off to) and must not be
+    // carried over, or we'd send bogus note-offs to the next window.
+    activeJunoNotes.clear();
+    junoReady = false;
+    junoDisconnectNotified = false;
+
     junoWindow = window.open(JUNO_URL, 'juno106');
+
+    if (!junoWindow) {
+        setJunoStatus('Juno-106 popup blocked — allow pop-ups for this site and try again', 'error');
+        console.warn('[Juno-106] window.open() returned null — popup likely blocked');
+        return;
+    }
+
+    setJunoStatus('Opening Juno-106…', 'pending');
+
     window.addEventListener('message', function onReady(e) {
         if (e.origin === 'https://liotier.github.io' && e.data === 'juno106:ready') {
             window.removeEventListener('message', onReady);
+            junoReady = true;
+            setJunoStatus('Juno-106 connected', 'connected');
         }
     });
 }
@@ -499,6 +538,22 @@ function syncSequencerSettings() {
 
 function sendToJuno106(msg) {
     if (!junoWindow || junoWindow.closed) {
+        // The window was open (or never opened) and is now gone. Any notes
+        // still tracked as "on" can't be turned off there anymore, and must
+        // not be replayed against a future window, so drop them.
+        if (activeJunoNotes.size > 0) activeJunoNotes.clear();
+        const wasReady = junoReady;
+        junoReady = false;
+
+        if (!junoDisconnectNotified) {
+            junoDisconnectNotified = true;
+            setJunoStatus(
+                wasReady
+                    ? 'Juno-106 window was closed — reselect Juno-106 in Output to reconnect'
+                    : 'Juno-106 window not available — reselect Juno-106 in Output to retry',
+                'error'
+            );
+        }
         console.warn('[Juno-106] sendToJuno106: window not available, msg dropped:', msg);
         return;
     }
@@ -541,6 +596,7 @@ export {
     syncChordProgressionToWorker,
     syncSequencerSettings,
     launchJuno106,
+    clearJunoStatus,
     noteSchedulerWorker,
     useBroadcastChannel
 };

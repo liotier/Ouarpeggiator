@@ -23,9 +23,23 @@ import {
     syncWorkerParam,
     syncSequencerSettings,
     launchJuno106,
+    clearJunoStatus,
     noteSchedulerWorker,
     useBroadcastChannel
 } from './transport.js';
+
+/**
+ * Activate one button in a radiogroup-style button cluster (strum direction,
+ * voice leading, bars-per-chord): toggles .active and keeps aria-checked in
+ * sync so screen readers announce the current selection correctly.
+ */
+function setActiveRadioButton(groupSelector, activeBtn) {
+    document.querySelectorAll(groupSelector).forEach(b => {
+        const isActive = b === activeBtn;
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-checked', String(isActive));
+    });
+}
 
 // UI Bindings
 // ============================================================================
@@ -98,12 +112,14 @@ function bindControls() {
             MIDI.selectOutputDevice(''); // Deselect MIDI device
             audioConfig.style.display = 'block';
             Audio.initAudio();
+            clearJunoStatus();
         } else if (value.startsWith('midi:')) {
             // MIDI device selected
             const deviceId = value.substring(5);
             appState.outputMode = 'midi';
             MIDI.selectOutputDevice(deviceId);
             audioConfig.style.display = 'none';
+            clearJunoStatus();
         } else if (value === 'juno106') {
             // Juno-106 selected
             appState.outputMode = 'juno106';
@@ -187,8 +203,7 @@ function bindControls() {
 
     document.querySelectorAll('.bars-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.bars-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
+            setActiveRadioButton('.bars-btn', this);
             appState.barsPerChord = Number.parseInt(this.dataset.value);
             syncWorkerParam({ barsPerChord: appState.barsPerChord });
         });
@@ -203,6 +218,11 @@ function bindControls() {
     // Transport
     document.getElementById('startBtn').addEventListener('click', startPlayback);
     document.getElementById('stopBtn').addEventListener('click', stopPlayback);
+
+    // Panic: stopPlayback() already flushes MIDI (per-note off + broadcast All
+    // Notes Off CC123), Audio, and Juno-106 unconditionally — safe to call even
+    // when not currently playing, so it doubles as a general all-notes-off.
+    document.getElementById('panicBtn').addEventListener('click', stopPlayback);
 
     // Playback Mode Toggle (Arpeggio/Chord Stab)
     document.getElementById('arpeggioModeRadio').addEventListener('change', function() {
@@ -244,8 +264,7 @@ function bindControls() {
 
     document.querySelectorAll('.strum-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.strum-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
+            setActiveRadioButton('.strum-btn', this);
             appState.strumDirection = this.dataset.value;
             syncWorkerParam({ strumDirection: appState.strumDirection });
         });
@@ -259,8 +278,7 @@ function bindControls() {
 
     document.querySelectorAll('.voice-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
+            setActiveRadioButton('.voice-btn', this);
             appState.voiceLeading = this.dataset.value;
         });
     });

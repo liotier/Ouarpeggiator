@@ -27,7 +27,11 @@ const setSpan = (id, v) => { const e = $(id); if (e && v != null) e.textContent 
 const setChecked = (id, v) => { const e = $(id); if (e) e.checked = !!v; };
 const setMax = (id, v) => { const e = $(id); if (e && v != null) e.max = v; };
 const setActive = (selector, val) =>
-    document.querySelectorAll(selector).forEach(b => b.classList.toggle('active', b.dataset.value === String(val)));
+    document.querySelectorAll(selector).forEach(b => {
+        const isActive = b.dataset.value === String(val);
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-checked', String(isActive));
+    });
 
 // ============================================================================
 // Collect
