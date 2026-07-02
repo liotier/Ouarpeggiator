@@ -35,7 +35,15 @@ import { renderChordChangeCircle, regenerateChordChangePattern, updateProgressio
 let junoWindow = null;
 let junoReady = false;          // true once we've received 'juno106:ready'
 let junoDisconnectNotified = false;  // avoid spamming the status on every dropped note
-const JUNO_URL = 'https://liotier.github.io/Juno-106_maintenance-and-performance-improvements/';
+// "Juno Pluck Arp" preset (permalink-encoded patch) as the default sound for
+// a freshly opened Juno-106 window — suits arpeggiated chord playback better
+// than the emulator's own default patch.
+const JUNO_URL = 'https://liotier.github.io/Juno-106_maintenance-and-performance-improvements/' +
+    '#patch/Juno%20Pluck%20Arp?vca-level=0.75?env-attack=0?env-decay=0.32?env-sustain=0?env-release=0.12' +
+    '?vca-envEnabled=1?dco-sawtooth=1?dco-pulse=1?dco-noise=0?dco-pwm=0.35?dco-range=2?dco-sub=0.15' +
+    '?dco-lfoPwmEnabled=1?cho-chorusOff=0?cho-chorusI=0?cho-chorusII=1?vcf-cutoff=0.38?vcf-res=0.65' +
+    '?vcf-envMod=0.45?vcf-invert=1?vcf-keyFollow=0.3?lfo-pitchMod=0?lfo-rate=0.55?lfo-delay=0' +
+    '?lfo-freqMod=0?hpf-cutoff=0?prt-time=0?uni-enabled=0';
 const activeJunoNotes = new Set();
 
 // ============================================================================
