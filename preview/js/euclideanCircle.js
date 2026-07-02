@@ -15,6 +15,8 @@
 // State
 // ============================================================================
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 const circle = {
     container: null,
     svg: null,
@@ -36,7 +38,21 @@ const circle = {
     chordSteps: 13,
     chordHits: 5,
     chordPattern: [],
-    chordCurrentStep: -1
+    chordCurrentStep: -1,
+
+    // Persistent element references, reused across render() calls so most
+    // updates only touch attributes instead of tearing down and recreating
+    // the whole SVG subtree. Rebuilt (see needsRebuild/buildStructure) only
+    // when the step/hit topology actually changes.
+    dotElements: [],
+    chordElements: [],
+    arrowEl: null,
+    label1El: null,
+    label2El: null,
+    labelSingleEl: null,
+    builtSteps: -1,
+    builtChordSteps: -1,
+    builtChordActive: false
 };
 
 // ============================================================================
@@ -99,6 +115,18 @@ export function initEuclideanCircle(containerId = 'euclideanCircle') {
     circle.arrowGroup = arrowGroup;
     circle.labelGroup = labelGroup;
 
+    // Fresh, empty groups above mean any previously-held element references
+    // are now detached; force the next render() to rebuild from scratch.
+    circle.dotElements = [];
+    circle.chordElements = [];
+    circle.arrowEl = null;
+    circle.label1El = null;
+    circle.label2El = null;
+    circle.labelSingleEl = null;
+    circle.builtSteps = -1;
+    circle.builtChordSteps = -1;
+    circle.builtChordActive = false;
+
     // Don't render yet - pattern will be set by regeneratePattern() immediately after init
 }
 
@@ -150,25 +178,39 @@ function clearSVGGroup(group) {
     }
 }
 
-function render() {
-    if (!circle.svg || !circle.dotsGroup) return;
+// Topology = element counts/shapes that require creating or removing DOM
+// nodes (step count, chord-ring presence/step count). Everything else
+// (which dot is current, hit/rest colors, rotation angle, label text) is a
+// pure attribute update against the existing elements.
+function needsRebuild() {
+    const chordActive = circle.chordSteps > 0 && circle.chordPattern.length > 0;
+    return circle.steps !== circle.builtSteps ||
+        chordActive !== circle.builtChordActive ||
+        (chordActive && circle.chordSteps !== circle.builtChordSteps);
+}
 
+function buildStructure() {
     const centerX = circle.centerX;
     const centerY = circle.centerY;
     const radius = circle.radius;
+    const outerRadius = radius + 20;
 
-    // Use stored references
     const dotsGroup = circle.dotsGroup;
     const arrowGroup = circle.arrowGroup;
     const labelGroup = circle.labelGroup;
 
-    // Clear previous content (DOM method, not innerHTML which is unreliable on SVG)
     clearSVGGroup(dotsGroup);
     clearSVGGroup(arrowGroup);
     clearSVGGroup(labelGroup);
+    circle.dotElements = [];
+    circle.chordElements = [];
+    circle.arrowEl = null;
+    circle.label1El = null;
+    circle.label2El = null;
+    circle.labelSingleEl = null;
 
-    // Draw guide circles (inner for notes, outer for chords)
-    const guide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    // Guide circles (inner for notes, outer for chords) - static, never updated
+    const guide = document.createElementNS(SVG_NS, 'circle');
     guide.setAttribute('cx', centerX);
     guide.setAttribute('cy', centerY);
     guide.setAttribute('r', radius);
@@ -177,9 +219,7 @@ function render() {
     guide.setAttribute('stroke-width', '1');
     dotsGroup.appendChild(guide);
 
-    // Outer guide circle for chord rhythm
-    const outerRadius = radius + 20;
-    const outerGuide = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const outerGuide = document.createElementNS(SVG_NS, 'circle');
     outerGuide.setAttribute('cx', centerX);
     outerGuide.setAttribute('cy', centerY);
     outerGuide.setAttribute('r', outerRadius);
@@ -189,107 +229,43 @@ function render() {
     outerGuide.setAttribute('stroke-dasharray', '2,2');
     dotsGroup.appendChild(outerGuide);
 
-    // Draw steps around circle
+    // Step dots - position is fixed by (i, steps); only fill/stroke/r change
+    // per render, so cx/cy/stroke-width are set once here.
     for (let i = 0; i < circle.steps; i++) {
         const angle = (i / circle.steps) * 2 * Math.PI - Math.PI / 2; // Start at top
         const x = centerX + radius * Math.cos(angle);
         const y = centerY + radius * Math.sin(angle);
 
-        const isHit = circle.pattern[i];
-        const isCurrent = i === circle.currentStep && circle.isPlaying;
-
-        // Create circle element for dot
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const dot = document.createElementNS(SVG_NS, 'circle');
         dot.setAttribute('cx', x);
         dot.setAttribute('cy', y);
-        dot.setAttribute('r', isCurrent ? 8 : 6);
-
-        if (isCurrent) {
-            // Current step: orange highlight
-            dot.setAttribute('fill', '#ff9500');
-            dot.setAttribute('stroke', '#ff6600');
-            dot.setAttribute('stroke-width', '2');
-        } else if (isHit) {
-            // Hit: filled blue dot
-            dot.setAttribute('fill', '#4a90e2');
-            dot.setAttribute('stroke', '#357abd');
-            dot.setAttribute('stroke-width', '2');
-        } else {
-            // Rest: light gray dot
-            dot.setAttribute('fill', '#e8e8e8');
-            dot.setAttribute('stroke', '#aaaaaa');
-            dot.setAttribute('stroke-width', '2');
-        }
-
+        dot.setAttribute('stroke-width', '2');
         dotsGroup.appendChild(dot);
+        circle.dotElements.push(dot);
     }
 
-    // Draw rotation indicator (arrow pointing to start)
-    if (circle.rotation > 0) {
-        const rotAngle = (circle.rotation / circle.steps) * 2 * Math.PI - Math.PI / 2;
-        const arrowRadius = radius * 0.7;
-        const arrowX = centerX + arrowRadius * Math.cos(rotAngle);
-        const arrowY = centerY + arrowRadius * Math.sin(rotAngle);
+    // Rotation indicator arrow - always present, visibility toggled per render
+    const arrow = document.createElementNS(SVG_NS, 'path');
+    arrow.setAttribute('d', 'M 0,-6 L -3,0 L 3,0 Z');
+    arrow.setAttribute('fill', '#e74c3c');
+    arrow.setAttribute('stroke', '#c0392b');
+    arrow.setAttribute('stroke-width', '1');
+    arrowGroup.appendChild(arrow);
+    circle.arrowEl = arrow;
 
-        // Create arrow path
-        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const arrowAngleDeg = (rotAngle + Math.PI / 2) * 180 / Math.PI;
-
-        // Draw arrow pointing outward from center
-        arrow.setAttribute('d', 'M 0,-6 L -3,0 L 3,0 Z');
-        arrow.setAttribute('transform', `translate(${arrowX},${arrowY}) rotate(${arrowAngleDeg})`);
-        arrow.setAttribute('fill', '#e74c3c');
-        arrow.setAttribute('stroke', '#c0392b');
-        arrow.setAttribute('stroke-width', '1');
-
-        arrowGroup.appendChild(arrow);
-    }
-
-    // Draw chord rhythm on outer ring (if in stab mode)
-    if (circle.chordSteps > 0 && circle.chordPattern.length > 0) {
-        const outerRadius = radius + 20;
-
+    // Chord rhythm outer ring (if in stab mode)
+    const chordActive = circle.chordSteps > 0 && circle.chordPattern.length > 0;
+    if (chordActive) {
         for (let i = 0; i < circle.chordSteps; i++) {
-            const angle = (i / circle.chordSteps) * 2 * Math.PI - Math.PI / 2;
-            const x = centerX + outerRadius * Math.cos(angle);
-            const y = centerY + outerRadius * Math.sin(angle);
-
-            const isChordHit = circle.chordPattern[i];
-            const isChordCurrent = i === circle.chordCurrentStep && circle.isPlaying;
-
-            // Use diamond/triangle shape for chord changes
-            const size = isChordCurrent ? 7 : 5;
-            const marker = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-
-            // Diamond shape: up, right, down, left
-            const d = `M ${x},${y - size} L ${x + size},${y} L ${x},${y + size} L ${x - size},${y} Z`;
-            marker.setAttribute('d', d);
-
-            if (isChordCurrent) {
-                // Current chord change: bright gold
-                marker.setAttribute('fill', '#ffcc00');
-                marker.setAttribute('stroke', '#ff9500');
-                marker.setAttribute('stroke-width', '2');
-            } else if (isChordHit) {
-                // Chord change hit: gold/amber
-                marker.setAttribute('fill', '#f39c12');
-                marker.setAttribute('stroke', '#e67e22');
-                marker.setAttribute('stroke-width', '1.5');
-            } else {
-                // Rest: very light (almost invisible)
-                marker.setAttribute('fill', '#f8f8f8');
-                marker.setAttribute('stroke', '#d0d0d0');
-                marker.setAttribute('stroke-width', '1');
-            }
-
+            const marker = document.createElementNS(SVG_NS, 'path');
             dotsGroup.appendChild(marker);
+            circle.chordElements.push(marker);
         }
     }
 
-    // Draw center label showing hits/steps (two lines if chord rhythm present)
-    if (circle.chordSteps > 0 && circle.chordPattern.length > 0) {
-        // Two-line label: Notes and Chords
-        const label1 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    // Center label(s) - one line (arpeggio) or two (arpeggio + chord rhythm)
+    if (chordActive) {
+        const label1 = document.createElementNS(SVG_NS, 'text');
         label1.setAttribute('x', centerX);
         label1.setAttribute('y', centerY - 8);
         label1.setAttribute('text-anchor', 'middle');
@@ -297,10 +273,10 @@ function render() {
         label1.setAttribute('font-size', '11');
         label1.setAttribute('font-weight', 'bold');
         label1.setAttribute('font-family', 'sans-serif');
-        label1.textContent = `Notes: ${circle.hits}/${circle.steps}`;
         labelGroup.appendChild(label1);
+        circle.label1El = label1;
 
-        const label2 = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const label2 = document.createElementNS(SVG_NS, 'text');
         label2.setAttribute('x', centerX);
         label2.setAttribute('y', centerY + 8);
         label2.setAttribute('text-anchor', 'middle');
@@ -308,11 +284,10 @@ function render() {
         label2.setAttribute('font-size', '11');
         label2.setAttribute('font-weight', 'bold');
         label2.setAttribute('font-family', 'sans-serif');
-        label2.textContent = `Chords: ${circle.chordHits}/${circle.chordSteps}`;
         labelGroup.appendChild(label2);
+        circle.label2El = label2;
     } else {
-        // Single-line label (arpeggio mode)
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        const label = document.createElementNS(SVG_NS, 'text');
         label.setAttribute('x', centerX);
         label.setAttribute('y', centerY);
         label.setAttribute('text-anchor', 'middle');
@@ -321,9 +296,111 @@ function render() {
         label.setAttribute('font-size', '14');
         label.setAttribute('font-weight', 'bold');
         label.setAttribute('font-family', 'sans-serif');
-        label.textContent = `${circle.hits}/${circle.steps}`;
         labelGroup.appendChild(label);
+        circle.labelSingleEl = label;
     }
+
+    circle.builtSteps = circle.steps;
+    circle.builtChordSteps = circle.chordSteps;
+    circle.builtChordActive = chordActive;
+}
+
+function updateDots() {
+    for (let i = 0; i < circle.dotElements.length; i++) {
+        const dot = circle.dotElements[i];
+        const isHit = circle.pattern[i];
+        const isCurrent = i === circle.currentStep && circle.isPlaying;
+
+        dot.setAttribute('r', isCurrent ? 8 : 6);
+        if (isCurrent) {
+            dot.setAttribute('fill', '#ff9500');
+            dot.setAttribute('stroke', '#ff6600');
+        } else if (isHit) {
+            dot.setAttribute('fill', '#4a90e2');
+            dot.setAttribute('stroke', '#357abd');
+        } else {
+            dot.setAttribute('fill', '#e8e8e8');
+            dot.setAttribute('stroke', '#aaaaaa');
+        }
+    }
+}
+
+function updateArrow() {
+    const arrow = circle.arrowEl;
+    if (!arrow) return;
+
+    if (circle.rotation > 0) {
+        const rotAngle = (circle.rotation / circle.steps) * 2 * Math.PI - Math.PI / 2;
+        const arrowRadius = circle.radius * 0.7;
+        const arrowX = circle.centerX + arrowRadius * Math.cos(rotAngle);
+        const arrowY = circle.centerY + arrowRadius * Math.sin(rotAngle);
+        const arrowAngleDeg = (rotAngle + Math.PI / 2) * 180 / Math.PI;
+
+        arrow.setAttribute('transform', `translate(${arrowX},${arrowY}) rotate(${arrowAngleDeg})`);
+        arrow.style.display = '';
+    } else {
+        arrow.style.display = 'none';
+    }
+}
+
+function updateChordMarkers() {
+    if (!circle.builtChordActive) return;
+
+    const centerX = circle.centerX;
+    const centerY = circle.centerY;
+    const outerRadius = circle.radius + 20;
+
+    for (let i = 0; i < circle.chordElements.length; i++) {
+        const marker = circle.chordElements[i];
+        const angle = (i / circle.chordSteps) * 2 * Math.PI - Math.PI / 2;
+        const x = centerX + outerRadius * Math.cos(angle);
+        const y = centerY + outerRadius * Math.sin(angle);
+
+        const isChordHit = circle.chordPattern[i];
+        const isChordCurrent = i === circle.chordCurrentStep && circle.isPlaying;
+
+        // Diamond shape: up, right, down, left. Size varies with current-step
+        // state, so unlike the note dots the path (position + size) is rebuilt.
+        const size = isChordCurrent ? 7 : 5;
+        const d = `M ${x},${y - size} L ${x + size},${y} L ${x},${y + size} L ${x - size},${y} Z`;
+        marker.setAttribute('d', d);
+
+        if (isChordCurrent) {
+            marker.setAttribute('fill', '#ffcc00');
+            marker.setAttribute('stroke', '#ff9500');
+            marker.setAttribute('stroke-width', '2');
+        } else if (isChordHit) {
+            marker.setAttribute('fill', '#f39c12');
+            marker.setAttribute('stroke', '#e67e22');
+            marker.setAttribute('stroke-width', '1.5');
+        } else {
+            marker.setAttribute('fill', '#f8f8f8');
+            marker.setAttribute('stroke', '#d0d0d0');
+            marker.setAttribute('stroke-width', '1');
+        }
+    }
+}
+
+function updateLabels() {
+    if (circle.builtChordActive) {
+        if (circle.label1El) circle.label1El.textContent = `Notes: ${circle.hits}/${circle.steps}`;
+        if (circle.label2El) circle.label2El.textContent = `Chords: ${circle.chordHits}/${circle.chordSteps}`;
+    } else if (circle.labelSingleEl) {
+        circle.labelSingleEl.textContent = `${circle.hits}/${circle.steps}`;
+    }
+}
+
+function render() {
+    if (!circle.svg || !circle.dotsGroup) return;
+
+    if (needsRebuild()) {
+        buildStructure();
+    }
+
+    updateDots();
+    updateArrow();
+    updateChordMarkers();
+    updateLabels();
 }
 
 // ============================================================================
@@ -336,4 +413,13 @@ export function destroyEuclideanCircle() {
     }
     circle.container = null;
     circle.svg = null;
+    circle.dotElements = [];
+    circle.chordElements = [];
+    circle.arrowEl = null;
+    circle.label1El = null;
+    circle.label2El = null;
+    circle.labelSingleEl = null;
+    circle.builtSteps = -1;
+    circle.builtChordSteps = -1;
+    circle.builtChordActive = false;
 }
