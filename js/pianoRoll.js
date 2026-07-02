@@ -43,6 +43,7 @@ const pianoRoll = {
     currentTime: 0,
     playbackStartTime: 0,       // performance.now() when playback started
     animationFrame: null,
+    lastRenderTime: 0,          // performance.now() of the last actual repaint (for the 30fps cap)
 
     // Color palette for chords (DAW-style)
     chordColors: [
@@ -214,14 +215,27 @@ export function clearNotes() {
 // Rendering
 // ============================================================================
 
+// The note canvas doesn't need repainting faster than this to look smooth,
+// and capping it cuts main-thread cost on high-refresh-rate displays where
+// requestAnimationFrame would otherwise fire (and fully redraw) 90-144+
+// times/sec.
+const RENDER_INTERVAL_MS = 1000 / 30;
+
 function startAnimation() {
     function animate() {
+        const now = performance.now();
+
         if (pianoRoll.isPlaying) {
-            // Derive currentTime from real clock — immune to rAF pausing in background tabs
-            pianoRoll.currentTime = (performance.now() - pianoRoll.playbackStartTime) / 1000;
+            // Derive currentTime from real clock — immune to rAF pausing in
+            // background tabs. Updated every rAF tick (cheap) regardless of
+            // the render throttle below, so note positions stay accurate.
+            pianoRoll.currentTime = (now - pianoRoll.playbackStartTime) / 1000;
         }
 
-        render();
+        if (now - pianoRoll.lastRenderTime >= RENDER_INTERVAL_MS) {
+            pianoRoll.lastRenderTime = now;
+            render();
+        }
 
         // Only continue animation loop if playing
         if (pianoRoll.isPlaying) {
