@@ -47,10 +47,12 @@ export function collectSettings() {
         prog: $('progressionSelect')?.value ?? s.progressionTemplate,
         h: s.euclidean.hits, st: s.euclidean.steps, rot: s.euclidean.rotation,
         oct: s.octaveSpread,
+        ano: s.arpNoteOrder, fr: s.freeRunning,
         tr: s.transposeOctaves,
-        bpm: s.bpm, bpc: s.barsPerChord, hum: s.humanization,
+        bpm: s.bpm, bpc: s.barsPerChord, hum: s.humanization, sw: s.swing,
         pm: s.playbackMode,
         ha: s.harmonicAdherence, hv: s.harmonicVariation, rv: s.rhythmicVariation, vl: s.voiceLeading,
+        com: s.chordOrderMode,
         ss: s.strumSpeed, sd: s.strumDirection,
         cse: s.chordSequencing.enabled, csl: s.chordSequencing.stepsLocked,
         csh: s.chordSequencing.euclidean.hits, css: s.chordSequencing.euclidean.steps, csr: s.chordSequencing.euclidean.rotation,
@@ -100,6 +102,8 @@ export function applySettings(s) {
     if (s.h != null) { appState.euclidean.hits = int(s.h, appState.euclidean.hits); setVal('hitsSlider', appState.euclidean.hits); setSpan('hitsValue', appState.euclidean.hits); }
     if (s.rot != null) { appState.euclidean.rotation = int(s.rot, appState.euclidean.rotation); setVal('rotationSlider', appState.euclidean.rotation); setSpan('rotationValue', appState.euclidean.rotation); }
     if (s.oct != null) { appState.octaveSpread = int(s.oct, appState.octaveSpread); setVal('octaveSpread', appState.octaveSpread); setSpan('octaveValue', appState.octaveSpread); }
+    if (s.ano != null) { appState.arpNoteOrder = s.ano; setVal('noteOrder', s.ano); }
+    if (s.fr != null) { appState.freeRunning = !!s.fr; setChecked('freeRunning', s.fr); }
     if (s.tr != null) {
         appState.transposeOctaves = int(s.tr, appState.transposeOctaves);
         setVal('transposeSlider', appState.transposeOctaves);
@@ -110,6 +114,7 @@ export function applySettings(s) {
     if (s.bpm != null) { appState.bpm = int(s.bpm, appState.bpm); setVal('bpmSlider', appState.bpm); setSpan('bpmValue', appState.bpm); }
     if (s.bpc != null) { appState.barsPerChord = int(s.bpc, appState.barsPerChord); setActive('.bars-btn', appState.barsPerChord); }
     if (s.hum != null) { appState.humanization = int(s.hum, appState.humanization); setVal('humanization', appState.humanization); setSpan('humanizationValue', appState.humanization); }
+    if (s.sw != null) { appState.swing = int(s.sw, appState.swing); setVal('swing', appState.swing); setSpan('swingValue', appState.swing); }
 
     // Playback mode
     if (s.pm === 'arpeggio' || s.pm === 'stab') {
@@ -123,6 +128,7 @@ export function applySettings(s) {
     if (s.hv != null) { appState.harmonicVariation = int(s.hv, appState.harmonicVariation); setVal('harmonicVariation', appState.harmonicVariation); setSpan('harmonicValue', appState.harmonicVariation + '%'); }
     if (s.rv != null) { appState.rhythmicVariation = int(s.rv, appState.rhythmicVariation); setVal('rhythmicVariation', appState.rhythmicVariation); setSpan('rhythmicValue', appState.rhythmicVariation + '%'); }
     if (s.vl != null) { appState.voiceLeading = s.vl; setActive('.voice-btn', s.vl); }
+    if (s.com != null) { appState.chordOrderMode = s.com; setActive('.chord-order-btn', s.com); }
 
     // Stab / strum
     if (s.ss != null) { appState.strumSpeed = int(s.ss, appState.strumSpeed); setVal('strumSpeed', appState.strumSpeed); setSpan('strumSpeedValue', appState.strumSpeed); }

@@ -21,7 +21,11 @@
  * two paths from silently diverging (the cause of several past bugs).
  */
 
-import { selectNextChordHarmonically } from './modules/musicTheory.js';
+import {
+    selectNextChordHarmonically,
+    calculateHarmonicScore,
+    calculateVoiceLeadingDistance
+} from './modules/musicTheory.js';
 
 // Clock resolution: ticks per bar. The host clocks run at 24 PPQN (bpm*24),
 // i.e. 24 ticks/beat * 4 beats = 96 ticks/bar. The Euclidean pattern spans
@@ -43,24 +47,37 @@ export function isChordChangeTick(state) {
     return state.tickCount > 0 && state.tickCount % getTicksPerChordChange(state) === 0;
 }
 
+// Free-running step clock resolution: one step per 16th note (a fixed grid,
+// independent of the bar). TICKS_PER_BAR / 16 = 6 ticks per step.
+const FREE_RUN_STEP_TICKS = TICKS_PER_BAR / 16;
+
 /**
- * Global step index for a given tick — steps distributed proportionally across
- * the bar (floor(tick * steps / ticksPerBar)). This is what eliminates drift:
- * exactly `steps` steps fall in every 96-tick bar and realign on each downbeat,
- * even for step counts that don't divide 96 (e.g. 7, 14, 20).
+ * Monotonic step index for a given tick.
+ *
+ * Bar-locked (default): steps distributed proportionally across the bar
+ * (floor(tick * steps / ticksPerBar)). This eliminates drift — exactly `steps`
+ * steps fall in every 96-tick bar and realign on each downbeat, even for step
+ * counts that don't divide 96 (e.g. 7, 14, 20).
+ *
+ * Free-running (polymeter): steps advance on a fixed 16th-note grid and never
+ * reset at the bar, so a pattern whose length isn't 16 phases against the bar.
+ * Here `steps` is purely the pattern *length* (the wrap in computeStepNotes),
+ * not the rate. At steps=16 the two modes coincide (16 sixteenths = one bar).
  */
-function globalStepIndex(tickCount, steps) {
-    return Math.floor(tickCount * steps / TICKS_PER_BAR);
+function globalStepIndex(state, tickCount) {
+    if (state.freeRunning) {
+        return Math.floor(tickCount / FREE_RUN_STEP_TICKS);
+    }
+    return Math.floor(tickCount * state.euclidean.steps / TICKS_PER_BAR);
 }
 
 /**
- * True when this tick starts a new Euclidean step (the proportional step index
- * advanced since the previous tick). Fires step 0 on every downbeat, including
- * tick 0 (where the previous index is -1).
+ * True when this tick starts a new Euclidean step (the step index advanced
+ * since the previous tick). Fires step 0 on every downbeat, including tick 0
+ * (where the previous index is -1).
  */
 export function isStepTick(state) {
-    const steps = state.euclidean.steps;
-    return globalStepIndex(state.tickCount, steps) !== globalStepIndex(state.tickCount - 1, steps);
+    return globalStepIndex(state, state.tickCount) !== globalStepIndex(state, state.tickCount - 1);
 }
 
 // ============================================================================
@@ -77,23 +94,97 @@ export function isStabSequencerActive(state) {
 }
 
 /**
- * Bar-based harmonic chord advancement. Mutates state.currentChordIndex.
+ * Voice-leading-aware chord selection (used when the Voice Leading control is
+ * 'smooth' or 'far'). Blends the shared harmonic score with an explicit
+ * note-movement preference, then applies the same harmonic-adherence weighting
+ * shape as selectNextChordHarmonically so the two feel consistent. Lives here,
+ * on the Ouarpeggiator side, so musicTheory.js stays identical across apps.
+ */
+function selectNextChordVoiceLed(state, palette, currentChord) {
+    const candidates = [];
+    for (let idx = 0; idx < palette.length; idx++) {
+        if (idx === state.currentChordIndex) continue;
+        const notes = palette[idx].notes;
+        if (!notes || notes.length === 0) continue;
+        candidates.push({
+            idx,
+            harmonic: calculateHarmonicScore(currentChord, palette[idx]),          // 0..100
+            dist: calculateVoiceLeadingDistance(currentChord.notes, notes)         // semitones
+        });
+    }
+    if (candidates.length === 0) return (state.currentChordIndex + 1) % palette.length;
+
+    // Normalize note-movement distance across candidates → preference in [0,1].
+    const dists = candidates.map(c => c.dist);
+    const minD = Math.min(...dists);
+    const rangeD = (Math.max(...dists) - minD) || 1;
+    candidates.forEach(c => {
+        const normDist = (c.dist - minD) / rangeD;  // 0 = closest move, 1 = farthest
+        const vlPref = state.voiceLeading === 'far' ? normDist : (1 - normDist);
+        c.score = 0.5 * (c.harmonic / 100) + 0.5 * vlPref;  // both in [0,1]
+    });
+
+    candidates.sort((a, b) => b.score - a.score);
+
+    const adherence = state.harmonicAdherence;
+    if (adherence >= 100) return candidates[0].idx;
+    if (adherence <= 0) return candidates[Math.floor(Math.random() * candidates.length)].idx;
+
+    // Weighted random with the same exponent curve musicTheory uses.
+    const scores = candidates.map(c => c.score);
+    const minS = Math.min(...scores);
+    const rangeS = (Math.max(...scores) - minS) || 1;
+    const exponent = 1 + adherence / 25;  // 1..5
+    const weights = candidates.map(c => Math.pow((c.score - minS) / rangeS + 0.1, exponent));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = Math.random() * total;
+    for (let i = 0; i < candidates.length; i++) {
+        r -= weights[i];
+        if (r <= 0) return candidates[i].idx;
+    }
+    return candidates[0].idx;
+}
+
+/**
+ * Bar-based chord advancement. Mutates state.currentChordIndex.
  * @returns {boolean} true if the progression (>1 chord) was advanced — the
  *   host should refresh the chord-grid highlight in that case.
  */
 export function advanceBarChord(state) {
     if (state.chordProgression.length <= 1) return false;
 
+    // In-order mode: step through the seeded progression (the first N pads,
+    // N = the template's chord count) and loop, so a named progression is
+    // heard as written rather than as a harmonic wander. Palette building
+    // collapses adjacent duplicate chords, so for progressions with repeats
+    // (e.g. 12-bar blues) this follows the de-duplicated palette order.
+    if (state.chordOrderMode === 'inOrder') {
+        const n = state.progressionLength > 0
+            ? Math.min(state.progressionLength, state.chordProgression.length)
+            : state.chordProgression.length;
+        state.currentChordIndex = (state.currentChordIndex + 1) >= n
+            ? 0
+            : state.currentChordIndex + 1;
+        return true;
+    }
+
     const currentChord = state.chordProgression[state.currentChordIndex];
     const currentChordObj = { notes: currentChord?.notes || [] };
     const paletteObjs = state.chordProgression.map(c => ({ notes: c?.notes || [] }));
 
-    state.currentChordIndex = selectNextChordHarmonically(
-        currentChordObj,
-        paletteObjs,
-        state.harmonicAdherence,
-        state.currentChordIndex
-    );
+    // Voice-leading steering ('smooth'/'far') re-ranks candidates by note
+    // movement on top of the harmonic score. 'none' keeps the shared harmonic
+    // selector's exact behavior (which already weights voice leading at 40%).
+    if (state.voiceLeading === 'smooth' || state.voiceLeading === 'far') {
+        state.currentChordIndex = selectNextChordVoiceLed(state, paletteObjs, currentChordObj);
+    } else {
+        state.currentChordIndex = selectNextChordHarmonically(
+            currentChordObj,
+            paletteObjs,
+            state.harmonicAdherence,
+            state.currentChordIndex
+        );
+    }
     return true;
 }
 
@@ -167,9 +258,31 @@ function computeVelocity(state) {
     return Math.round(Math.max(1, Math.min(127, velocity)));
 }
 
+/**
+ * Duration of one Euclidean step in ms. Bar-locked: the pattern fills one bar,
+ * so a step is (bar / steps). Free-running: a fixed 16th note, independent of
+ * step count (the pattern phases against the bar instead of stretching to it).
+ */
+function stepDurationMs(state) {
+    if (state.freeRunning) {
+        return 60000 / (state.bpm * 4);  // one 16th note
+    }
+    return (60000 / state.bpm) / (state.euclidean.steps / 4);
+}
+
+/**
+ * Swing timing offset in ms. Delays offbeat steps (odd step index); onbeats are
+ * untouched. At swing=100 the offbeat is pushed a third of a step late (a ~2:1
+ * long-short "triplet" shuffle), scaling linearly from 0.
+ */
+function computeSwingOffset(state) {
+    const swing = state.swing || 0;
+    if (swing <= 0 || state.euclideanStepIndex % 2 !== 1) return 0;
+    return (swing / 100) * (stepDurationMs(state) / 3);
+}
+
 function computeGateLength(state) {
-    // One Euclidean step spans (bar / steps); the pattern fills one bar.
-    const stepDuration = (60000 / state.bpm) / (state.euclidean.steps / 4);
+    const stepDuration = stepDurationMs(state);
     let gatePercent = state.gate.fixed;
     if (state.gate.mode === 'random') {
         gatePercent = state.gate.randomMin +
@@ -189,11 +302,64 @@ function computeHumanizeOffset(state) {
     return Math.max(0, (Math.random() - 0.5) * 2 * state.humanization);
 }
 
+/**
+ * Build the ordered list of candidate notes for one chord, spanning the octave
+ * spread, in the requested note-order. 'up'/'down' and the compound orders work
+ * on pitch-sorted notes so they mean what a player expects regardless of the
+ * chord's stored voicing; 'as-played' preserves the stored voicing order (the
+ * pre-note-order behavior). The list is indexed per step (or picked at random).
+ */
+function buildArpSequence(chordNotes, octaveSpread, order) {
+    const layered = [];
+    for (let o = 0; o < octaveSpread; o++) {
+        for (let i = 0; i < chordNotes.length; i++) layered.push(chordNotes[i] + o * 12);
+    }
+    if (order === 'asplayed') return layered;
+
+    const ascending = layered.slice().sort((a, b) => a - b);
+    switch (order) {
+        case 'down':
+            return ascending.reverse();
+        case 'updown':  // ascend then descend, endpoints not repeated
+            return ascending.concat(ascending.slice(1, -1).reverse());
+        case 'downup': {
+            const desc = ascending.slice().reverse();
+            return desc.concat(ascending.slice(1, -1));
+        }
+        case 'converge': {  // outside-in: low, high, next-low, next-high, ...
+            const res = [];
+            let lo = 0, hi = ascending.length - 1;
+            while (lo <= hi) {
+                res.push(ascending[lo]);
+                if (lo !== hi) res.push(ascending[hi]);
+                lo++; hi--;
+            }
+            return res;
+        }
+        case 'diverge': {  // inside-out: middle outward
+            const res = [];
+            let lo = Math.floor((ascending.length - 1) / 2);
+            let hi = lo + 1;
+            while (lo >= 0 || hi < ascending.length) {
+                if (lo >= 0) res.push(ascending[lo--]);
+                if (hi < ascending.length) res.push(ascending[hi++]);
+            }
+            return res;
+        }
+        case 'up':
+        case 'random':
+        default:
+            return ascending;
+    }
+}
+
 function selectArpeggioNote(state, chord) {
-    const chordSize = chord.notes.length;
-    const baseNoteIndex = state.euclideanStepIndex % chordSize;
-    const octaveLayer = Math.floor(state.euclideanStepIndex / chordSize) % state.octaveSpread;
-    let note = chord.notes[baseNoteIndex] + (octaveLayer * 12);
+    const order = state.arpNoteOrder || 'up';
+    const sequence = buildArpSequence(chord.notes, Math.max(1, state.octaveSpread), order);
+
+    let note = order === 'random'
+        ? sequence[Math.floor(Math.random() * sequence.length)]
+        : sequence[state.euclideanStepIndex % sequence.length];
 
     // Harmonic variation: occasionally substitute a note from the whole
     // progression, folded back to within an octave of the original.
@@ -242,10 +408,10 @@ function orderStabNotes(state, notes) {
  *   from step start (humanization + strum). A rest carries no notes.
  */
 export function computeStepNotes(state) {
-    // Derive the bar-locked step index for this tick (replaces the old
-    // free-running counter that drifted for non-divisor step counts).
+    // Derive the pattern step index for this tick (bar-locked or free-running,
+    // see globalStepIndex), wrapped into the pattern length.
     state.euclideanStepIndex =
-        globalStepIndex(state.tickCount, state.euclidean.steps) % state.euclidean.steps;
+        globalStepIndex(state, state.tickCount) % state.euclidean.steps;
 
     const pattern = state.euclidean.pattern;
     const chord = state.chordProgression[state.currentChordIndex];
@@ -263,7 +429,8 @@ export function computeStepNotes(state) {
 
     const velocity = computeVelocity(state);
     const gateLength = computeGateLength(state);
-    const humanizeOffset = computeHumanizeOffset(state);
+    // Base timing offset for the step: humanization jitter + swing shuffle.
+    const baseOffset = computeHumanizeOffset(state) + computeSwingOffset(state);
 
     let notes;
     if (state.playbackMode === 'stab') {
@@ -273,12 +440,12 @@ export function computeStepNotes(state) {
             note: applyTranspose(note, state),
             velocity,
             gateLength,
-            offset: humanizeOffset + idx * strumDelay
+            offset: baseOffset + idx * strumDelay
         }));
         state.lastPlayedNote = notes[0].note;
     } else {
         const note = applyTranspose(selectArpeggioNote(state, chord), state);
-        notes = [{ note, velocity, gateLength, offset: humanizeOffset }];
+        notes = [{ note, velocity, gateLength, offset: baseOffset }];
         state.lastPlayedNote = note;
     }
 

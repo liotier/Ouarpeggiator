@@ -39,6 +39,15 @@ export const appState = {
     },
     octaveSpread: 1,
 
+    // Arpeggio note order: which chord tone plays on each successive step.
+    // 'up'|'down'|'updown'|'downup'|'asplayed'|'random'|'converge'|'diverge'
+    arpNoteOrder: 'up',
+
+    // Free-running polymeter: when true the note pattern advances on a fixed
+    // 16th-note grid and phases against the bar (Steps = pattern length only);
+    // when false the pattern is stretched to fill exactly one bar.
+    freeRunning: false,
+
     // Live transpose (whole octaves; key select regenerates the progression
     // itself and isn't a substitute for this — see index.html Transpose slider)
     transposeOctaves: 0,
@@ -49,9 +58,18 @@ export const appState = {
     tickCount: 0,
     barsPerChord: 1,
     humanization: 0,
+    swing: 0,  // 0-100, delays offbeat steps (shuffle feel)
 
     // Playback mode
     playbackMode: 'arpeggio',  // 'arpeggio' | 'stab'
+
+    // Chord motion for the bar-based advance:
+    //   'harmonic' — algorithmic selection (harmonic score + Voice Leading)
+    //   'inOrder'  — step through the seeded progression (first N pads) and loop
+    chordOrderMode: 'harmonic',
+    // Number of pads that came from the selected progression template (N). Set
+    // at generation/variant-switch; drives 'inOrder' looping. 0 = whole palette.
+    progressionLength: 0,
 
     // Chord variation
     harmonicAdherence: 70,  // 0-100, how strictly to follow harmonic rules

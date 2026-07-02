@@ -37,12 +37,18 @@ let state = {
         pattern: []
     },
     euclideanStepIndex: 0,
+    arpNoteOrder: 'up',
+    freeRunning: false,
+    swing: 0,
 
     // Chord progression
     chordProgression: [],
     currentChordIndex: 0,
     barsPerChord: 1,
     harmonicAdherence: 70,
+    voiceLeading: 'smooth',
+    chordOrderMode: 'harmonic',
+    progressionLength: 0,
 
     // Chord progression sequencing (Stab Mode only) — Euclidean-pattern-driven
     // chord changes, independent of and in addition to the bar-based advance above
