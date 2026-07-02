@@ -11,12 +11,12 @@
 
 ## Quick Start: Batteries Included&nbsp;!&nbsp;🔋
 
-**No MIDI hardware, no MIDI drivers, no setup&nbsp;!** Ouarpeggiator can drive a [Juno-106](https://juno-106.js.org/) emulator running in another browser tab with nothing else installed - no WebMIDI permission, no virtual MIDI port, no OS-level MIDI plumbing of any kind. [It does optionnaly speak WebMIDI though&nbsp;!](#webmidi-targets)
+**No MIDI hardware, no MIDI drivers, no setup&nbsp;!** Ouarpeggiator can drive a [Juno-106](https://github.com/liotier/Juno-106_maintenance-and-performance-improvements) emulator running in another browser tab with nothing else installed - no WebMIDI permission, no virtual MIDI port, no OS-level MIDI plumbing of any kind. [It does optionnaly speak WebMIDI though&nbsp;!](#webmidi-targets)
 
 ### ⚡ 30-Second Setup
 
 1. **Open Ouarpeggiator**: [https://liotier.github.io/Ouarpeggiator/](https://liotier.github.io/Ouarpeggiator/)
-2. **Select "Juno-106 (new window)"** from the **Output** dropdown - this opens the [Juno-106](https://juno-106.js.org/) emulator automatically and connects to it
+2. **Select "Juno-106 (new window)"** from the **Output** dropdown - this opens the [Juno-106](https://github.com/liotier/Juno-106_maintenance-and-performance-improvements) emulator automatically and connects to it
 3. **Click Start** and hear music instantly&nbsp;!
 
 > 💡 **No MIDI setup needed**: Ouarpeggiator and the Juno-106 emulator talk directly, browser tab to browser tab - they never touch the operating system's MIDI subsystem. That is what makes this path work on any machine, even one with no MIDI drivers or virtual ports installed.

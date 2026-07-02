@@ -499,7 +499,11 @@ function launchJuno106() {
         if (e.origin === 'https://liotier.github.io' && e.data === 'juno106:ready') {
             window.removeEventListener('message', onReady);
             junoReady = true;
-            setJunoStatus('Juno-106 connected', 'connected');
+            // Opening the window is a gesture on *this* tab, not the Juno-106
+            // tab — its AudioContext starts suspended per browser autoplay
+            // policy and stays silent until the user directly interacts with
+            // that tab, so we surface the click as an explicit next step.
+            setJunoStatus('Juno-106 connected — click its tab once to enable sound', 'connected');
         }
     });
 }
