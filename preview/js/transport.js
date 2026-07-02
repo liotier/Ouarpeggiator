@@ -190,6 +190,7 @@ function startPlayback() {
     appState.isPlaying = true;
     appState.tickCount = 0;
     appState.euclideanStepIndex = 0;
+    appState.progressionPos = 0;
 
     regeneratePattern();
 
@@ -238,6 +239,8 @@ function startPlayback() {
                     voiceLeading: appState.voiceLeading,
                     chordOrderMode: appState.chordOrderMode,
                     progressionLength: appState.progressionLength,
+                    orderedProgression: appState.orderedProgression,
+                    progressionPos: appState.progressionPos,
                     playbackMode: appState.playbackMode,
                     octaveSpread: appState.octaveSpread,
                     transposeOctaves: appState.transposeOctaves,
@@ -535,7 +538,9 @@ function syncChordProgressionToWorker() {
     syncWorkerParam({
         chordProgression: appState.chordProgression,
         currentChordIndex: appState.currentChordIndex,
-        progressionLength: appState.progressionLength
+        progressionLength: appState.progressionLength,
+        orderedProgression: appState.orderedProgression,
+        progressionPos: appState.progressionPos
     });
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
         noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });

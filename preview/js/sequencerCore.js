@@ -146,6 +146,19 @@ function selectNextChordVoiceLed(state, palette, currentChord) {
 }
 
 /**
+ * Map a chord symbol back to the palette pad that holds it, so the chord-grid
+ * highlight and note colouring track the in-order progression (repeated chords
+ * keep highlighting the same pad). Falls back to the current index if unmatched.
+ */
+function padIndexForSymbol(state, symbol) {
+    if (symbol != null && state.chordProgression) {
+        const i = state.chordProgression.findIndex(c => c && c.symbol === symbol);
+        if (i >= 0) return i;
+    }
+    return state.currentChordIndex;
+}
+
+/**
  * Bar-based chord advancement. Mutates state.currentChordIndex.
  * @returns {boolean} true if the progression (>1 chord) was advanced — the
  *   host should refresh the chord-grid highlight in that case.
@@ -153,18 +166,23 @@ function selectNextChordVoiceLed(state, palette, currentChord) {
 export function advanceBarChord(state) {
     if (state.chordProgression.length <= 1) return false;
 
-    // In-order mode: step through the seeded progression (the first N pads,
-    // N = the template's chord count) and loop, so a named progression is
-    // heard as written rather than as a harmonic wander. Palette building
-    // collapses adjacent duplicate chords, so for progressions with repeats
-    // (e.g. 12-bar blues) this follows the de-duplicated palette order.
+    // In-order mode: play the selected progression as written, including its
+    // repeated chords (e.g. the four bars of I7 opening a 12-bar blues), rather
+    // than the harmonic wander. orderedProgression is the literal voiced
+    // progression with duplicates intact; currentChordIndex is mapped back to
+    // the matching palette pad so the grid highlight follows along.
     if (state.chordOrderMode === 'inOrder') {
-        const n = state.progressionLength > 0
-            ? Math.min(state.progressionLength, state.chordProgression.length)
-            : state.chordProgression.length;
-        state.currentChordIndex = (state.currentChordIndex + 1) >= n
-            ? 0
-            : state.currentChordIndex + 1;
+        const ordered = state.orderedProgression;
+        if (ordered && ordered.length > 0) {
+            state.progressionPos = (state.progressionPos + 1) % ordered.length;
+            state.currentChordIndex = padIndexForSymbol(state, ordered[state.progressionPos].symbol);
+        } else {
+            // Fallback before the ordered list is synced: loop the first N pads.
+            const n = state.progressionLength > 0
+                ? Math.min(state.progressionLength, state.chordProgression.length)
+                : state.chordProgression.length;
+            state.currentChordIndex = (state.currentChordIndex + 1) >= n ? 0 : state.currentChordIndex + 1;
+        }
         return true;
     }
 
@@ -400,6 +418,19 @@ function orderStabNotes(state, notes) {
 }
 
 /**
+ * The chord to sound this step. In-order mode plays the literal progression
+ * (repeats preserved) straight from orderedProgression; every other mode plays
+ * the current palette pad. Falls back to the palette if no ordered list exists.
+ */
+function currentPlayChord(state) {
+    if (state.chordOrderMode === 'inOrder' &&
+        state.orderedProgression && state.orderedProgression.length > 0) {
+        return state.orderedProgression[state.progressionPos % state.orderedProgression.length];
+    }
+    return state.chordProgression[state.currentChordIndex];
+}
+
+/**
  * Evaluate the current Euclidean step. Mutates state position fields
  * (euclideanStepIndex, lastPlayedNote) and returns what to play.
  *
@@ -414,7 +445,7 @@ export function computeStepNotes(state) {
         globalStepIndex(state, state.tickCount) % state.euclidean.steps;
 
     const pattern = state.euclidean.pattern;
-    const chord = state.chordProgression[state.currentChordIndex];
+    const chord = currentPlayChord(state);
 
     // Rest if: no playable chord, this step isn't a hit, or rhythmic variation
     // randomly drops it. (Short-circuit preserves the original evaluation order.)
