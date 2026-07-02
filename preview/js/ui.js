@@ -181,6 +181,19 @@ function bindControls() {
         syncWorkerParam({ octaveSpread: appState.octaveSpread });
     });
 
+    // Arpeggio note order (up/down/updown/... — applied per step in the core)
+    document.getElementById('noteOrder').addEventListener('change', function() {
+        appState.arpNoteOrder = this.value;
+        syncWorkerParam({ arpNoteOrder: appState.arpNoteOrder });
+    });
+
+    // Free-running polymeter: read live by the core each tick (no restart), just
+    // keep the worker's copy in sync for the Juno-106 path.
+    document.getElementById('freeRunning').addEventListener('change', function() {
+        appState.freeRunning = this.checked;
+        syncWorkerParam({ freeRunning: appState.freeRunning });
+    });
+
     // Timing
     document.getElementById('bpmSlider').addEventListener('input', function() {
         appState.bpm = Number.parseInt(this.value);
@@ -219,6 +232,12 @@ function bindControls() {
         });
     });
 
+    document.getElementById('swing').addEventListener('input', function() {
+        appState.swing = Number.parseInt(this.value);
+        document.getElementById('swingValue').textContent = this.value;
+        syncWorkerParam({ swing: appState.swing });
+    });
+
     document.getElementById('humanization').addEventListener('input', function() {
         appState.humanization = Number.parseInt(this.value);
         document.getElementById('humanizationValue').textContent = this.value;
@@ -249,6 +268,15 @@ function bindControls() {
             updatePlaybackModeUI();
             syncWorkerParam({ playbackMode: appState.playbackMode });
         }
+    });
+
+    // Chord Order — harmonic wander vs play the progression in order
+    document.querySelectorAll('.chord-order-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            setActiveRadioButton('.chord-order-btn', this);
+            appState.chordOrderMode = this.dataset.value;
+            syncWorkerParam({ chordOrderMode: appState.chordOrderMode });
+        });
     });
 
     // Chord Variation - Harmonic Adherence
@@ -290,6 +318,9 @@ function bindControls() {
         btn.addEventListener('click', function() {
             setActiveRadioButton('.voice-btn', this);
             appState.voiceLeading = this.dataset.value;
+            // Now consumed by the bar-based chord advance (sequencerCore) — keep
+            // the worker's copy in sync so the Juno-106 path honors it too.
+            syncWorkerParam({ voiceLeading: appState.voiceLeading });
         });
     });
 
@@ -612,11 +643,15 @@ function updatePlaybackModeUI() {
     const octaveSpreadGroup = document.getElementById('octaveSpreadGroup');
     const chordProgressionSection = document.getElementById('chordProgressionSection');
     const chordRhythmControls = document.getElementById('chordRhythmControls');
+    // Note Order arpeggiates a chord's tones one per step — meaningless in stab
+    // mode (which plays all tones at once, ordered by Strum Direction instead).
+    const noteOrderGroup = document.getElementById('noteOrderGroup');
 
     if (appState.playbackMode === 'stab') {
         // Chord Stab mode: show strum controls, disable note-level variation, show chord progression
         noteVariationSection?.classList.add('disabled');
         if (stabControls) stabControls.style.display = 'flex';
+        if (noteOrderGroup) noteOrderGroup.style.display = 'none';
         // Octave spread now works in stab mode! (spreads chord across octaves)
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
         if (chordProgressionSection) chordProgressionSection.style.display = 'block';
@@ -629,6 +664,7 @@ function updatePlaybackModeUI() {
         // Arpeggio mode: hide strum controls, enable note-level variation, hide chord progression
         noteVariationSection?.classList.remove('disabled');
         if (stabControls) stabControls.style.display = 'none';
+        if (noteOrderGroup) noteOrderGroup.style.display = '';
         if (octaveSpreadGroup) octaveSpreadGroup.style.opacity = '1';
         if (chordProgressionSection) chordProgressionSection.style.display = 'none';
         // Hide chord rhythm controls (not needed in arpeggio mode)

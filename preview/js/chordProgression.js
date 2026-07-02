@@ -453,6 +453,8 @@ function generateProgression() {
     appState.currentVariantIndex = 0;
     appState.chordProgression = appState.variants[0].chords;
     appState.currentChordIndex = 0;
+    // How many pads came from the template (drives "play in order" looping).
+    appState.progressionLength = appState.variants[0].baseChordCount || 0;
     appState.hasGeneratedOnce = true;
 
     // Update variant selector
@@ -485,6 +487,7 @@ function switchVariant(index) {
     appState.currentVariantIndex = index;
     appState.chordProgression = appState.variants[index].chords;
     appState.currentChordIndex = 0;
+    appState.progressionLength = appState.variants[index].baseChordCount || 0;
 
     // Update description
     const description = document.getElementById('variantDescription');

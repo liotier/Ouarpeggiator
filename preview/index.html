@@ -387,10 +387,33 @@
                         <input type="range" id="rotationSlider" min="0" max="31" value="10">
                     </div>
 
+                    <!-- Free-running polymeter -->
+                    <div class="filter-group">
+                        <label title="Free-running polymeter: the note pattern advances on a fixed 16th-note grid and phases against the bar, instead of stretching to fill exactly one bar. Steps then sets pattern length only.">
+                            <input type="checkbox" id="freeRunning">
+                            Free-run (polymeter)
+                        </label>
+                    </div>
+
                     <!-- Octave Spread -->
                     <div class="filter-group" id="octaveSpreadGroup">
                         <label for="octaveSpread">Octave Spread: <span id="octaveValue">1</span></label>
                         <input type="range" id="octaveSpread" min="1" max="4" value="1">
+                    </div>
+
+                    <!-- Arpeggio note order (arpeggio mode only) -->
+                    <div class="filter-group" id="noteOrderGroup">
+                        <label for="noteOrder">Note Order</label>
+                        <select id="noteOrder" title="Order in which a chord's tones are arpeggiated across successive steps">
+                            <option value="up">Up</option>
+                            <option value="down">Down</option>
+                            <option value="updown">Up-Down</option>
+                            <option value="downup">Down-Up</option>
+                            <option value="asplayed">As Played</option>
+                            <option value="converge">Converge (outside-in)</option>
+                            <option value="diverge">Diverge (inside-out)</option>
+                            <option value="random">Random</option>
+                        </select>
                     </div>
 
                     <!-- Chord Rhythm Controls (only visible in Stab Mode) -->
@@ -480,6 +503,15 @@
                         <h3>Chord Variation</h3>
                         <div class="control-row">
                             <div class="filter-group">
+                                <span class="field-label" id="chordOrderModeLabel">Chord Order</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="chordOrderModeLabel">
+                                    <button class="chord-order-btn active" data-value="harmonic" role="radio" aria-checked="true" title="Pick each next chord algorithmically (harmonic score, steered by the Voice Leading control)">Harmonic</button>
+                                    <button class="chord-order-btn" data-value="inOrder" role="radio" aria-checked="false" title="Play the selected progression's chords in written order and loop, instead of wandering the palette">In order</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
                                 <label for="harmonicAdherence">Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
                                 <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
                             </div>
@@ -542,6 +574,12 @@
                                     <button class="bars-btn" data-value="4" role="radio" aria-checked="false">4</button>
                                     <button class="bars-btn" data-value="8" role="radio" aria-checked="false">8</button>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="swing">Swing: <span id="swingValue">0</span>%</label>
+                                <input type="range" id="swing" min="0" max="100" value="0" title="Delay offbeat steps for a shuffle feel. 0 = straight, 100 = hard triplet (2:1) swing">
                             </div>
                         </div>
                         <div class="control-row">
