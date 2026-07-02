@@ -70,6 +70,10 @@ export const appState = {
     // Number of pads that came from the selected progression template (N). Set
     // at generation/variant-switch; drives 'inOrder' looping. 0 = whole palette.
     progressionLength: 0,
+    // The literal voiced progression (duplicates preserved) for 'inOrder' mode,
+    // e.g. the four I7 bars opening a 12-bar blues. Set at generation/switch.
+    orderedProgression: [],
+    progressionPos: 0,  // playback position within orderedProgression
 
     // Chord variation
     harmonicAdherence: 70,  // 0-100, how strictly to follow harmonic rules

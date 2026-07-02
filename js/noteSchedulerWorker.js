@@ -49,6 +49,8 @@ let state = {
     voiceLeading: 'smooth',
     chordOrderMode: 'harmonic',
     progressionLength: 0,
+    orderedProgression: [],
+    progressionPos: 0,
 
     // Chord progression sequencing (Stab Mode only) — Euclidean-pattern-driven
     // chord changes, independent of and in addition to the bar-based advance above
@@ -255,6 +257,7 @@ self.onmessage = function(e) {
             state.isPlaying = true;
             state.tickCount = 0;
             state.euclideanStepIndex = 0;
+            state.progressionPos = 0;
             state.chordSequencing.stepIndex = 0;
             chordSequencer.reset();
             startClock();

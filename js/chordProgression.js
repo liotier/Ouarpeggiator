@@ -363,7 +363,10 @@ function generateProgression() {
                 name: variantType.name,
                 description: variantType.description,
                 chords: finalChords.slice(0, 16),
-                baseChordCount: originalProgressionLength
+                baseChordCount: originalProgressionLength,
+                // Literal progression as written (duplicates preserved), voiced
+                // for this variant — played verbatim by "in order" chord mode.
+                progressionChords: chords.map(c => ({ notes: c.notes.slice(), symbol: c.symbol }))
             };
         });
 
@@ -383,7 +386,8 @@ function generateProgression() {
                 name: 'Error',
                 description: `Generation error: ${error.message} — see browser console`,
                 chords: fallbackChords,
-                baseChordCount: 4
+                baseChordCount: 4,
+                progressionChords: fallbackChords.map(c => ({ notes: c.notes.slice(), symbol: c.symbol }))
             }];
         }
     } else {
@@ -424,6 +428,9 @@ function generateProgression() {
 
         // Pad to 16 chords with octave variations
         const baseChordCount = chords.length;
+        // The distinct scale chords in order, before octave-padding — used by
+        // "in order" chord mode (scale mode has no repeats, but keep it uniform).
+        const scaleProgressionChords = chords.map(c => ({ notes: c.notes.slice(), symbol: c.symbol }));
         while (chords.length < 16) {
             if (chords.length === 0) break;
             const sourceIndex = (chords.length - baseChordCount) % baseChordCount;
@@ -445,7 +452,8 @@ function generateProgression() {
             name: 'Scale',
             description: `All chords from ${mode} scale`,
             chords: chords.slice(0, 16),
-            baseChordCount
+            baseChordCount,
+            progressionChords: scaleProgressionChords
         }];
     }
 
@@ -455,6 +463,8 @@ function generateProgression() {
     appState.currentChordIndex = 0;
     // How many pads came from the template (drives "play in order" looping).
     appState.progressionLength = appState.variants[0].baseChordCount || 0;
+    appState.orderedProgression = appState.variants[0].progressionChords || [];
+    appState.progressionPos = 0;
     appState.hasGeneratedOnce = true;
 
     // Update variant selector
@@ -488,6 +498,8 @@ function switchVariant(index) {
     appState.chordProgression = appState.variants[index].chords;
     appState.currentChordIndex = 0;
     appState.progressionLength = appState.variants[index].baseChordCount || 0;
+    appState.orderedProgression = appState.variants[index].progressionChords || [];
+    appState.progressionPos = 0;
 
     // Update description
     const description = document.getElementById('variantDescription');
