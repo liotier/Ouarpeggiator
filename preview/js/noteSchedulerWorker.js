@@ -31,9 +31,9 @@ let state = {
 
     // Euclidean pattern
     euclidean: {
-        hits: 7,
+        hits: 10,
         steps: 16,
-        rotation: 0,
+        rotation: 10,
         pattern: []
     },
     euclideanStepIndex: 0,
