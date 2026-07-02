@@ -69,6 +69,12 @@ const pianoRoll = {
     beatsPerBar: 4,
     isPlaying: false,
 
+    // The keyboard sidebar is static except for the highlighted (currently
+    // playing) keys and the pitch range. Redrawing it every animation frame was
+    // a top main-thread CPU cost, so only redraw it when something it shows
+    // actually changed (a note on/off, a scroll, a resize/octave change).
+    keyboardDirty: true,
+
     // Euclidean pattern for hit visualization
     euclideanPattern: [],
     euclideanSteps: 16
@@ -134,6 +140,10 @@ function resizePianoRoll() {
     // Recalculate pitch height
     const pitchRange = pianoRoll.maxPitch - pianoRoll.minPitch + 1;
     pianoRoll.pitchHeight = pianoRoll.height / pitchRange;
+
+    // Resizing resets the canvas backing store (clearing it), so the keyboard
+    // must be repainted.
+    pianoRoll.keyboardDirty = true;
 }
 
 // ============================================================================
@@ -152,10 +162,12 @@ function ensurePitchVisible(pitch) {
         const shift = pianoRoll.minPitch - pitch;
         pianoRoll.minPitch -= shift;
         pianoRoll.maxPitch -= shift;
+        pianoRoll.keyboardDirty = true;
     } else if (pitch > pianoRoll.maxPitch) {
         const shift = pitch - pianoRoll.maxPitch;
         pianoRoll.minPitch += shift;
         pianoRoll.maxPitch += shift;
+        pianoRoll.keyboardDirty = true;
     }
 }
 
@@ -179,6 +191,7 @@ export function addNote(note, velocity, durationMs, chordIndex = 0) {
 
     pianoRoll.notes.push(noteObj);
     pianoRoll.currentNotes.add(note);
+    pianoRoll.keyboardDirty = true;
 
     // Remove notes that have scrolled off screen
     const cutoffTime = pianoRoll.currentTime - pianoRoll.visibleSeconds;
@@ -186,12 +199,15 @@ export function addNote(note, velocity, durationMs, chordIndex = 0) {
 }
 
 export function removeNote(note) {
-    pianoRoll.currentNotes.delete(note);
+    if (pianoRoll.currentNotes.delete(note)) {
+        pianoRoll.keyboardDirty = true;
+    }
 }
 
 export function clearNotes() {
     pianoRoll.notes = [];
     pianoRoll.currentNotes.clear();
+    pianoRoll.keyboardDirty = true;
 }
 
 // ============================================================================
@@ -220,7 +236,12 @@ function startAnimation() {
 
 function render() {
     renderPianoRoll();
-    renderKeyboard();
+    // The scrolling note area changes every frame; the keyboard sidebar only
+    // when its highlights or pitch range change.
+    if (pianoRoll.keyboardDirty) {
+        renderKeyboard();
+        pianoRoll.keyboardDirty = false;
+    }
 }
 
 function renderPianoRoll() {
@@ -488,7 +509,8 @@ export function startPianoRoll() {
 
 export function stopPianoRoll() {
     pianoRoll.isPlaying = false;
-    // Render one final frame to show stopped state
+    // Render one final frame to show stopped state (force the keyboard too).
+    pianoRoll.keyboardDirty = true;
     render();
 }
 
