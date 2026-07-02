@@ -14,7 +14,7 @@ export const appState = {
     // Generator settings
     key: 0,
     mode: 'Major',
-    progressionTemplate: 'I V vi IV',
+    progressionTemplate: 'I—V—vi—IV—I—V—iii—IV',  // Extended Pop
 
     // Output mode
     outputMode: 'audio',  // 'audio' | 'midi'
@@ -32,9 +32,9 @@ export const appState = {
 
     // Euclidean pattern
     euclidean: {
-        hits: 7,
+        hits: 10,
         steps: 16,
-        rotation: 0,
+        rotation: 10,
         pattern: [],
     },
     octaveSpread: 1,
