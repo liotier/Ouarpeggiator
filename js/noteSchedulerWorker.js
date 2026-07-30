@@ -207,6 +207,10 @@ function executeStep() {
     }
 
     const result = computeStepNotes(state);
+    console.log('[Worker] step:', state.euclideanStepIndex, 'isRest:', result.isRest,
+        'notes:', result.isRest ? 0 : result.notes.length,
+        'chordIdx:', state.currentChordIndex,
+        'chords:', state.chordProgression.length);
     if (!result.isRest) {
         result.notes.forEach(scheduleNote);
     }
@@ -231,6 +235,7 @@ function scheduleNote(ev) {
  * Play a note
  */
 function playNote(note, velocity, gateLength) {
+    console.log('[Worker] playNote:', note, 'vel:', velocity, 'gate:', gateLength);
     self.postMessage({
         type: 'noteOn',
         note: note,
@@ -273,6 +278,10 @@ self.onmessage = function(e) {
         case 'updateState': {
             // sequencerSettings targets the chordSequencer instance, not state
             const { sequencerSettings, ...stateData } = data;
+
+            console.log('[Worker] updateState: chords:', data.chordProgression?.length,
+                'mode:', data.playbackMode, 'euclidean:', data.euclidean,
+                'firstChord:', JSON.stringify(data.chordProgression?.[0]));
 
             // Merge state update
             Object.assign(state, stateData);

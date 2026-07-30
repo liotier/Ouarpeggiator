@@ -134,6 +134,7 @@ function initNoteSchedulerWorker() {
             const { type, note, velocity, gateLength, chordIndex } = e.data;
 
             if (type === 'noteOn') {
+                console.log('[Juno-106] Worker noteOn received:', note, 'vel:', velocity);
                 sendToJuno106({ type: 'noteOn', value: note });
                 // Update piano roll visualization
                 PianoRoll.addNote(note, velocity, gateLength, chordIndex);
@@ -222,6 +223,9 @@ function startPlayback() {
         initNoteSchedulerWorker();
 
         if (noteSchedulerWorker) {
+            console.log('[Juno-106] Starting worker, chords:', appState.chordProgression.length,
+                'mode:', appState.playbackMode, 'hits:', appState.euclidean.hits,
+                'steps:', appState.euclidean.steps);
             // Send full state to worker
             noteSchedulerWorker.postMessage({
                 type: 'updateState',
@@ -485,7 +489,10 @@ function clearJunoStatus() {
 }
 
 function launchJuno106() {
-    if (junoWindow && !junoWindow.closed) return;
+    if (junoWindow && !junoWindow.closed) {
+        console.log('[Juno-106] launchJuno106: window already open, junoReady:', junoReady);
+        return;
+    }
 
     // Starting a fresh window session — any notes tracked against the old
     // session are moot (nothing left to send an off to) and must not be
@@ -586,9 +593,6 @@ function syncSequencerSettings() {
 
 function sendToJuno106(msg) {
     if (!junoWindow || junoWindow.closed) {
-        // The window was open (or never opened) and is now gone. Any notes
-        // still tracked as "on" can't be turned off there anymore, and must
-        // not be replayed against a future window, so drop them.
         if (activeJunoNotes.size > 0) activeJunoNotes.clear();
         const wasReady = junoReady;
         junoReady = false;
@@ -605,6 +609,8 @@ function sendToJuno106(msg) {
         console.warn('[Juno-106] sendToJuno106: window not available, msg dropped:', msg);
         return;
     }
+    console.log('[Juno-106] sendToJuno106:', msg.type, 'note:', msg.value,
+        'junoReady:', junoReady, 'windowClosed:', junoWindow.closed);
     if (msg.type === 'noteOn') activeJunoNotes.add(msg.value);
     else if (msg.type === 'noteOff') activeJunoNotes.delete(msg.value);
     junoWindow.postMessage(msg, 'https://liotier.github.io');
