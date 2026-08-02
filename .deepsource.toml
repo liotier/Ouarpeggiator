@@ -1,0 +1,14 @@
+version = 1
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  environment = ["browser"]
+  dialect = "es2022"
+  module_system = "es-modules"
+
+[[transformers]]
+name = "prettier"
+enabled = true

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#1a1a1a"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#3a3a3a" stroke-width="10"/>
+  <!-- Euclidean pattern ring: filled = hit, hollow = rest (7 hits in 16 steps) -->
+  <g>
+    <!-- 16 steps around the circle, hits at a euclidean-ish distribution -->
+    <circle cx="256" cy="106" r="26" fill="#4a90e2"/>
+    <circle cx="313.4" cy="121.4" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="355.4" cy="156.6" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="376" cy="209.3" r="26" fill="#4a90e2"/>
+    <circle cx="376" cy="302.7" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="355.4" cy="355.4" r="26" fill="#4a90e2"/>
+    <circle cx="313.4" cy="390.6" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="256" cy="406" r="26" fill="#4a90e2"/>
+    <circle cx="198.6" cy="390.6" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="156.6" cy="355.4" r="26" fill="#4a90e2"/>
+    <circle cx="136" cy="302.7" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="136" cy="209.3" r="26" fill="#4a90e2"/>
+    <circle cx="156.6" cy="156.6" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="198.6" cy="121.4" r="26" fill="#4a90e2"/>
+    <circle cx="230" cy="140" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+    <circle cx="282" cy="140" r="16" fill="none" stroke="#5a5a5a" stroke-width="8"/>
+  </g>
+  <!-- center rotation marker -->
+  <circle cx="256" cy="256" r="34" fill="#ff9500"/>
+</svg>

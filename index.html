@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Ouarpeggiator - Euclidean rhythm arpeggiator for chord progressions. Generate evolving melodic patterns using Bjorklund's algorithm.">
+    <meta name="keywords" content="arpeggiator, euclidean rhythm, midi, chord progression, music, synthesizer">
+    <meta name="author" content="Jean-Marc Liotier">
+
+    <title>Ouarpeggiator - Euclidean Chord Arpeggiator</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎹</text></svg>">
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4a90e2">
+    <link rel="apple-touch-icon" href="icon.svg">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body data-context="keyboard">
+    <div class="app">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>Ouarpeggiator</h1>
+                <p class="subtitle">Euclidean Rhythm Arpeggiator for Chord Progressions</p>
+            </div>
+        </div>
+
+        <!-- Chord Matcher: Filters keys for both Progression Palette and Scale modes -->
+        <div class="chord-matcher" id="chordMatcher">
+            <div class="chord-matcher-header" onclick="toggleChordMatcher()">
+                <h3>🎹 Chord Matcher</h3>
+                <span class="optional-badge">Optional</span>
+                <svg class="expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+            <div class="chord-matcher-content">
+                <p class="chord-matcher-description">
+                    Found a sample with great chords? Enter them here to find compatible keys and modes for your production.
+                </p>
+                <div class="chord-input-row">
+                    <select id="chordNote">
+                        <option value="">Note...</option>
+                        <option value="C">C</option>
+                        <option value="C#">C#/D♭</option>
+                        <option value="D">D</option>
+                        <option value="D#">D#/E♭</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="F#">F#/G♭</option>
+                        <option value="G">G</option>
+                        <option value="G#">G#/A♭</option>
+                        <option value="A">A</option>
+                        <option value="A#">A#/B♭</option>
+                        <option value="B">B</option>
+                    </select>
+                    <select id="chordQuality">
+                        <option value="">Quality...</option>
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
+                        <option value="dim">Diminished</option>
+                        <option value="aug">Augmented</option>
+                        <option value="sus2">Sus2</option>
+                        <option value="sus4">Sus4</option>
+                        <option value="7">Dominant 7</option>
+                        <option value="maj7">Major 7</option>
+                        <option value="m7">Minor 7</option>
+                    </select>
+                    <button onclick="addChordRequirement()">Add Chord</button>
+                    <button onclick="clearChordRequirements()">Clear All</button>
+                </div>
+                <div class="selected-chords" id="selectedChords"></div>
+                <div class="key-mode-suggestions" id="keyModeSuggestions" style="display: none;">
+                    <div class="suggestion-label">Compatible Keys & Modes:</div>
+                    <div class="suggestion-list" id="suggestionList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <!-- Top Row: Mode Toggle + Key Selector -->
+            <div class="controls-top-row">
+                <div class="generation-mode-toggle">
+                    <label class="mode-option" id="paletteModeLabel">
+                        <input type="radio" name="generationMode" value="template" id="paletteModeRadio" checked>
+                        <span>Progression Palette Mode</span>
+                    </label>
+                    <label class="mode-option" id="scaleModeLabel">
+                        <input type="radio" name="generationMode" value="scale" id="scaleModeRadio">
+                        <span>Scale Mode</span>
+                    </label>
+                </div>
+
+                <div class="filter-group">
+                    <label for="keySelect">Key</label>
+                    <select id="keySelect">
+                        <option value="0">C</option>
+                        <option value="1">C#/D♭</option>
+                        <option value="2">D</option>
+                        <option value="3">D#/E♭</option>
+                        <option value="4">E</option>
+                        <option value="5">F</option>
+                        <option value="6">F#/G♭</option>
+                        <option value="7">G</option>
+                        <option value="8">G#/A♭</option>
+                        <option value="9">A</option>
+                        <option value="10">A#/B♭</option>
+                        <option value="11">B</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Middle Row: Mode Containers Side by Side -->
+            <div class="mode-containers-row">
+                <!-- Progression Palette Mode Container -->
+                <div class="mode-container palette-mode-container active" id="paletteModeContainer">
+                    <div class="mode-container-header">Progression Palette Mode</div>
+                    <div class="filter-group">
+                        <label for="progressionSelect">Progression</label>
+                        <select id="progressionSelect" title="Each palette provides 16 unique chords: first N from the progression, remaining pads from extended harmony">
+                            <optgroup label="Pop/Rock">
+                                <option value="I—V—vi—IV">I—V—vi—IV (Axis of Awesome)</option>
+                                <option value="I—IV—V—I">I—IV—V—I (Classic Rock)</option>
+                                <option value="vi—IV—I—V">vi—IV—I—V (Pop Punk)</option>
+                                <option value="I—vi—IV—V">I—vi—IV—V (50s Doo-Wop)</option>
+                                <option value="I—V—vi—iii—IV">I—V—vi—iii—IV (Canon Progression)</option>
+                                <option value="IV—I—V—vi">IV—I—V—vi (Despacito)</option>
+                                <option value="vi—V—IV—V">vi—V—IV—V (Grenade)</option>
+                                <option value="I—III—IV—iv">I—III—IV—iv (Creep)</option>
+                                <option value="I—V—♭VII—IV">I—V—♭VII—IV (Sweet Home)</option>
+                                <option value="I—♭VII—IV—I">I—♭VII—IV—I (Mixolydian Vamp)</option>
+                                <option value="i—V—VII—IV—VI—III—iv—V">i—V—VII—IV—VI—III—iv—V (Hotel California)</option>
+                            </optgroup>
+                            <optgroup label="Blues/Soul">
+                                <option value="12-bar-blues">12-Bar Blues</option>
+                                <option value="I—vi—ii—V">I—vi—ii—V (Turnaround)</option>
+                                <option value="ii—V—I—VI">ii—V—I—VI (Rhythm Changes A)</option>
+                                <option value="I—VI—ii—V">I—VI—ii—V (I Got Rhythm)</option>
+                                <option value="i—♭III—♭VII—IV">i—♭III—♭VII—IV (Dorian Vamp)</option>
+                                <option value="i—IV—i—V">i—IV—i—V (Minor Blues)</option>
+                            </optgroup>
+                            <optgroup label="Jazz/Functional">
+                                <option value="ii—V—I">ii—V—I (2-5-1)</option>
+                                <option value="ii—V—I—vi">ii—V—I—vi (Jazz Standard)</option>
+                                <option value="iii—vi—ii—V">iii—vi—ii—V (Circle Progression)</option>
+                                <option value="IVM7—V7—iii7—vi">IVM7—V7—iii7—vi (Fly Me To The Moon)</option>
+                                <option value="IM7—ii7—iii7—IVM7">IM7—ii7—iii7—IVM7 (Ascending Jazz)</option>
+                                <option value="vi—ii—V—I">vi—ii—V—I (Minor Turnaround)</option>
+                                <option value="I—vi—IV—♯iv°—V">I—vi—IV—♯iv°—V (Chromatic Turnaround)</option>
+                                <option value="iv—♭VII—I">iv—♭VII—I (Backdoor)</option>
+                                <option value="I—♯I°—ii—♯II°">I—♯I°—ii—♯II° (Chromatic Walk)</option>
+                                <option value="IM7—♭IIIM7—♭VIM7—♭II7">IM7—♭IIIM7—♭VIM7—♭II7 (Giant Steps)</option>
+                                <option value="III7—VI7—II7—V7">III7—VI7—II7—V7</option>
+                                <option value="V7/ii—ii—V7—I">V7/ii—ii—V7—I</option>
+                                <option value="♭II7—I">♭II7—I</option>
+                                <option value="ii7—♭II7—IM7">ii7—♭II7—IM7</option>
+                                <option value="ii—V—I—IV—vii°—III7—vi">ii—V—I—IV—vii°—III7—vi (Autumn Leaves)</option>
+                                <option value="i—i(maj7)—i7—i6">i—i(maj7)—i7—i6 (Line Cliché)</option>
+                                <option value="IM7—♭VII7—♭VIM7—V7">IM7—♭VII7—♭VIM7—V7 (Tadd Dameron Turnaround)</option>
+                                <option value="IM7—♭IIIM7—♭VIM7—♭II7—IM7">IM7—♭IIIM7—♭VIM7—♭II7—IM7 (Lady Bird)</option>
+                                <option value="V7/ii—V7/V—V7—I">V7/ii—V7/V—V7—I (Secondary Dominant Chain)</option>
+                                <option value="I—V7/vi—vi—V7/V—V7—I">I—V7/vi—vi—V7/V—V7—I (Extended Turnaround)</option>
+                                <option value="I—♯I°—ii—♯II°—iii">I—♯I°—ii—♯II°—iii (Chromatic Ascent)</option>
+                                <option value="I—I°—ii—♯II°—iii—III°—IV">I—I°—ii—♯II°—iii—III°—IV (Full Chromatic Walk)</option>
+                            </optgroup>
+                            <optgroup label="Modal Interchange">
+                                <option value="♭VI—♭VII—I" title="Ascending borrowed chords resolving to major tonic">♭VI—♭VII—I (Borrowed Ascent)</option>
+                                <option value="I—♭VII—IV—I" title="Major with borrowed ♭VII creating Mixolydian flavor">I—♭VII—IV—I (Mixolydian Loop)</option>
+                                <option value="I—♭III—♭VII—IV" title="Multiple borrowed chords for rich modal interchange">I—♭III—♭VII—IV (Modal Mix)</option>
+                                <option value="i—IV—i—V" title="Minor with borrowed major IV (Dorian)">i—IV—i—V (Minor Brightening)</option>
+                                <option value="I—iv—I—V" title="Major with borrowed minor iv">I—iv—I—V (Major Darkening)</option>
+                                <option value="♭VI—iv—I" title="Two borrowed chords resolving to major tonic">♭VI—iv—I (Borrowed Cadence)</option>
+                            </optgroup>
+                            <optgroup label="Classical/Modal">
+                                <option value="I—IV—vii°—iii—vi—ii—V—I">I—IV—vii°—iii—vi—ii—V—I (Circle of Fifths)</option>
+                                <option value="I—V—vi—iii—IV—I—IV—V">I—V—vi—iii—IV—I—IV—V (Pachelbel Canon)</option>
+                                <option value="i—♭VII—♭VI—V">i—♭VII—♭VI—V (Andalusian)</option>
+                                <option value="i—♭VII—i—V">i—♭VII—i—V (Passamezzo Antico)</option>
+                                <option value="I—V—I—IV">I—V—I—IV (Passamezzo Moderno)</option>
+                                <option value="iv—♭VII—♭III—♭VI">iv—♭VII—♭III—♭VI (Plagal Cascade)</option>
+                                <option value="i—iv—♭VII—♭III">i—iv—♭VII—♭III (Natural Minor)</option>
+                            </optgroup>
+                            <optgroup label="Electronic/Modern">
+                                <option value="i—♭VI—♭III—♭VII">i—♭VI—♭III—♭VII (EDM Drop)</option>
+                                <option value="i—♭VII—♭VI—♭VII">i—♭VII—♭VI—♭VII (Dark House)</option>
+                                <option value="I—V—vi—IV—I—V—iii—IV" selected>I—V—vi—IV—I—V—iii—IV (Extended Pop)</option>
+                                <option value="i—♭III—♭VII—i">i—♭III—♭VII—i (Modal Interchange)</option>
+                                <option value="I—♭III—IV—♭VI">I—♭III—IV—♭VI (Chromatic Mediant)</option>
+                                <option value="i—iv—v">i—iv—v (Techno Minimal)</option>
+                                <option value="I—IV—V">I—IV—V (Deep House)</option>
+                                <option value="IM7—IVM7—VM7">IM7—IVM7—VM7 (Ambient Wash)</option>
+                            </optgroup>
+                            <optgroup label="R&B/Neo-Soul">
+                                <option value="ii—V—IM7—vi">ii—V—IM7—vi (Neo-Soul Standard)</option>
+                                <option value="IM7—iii7—vi7—ii7">IM7—iii7—vi7—ii7 (Smooth R&B)</option>
+                                <option value="I—IV—ii—V">I—IV—ii—V (Classic R&B)</option>
+                                <option value="vi—ii—iii—IV">vi—ii—iii—IV (Emotional Ballad)</option>
+                                <option value="IM7—V7/IV—IVM7—iv">IM7—V7/IV—IVM7—iv (Chromatic Soul)</option>
+                                <option value="i—iv—♭VII—♭VI">i—iv—♭VII—♭VI (Minor Soul)</option>
+                                <option value="I—♯iv°—ii—V">I—♯iv°—ii—V (Gospel Soul)</option>
+                            </optgroup>
+                            <optgroup label="Funk/Groove">
+                                <option value="I7">I7 (One-Chord Funk)</option>
+                                <option value="i7">i7 (Minor Funk Vamp)</option>
+                                <option value="I7—IV7">I7—IV7 (Two-Chord Funk)</option>
+                                <option value="i7—IV7">i7—IV7 (Minor-Major Funk)</option>
+                                <option value="I7—♭VII7—I7">I7—♭VII7—I7 (Mixolydian Funk)</option>
+                                <option value="ii7—V7">ii7—V7 (Jazz-Funk Turnaround)</option>
+                                <option value="I7—ii7—iii7—IV7">I7—ii7—iii7—IV7 (Ascending Funk)</option>
+                                <option value="I7—♯IV7—IV7—I7">I7—♯IV7—IV7—I7 (Chromatic Funk)</option>
+                            </optgroup>
+                            <optgroup label="Gospel/Worship">
+                                <option value="I—V/ii—ii—V">I—V/ii—ii—V (Gospel Turnaround)</option>
+                                <option value="IV—V—iii—vi">IV—V—iii—vi (Praise Progression)</option>
+                                <option value="I—IV—V/vi—vi">I—IV—V/vi—vi (Contemporary Worship)</option>
+                                <option value="ii—V—I—IV">ii—V—I—IV (Church Cadence)</option>
+                                <option value="I—V/V—V—vi—IV">I—V/V—V—vi—IV (Gospel Rock)</option>
+                                <option value="IV—I—V—vi—IV—♭VII">IV—I—V—vi—IV—♭VII (Extended Worship)</option>
+                            </optgroup>
+                            <optgroup label="Hip-Hop/Trap">
+                                <option value="i—♭VI—♭VII">i—♭VI—♭VII (Trap Minor)</option>
+                                <option value="i—♭III—♭VI—♭VII">i—♭III—♭VI—♭VII (Dark Trap)</option>
+                                <option value="vi—IV—I">vi—IV—I (Sad Trap)</option>
+                                <option value="i—♭VII—♭VI">i—♭VII—♭VI (Lofi Hip-Hop)</option>
+                                <option value="i—iv—i—♭VI">i—iv—i—♭VI (Boom Bap)</option>
+                                <option value="i—♭III—iv—♭VI">i—♭III—iv—♭VI (Emo Rap)</option>
+                                <option value="I—♭III—♭VII—IV">I—♭III—♭VII—IV (West Coast)</option>
+                                <option value="i—♭VII—iv">i—♭VII—iv (Footwork Juke)</option>
+                            </optgroup>
+                            <optgroup label="Latin/Bossa">
+                                <option value="IM7—VI7—ii7—V7">IM7—VI7—ii7—V7 (Bossa Nova)</option>
+                                <option value="i—iv—V—i">i—iv—V—i (Tango)</option>
+                                <option value="I—♭II—I—V">I—♭II—I—V (Flamenco)</option>
+                                <option value="i—V—i—VII">i—V—i—VII (Samba)</option>
+                                <option value="I—V/ii—ii—V/V—V">I—V/ii—ii—V/V—V (Latin Jazz)</option>
+                                <option value="i—♭VII—♭VI—V">i—♭VII—♭VI—V (Bolero)</option>
+                            </optgroup>
+                            <optgroup label="Film/Cinematic">
+                                <option value="I—♭VI—♭III—♭VII">I—♭VI—♭III—♭VII (Epic Trailer)</option>
+                                <option value="i—♭VI—♭VII—i">i—♭VI—♭VII—i (Dark Cinematic)</option>
+                                <option value="I—V—vi—♭VI—IV">I—V—vi—♭VI—IV (Emotional Score)</option>
+                                <option value="i—♭III—♭VII—♭VI—V">i—♭III—♭VII—♭VI—V (Heroic Theme)</option>
+                                <option value="I—♭VII—♭VI—♭VII">I—♭VII—♭VI—♭VII (Adventure)</option>
+                                <option value="i—iv—♭VI—♭III">i—iv—♭VI—♭III (Suspense)</option>
+                                <option value="I—♭III—♭VI—♭II">I—♭III—♭VI—♭II (Chromatic Film)</option>
+                            </optgroup>
+                            <optgroup label="Folk/Singer-Songwriter">
+                                <option value="I—IV—I—V">I—IV—I—V (Folk Standard)</option>
+                                <option value="vi—IV—V—I">vi—IV—V—I (Sad Folk)</option>
+                                <option value="I—V—IV—I">I—V—IV—I (Country)</option>
+                                <option value="I—iii—IV—V">I—iii—IV—V (Classic Folk)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Scale Mode Container -->
+                <div class="mode-container scale-mode-container" id="scaleModeContainer">
+                    <div class="mode-container-header">Scale Mode</div>
+                    <div class="filter-group">
+                        <label for="modeSelect">Mode/Scale</label>
+                        <select id="modeSelect">
+                            <optgroup label="Common Western Tonal">
+                                <option value="Major">Major (Ionian)</option>
+                                <option value="Minor">Minor (Aeolian)</option>
+                                <option value="Dorian">Dorian</option>
+                                <option value="Phrygian">Phrygian</option>
+                                <option value="Lydian">Lydian</option>
+                                <option value="Mixolydian">Mixolydian</option>
+                                <option value="Locrian">Locrian</option>
+                                <option value="Harmonic Minor">Harmonic Minor</option>
+                                <option value="Melodic Minor">Melodic Minor</option>
+                            </optgroup>
+                            <optgroup label="Compact/Popular">
+                                <option value="Pentatonic Major">Pentatonic Major</option>
+                                <option value="Pentatonic Minor">Pentatonic Minor</option>
+                                <option value="Blues">Blues</option>
+                            </optgroup>
+                            <optgroup label="Symmetrical/Jazz">
+                                <option value="Whole Tone">Whole Tone</option>
+                                <option value="Diminished (W-H)">Diminished (W-H)</option>
+                                <option value="Diminished (H-W)">Diminished (H-W)</option>
+                                <option value="Augmented">Augmented</option>
+                                <option value="Altered">Altered</option>
+                                <option value="Lydian Dominant">Lydian Dominant</option>
+                                <option value="Locrian #2">Locrian #2</option>
+                            </optgroup>
+                            <optgroup label="Exotic">
+                                <option value="Double Harmonic">Double Harmonic</option>
+                                <option value="Hungarian Minor">Hungarian Minor</option>
+                                <option value="Phrygian Dominant">Phrygian Dominant</option>
+                                <option value="Hirajoshi">Hirajoshi</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Generate Button -->
+            <div class="controls-bottom-row">
+                <button class="primary" id="generateBtn" title="Generate 16-pad chord palette with multiple voicing variants">Generate Progression</button>
+            </div>
+        </div>
+
+        <!-- Chord Progression Display -->
+        <div id="progressionsContainer" class="progressions">
+            <div class="progression-card">
+                <div class="progression-header">
+                    <div class="progression-header-left">
+                        <div class="variant-selector-inline">
+                            <label for="variantSelect">Variant:</label>
+                            <select id="variantSelect" title="Switch between different voicing variants">
+                                <option value="0">Smooth</option>
+                            </select>
+                        </div>
+                        <span id="variantDescription" class="variant-description"></span>
+                    </div>
+                    <div class="progression-header-right">
+                        <span class="hint-text">Chords 1-8 from progression, 9-16 extrapolated. Colors show chord distance from selected.</span>
+                    </div>
+                </div>
+                <div id="chordGrid" class="chord-grid">
+                    <!-- 16 pads populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <section class="output-section-main">
+            <h2>Output</h2>
+            <div class="output-controls-grid">
+                <div class="filter-group">
+                    <label for="outputMode">Output</label>
+                    <select id="outputMode" title="Select audio output for chord preview and arpeggiator">
+                        <option value="audio">Browser tone</option>
+                        <!-- MIDI devices populated dynamically -->
+                    </select>
+                    <div id="junoStatus" class="juno-status" hidden></div>
+                </div>
+                <div id="audioConfig" class="filter-group">
+                    <label for="synthWaveform">Waveform</label>
+                    <select id="synthWaveform">
+                        <option value="triangle">Triangle</option>
+                        <option value="sine">Sine</option>
+                        <option value="sawtooth">Sawtooth</option>
+                        <option value="square">Square</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arpeggiator Section -->
+        <section class="arpeggiator-section">
+            <h2>Arpeggiator</h2>
+
+            <!-- Euclidean Pattern Controls (Two Column Layout) -->
+            <div class="two-column-controls">
+                <!-- Left Column: Euclidean Sliders -->
+                <div class="pattern-controls-column">
+                    <!-- Playback Mode Toggle -->
+                    <div class="playback-mode-toggle">
+                        <label class="mode-option" id="arpeggioModeLabel">
+                            <input type="radio" name="playbackMode" value="arpeggio" id="arpeggioModeRadio" checked>
+                            <span>Arpeggio Mode</span>
+                        </label>
+                        <label class="mode-option" id="stabModeLabel">
+                            <input type="radio" name="playbackMode" value="stab" id="stabModeRadio">
+                            <span>Chord Stab Mode</span>
+                        </label>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="stepsSlider">Steps: <span id="stepsValue">16</span></label>
+                        <input type="range" id="stepsSlider" min="1" max="32" value="16">
+                    </div>
+                    <div class="filter-group">
+                        <label for="hitsSlider">Hits: <span id="hitsValue">10</span></label>
+                        <input type="range" id="hitsSlider" min="1" max="16" value="10">
+                    </div>
+                    <div class="filter-group">
+                        <label for="rotationSlider">Rotation: <span id="rotationValue">10</span></label>
+                        <input type="range" id="rotationSlider" min="0" max="31" value="10">
+                    </div>
+
+                    <!-- Free-running polymeter -->
+                    <div class="filter-group">
+                        <label title="Free-running polymeter: the note pattern advances on a fixed 16th-note grid and phases against the bar, instead of stretching to fill exactly one bar. Steps then sets pattern length only.">
+                            <input type="checkbox" id="freeRunning">
+                            Free-run (polymeter)
+                        </label>
+                    </div>
+
+                    <!-- Octave Spread -->
+                    <div class="filter-group" id="octaveSpreadGroup">
+                        <label for="octaveSpread">Octave Spread: <span id="octaveValue">1</span></label>
+                        <input type="range" id="octaveSpread" min="1" max="4" value="1">
+                    </div>
+
+                    <!-- Arpeggio note order (arpeggio mode only) -->
+                    <div class="filter-group" id="noteOrderGroup">
+                        <label for="noteOrder">Note Order</label>
+                        <select id="noteOrder" title="Order in which a chord's tones are arpeggiated across successive steps">
+                            <option value="up">Up</option>
+                            <option value="down">Down</option>
+                            <option value="updown">Up-Down</option>
+                            <option value="downup">Down-Up</option>
+                            <option value="asplayed">As Played</option>
+                            <option value="converge">Converge (outside-in)</option>
+                            <option value="diverge">Diverge (inside-out)</option>
+                            <option value="random">Random</option>
+                        </select>
+                    </div>
+
+                    <!-- Chord Rhythm Controls (only visible in Stab Mode) -->
+                    <div id="chordRhythmControls" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e0e0;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 13px; color: #f39c12; font-weight: bold;">
+                            ◆ Chord Rhythm (Gold Outer Ring)
+                        </h4>
+                        <div class="filter-group">
+                            <label title="Unlock to create polyrhythmic 'flams' - independent chord change rhythm">
+                                <input type="checkbox" id="unlockChordSteps">
+                                Independent Steps (Flams)
+                            </label>
+                        </div>
+                        <div id="chordStepsSliderContainer" style="display: none;">
+                            <div class="filter-group">
+                                <label for="chordChangeSteps">Steps: <span id="chordChangeStepsValue">16</span></label>
+                                <input type="range" id="chordChangeSteps" min="1" max="32" value="16" title="Independent pattern length for chord changes">
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label for="chordChangePulses">Pulses: <span id="chordChangePulsesValue">4</span></label>
+                            <input type="range" id="chordChangePulses" min="1" max="16" value="4" title="How many chord changes in the pattern">
+                        </div>
+                        <div class="filter-group">
+                            <label for="chordChangeRotation">Rotation: <span id="chordChangeRotationValue">0</span></label>
+                            <input type="range" id="chordChangeRotation" min="0" max="31" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Euclidean Circle Visualization -->
+                <div class="euclidean-circle-column">
+                    <div class="euclidean-circle-container">
+                        <canvas id="euclideanCircle"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Piano Roll Visualization -->
+            <div id="pianoRollContainer" class="piano-roll-container"></div>
+
+            <!-- Two-Column Controls Layout -->
+            <div class="controls-grid">
+                <!-- LEFT COLUMN -->
+                <div class="controls-column">
+                    <!-- Transport & BPM -->
+                    <div class="variation-subsection">
+                        <div class="control-row transport">
+                            <button class="primary" id="startBtn">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <polygon points="5,3 19,12 5,21"/>
+                                </svg>
+                                Start
+                            </button>
+                            <button id="stopBtn" disabled>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <rect x="4" y="4" width="16" height="16"/>
+                                </svg>
+                                Stop
+                            </button>
+                            <button id="panicBtn" class="danger" title="Panic: immediately stop all sound and silence any stuck notes (MIDI, browser tone, and Juno-106)">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                    <path d="M12 2 L22 20 L2 20 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                                    <rect x="11" y="9" width="2" height="6" fill="currentColor"/>
+                                    <rect x="11" y="16" width="2" height="2" fill="currentColor"/>
+                                </svg>
+                                Panic
+                            </button>
+                            <div id="clockStatus" class="clock-status">Stopped</div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="bpmSlider">BPM: <span id="bpmValue">120</span></label>
+                                <input type="range" id="bpmSlider" min="40" max="240" value="120">
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="transposeSlider">Transpose: <span id="transposeValue">0</span></label>
+                                <input type="range" id="transposeSlider" min="-3" max="3" step="1" value="0" title="Shift the whole arpeggio up or down by whole octaves, live while playing. Key selection regenerates the progression's own voicings and is not a substitute for this.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chord Variation -->
+                    <div class="variation-subsection">
+                        <h3>Chord Variation</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <span class="field-label" id="chordOrderModeLabel">Chord Order</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="chordOrderModeLabel">
+                                    <button class="chord-order-btn active" data-value="harmonic" role="radio" aria-checked="true" title="Pick each next chord algorithmically (harmonic score, steered by the Voice Leading control)">Harmonic</button>
+                                    <button class="chord-order-btn" data-value="inOrder" role="radio" aria-checked="false" title="Play the selected progression's chords in written order and loop, instead of wandering the palette">In order</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="harmonicAdherence">Harmonic Adherence: <span id="harmonicAdherenceValue">70%</span></label>
+                                <input type="range" id="harmonicAdherence" min="0" max="100" value="70" title="How strictly to follow harmonic rules when selecting next chord. 100% = always pick smoothest transition, 0% = random from palette">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Note Variation -->
+                    <div class="variation-subsection" id="noteVariationSection">
+                        <h3>Note Variation</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="harmonicVariation">Note Substitution: <span id="harmonicValue">0%</span></label>
+                                <input type="range" id="harmonicVariation" min="0" max="100" value="0" title="Probability of replacing a note with one from the progression pool">
+                            </div>
+                        </div>
+                        <!-- Chord Stab specific controls (shown only in stab mode) -->
+                        <div class="control-row stab-controls" id="stabControls" style="display: none;">
+                            <div class="filter-group">
+                                <label for="strumSpeed">Strum Speed: <span id="strumSpeedValue">0</span>ms</label>
+                                <input type="range" id="strumSpeed" min="0" max="100" value="0" title="Delay between notes in a chord stab. 0 = instant, 100 = spread arpeggio-like">
+                            </div>
+                            <div class="filter-group">
+                                <span class="field-label" id="strumDirectionLabel">Strum Direction</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="strumDirectionLabel">
+                                    <button class="strum-btn active" data-value="up" role="radio" aria-checked="true">Up</button>
+                                    <button class="strum-btn" data-value="down" role="radio" aria-checked="false">Down</button>
+                                    <button class="strum-btn" data-value="alternating" role="radio" aria-checked="false">Alt</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Leading -->
+                    <div class="variation-subsection">
+                        <h3>Voice Leading</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <span class="field-label" id="voiceLeadingModeLabel">Mode</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="voiceLeadingModeLabel">
+                                    <button class="voice-btn active" data-value="smooth" role="radio" aria-checked="true">Smooth</button>
+                                    <button class="voice-btn" data-value="far" role="radio" aria-checked="false">Far</button>
+                                    <button class="voice-btn" data-value="none" role="radio" aria-checked="false">None</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="controls-column">
+                    <!-- Timing & Humanization -->
+                    <div class="variation-subsection">
+                        <h3>Timing & Humanization</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <span class="field-label" id="barsPerChordLabel">Bars per Chord</span>
+                                <div class="button-group" role="radiogroup" aria-labelledby="barsPerChordLabel">
+                                    <button class="bars-btn active" data-value="1" role="radio" aria-checked="true">1</button>
+                                    <button class="bars-btn" data-value="2" role="radio" aria-checked="false">2</button>
+                                    <button class="bars-btn" data-value="4" role="radio" aria-checked="false">4</button>
+                                    <button class="bars-btn" data-value="8" role="radio" aria-checked="false">8</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="swing">Swing: <span id="swingValue">0</span>%</label>
+                                <input type="range" id="swing" min="0" max="100" value="0" title="Delay offbeat steps for a shuffle feel. 0 = straight, 100 = hard triplet (2:1) swing">
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="humanization">Humanize: <span id="humanizationValue">0</span>ms</label>
+                                <input type="range" id="humanization" min="0" max="50" value="0">
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="rhythmicVariation">Rhythmic Variation: <span id="rhythmicValue">0%</span></label>
+                                <input type="range" id="rhythmicVariation" min="0" max="100" value="0" title="Probability of inserting a rest instead of playing">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Velocity -->
+                    <div class="variation-subsection">
+                        <h3>Velocity</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="velocityMode">Mode</label>
+                                <select id="velocityMode" title="How velocity changes across the pattern">
+                                    <option value="fixed" title="Same velocity for all notes">Fixed</option>
+                                    <option value="random" title="Random velocity for each note within range">Random</option>
+                                    <option value="curve" title="Velocity follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
+                                </select>
+                            </div>
+                            <div id="velocityControls" class="dynamic-controls"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gate -->
+                    <div class="variation-subsection with-separator">
+                        <h3>Gate</h3>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="gateMode">Mode</label>
+                                <select id="gateMode" title="How note duration changes across the pattern">
+                                    <option value="fixed" title="Same gate length for all notes">Fixed</option>
+                                    <option value="random" title="Random gate length for each note within range">Random</option>
+                                    <option value="curve" title="Gate length follows a curve (ramp, wave, etc.) across the pattern">Curve (Envelope)</option>
+                                </select>
+                            </div>
+                            <div id="gateControls" class="dynamic-controls"></div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label title="Sync curve start to Euclidean rotation (like triggered LFO vs free-running)">
+                                    <input type="checkbox" id="curveSyncRotation">
+                                    Sync curve to rotation
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chord Progression (Stab Mode Only) -->
+                    <div id="chordProgressionSection" class="variation-subsection with-separator" style="display: none;">
+                        <h3>Chord Progression</h3>
+
+                        <!-- Chord Change Rhythm controls MOVED to main pattern area (next to circle) -->
+                        <p class="help-text" style="margin: 0 0 16px 0; font-size: 12px; color: #999;">
+                            ◆ Chord rhythm controls shown above, next to circle visualization
+                        </p>
+
+                        <!-- Sequence Method -->
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="sequenceMethod">Sequence Method</label>
+                                <select id="sequenceMethod">
+                                    <option value="random">Random</option>
+                                    <option value="circle-fifths">Circle of 5ths</option>
+                                    <option value="functional">Functional Harmony</option>
+                                    <option value="root-melody" selected>Root Melody</option>
+                                    <option value="voice-leading">Voice Leading</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Method-specific controls (dynamic) -->
+                        <div id="sequenceMethodControls"></div>
+
+                        <!-- Pattern Settings -->
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label for="patternLength">Pattern Length: <span id="patternLengthValue">4</span> chords</label>
+                                <input type="range" id="patternLength" min="2" max="16" value="4">
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="filter-group">
+                                <label>
+                                    <input type="checkbox" id="lockPattern">
+                                    Lock Pattern
+                                </label>
+                                <button id="regeneratePattern" class="secondary" title="Generate new chord sequence">🔄 Regenerate</button>
+                            </div>
+                        </div>
+
+                        <!-- Preview -->
+                        <div class="control-row">
+                            <div class="progression-preview" id="progressionPreview">
+                                <small>Preview:</small>
+                                <div id="progressionPreviewText">C → Dm → F → G → (loop)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MIDI Diagnostics Section -->
+        <section class="midi-diagnostics-section">
+            <details>
+                <summary>MIDI Diagnostics</summary>
+                <div class="diagnostics-content">
+                    <div class="diagnostic-row">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">WebMIDI API:</span>
+                            <span id="midiApiStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Initialized:</span>
+                            <span id="midiInitStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Permission:</span>
+                            <span id="midiPermissionStatus" class="diagnostic-value">Unknown</span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-row">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Secure Context:</span>
+                            <span id="secureContextStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Protocol:</span>
+                            <span id="protocolStatus" class="diagnostic-value">Checking...</span>
+                        </div>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>MIDI Input Devices (<span id="inputDeviceCount">0</span>)</h4>
+                        <ul id="inputDeviceList" class="device-list">
+                            <li class="no-devices">No devices detected</li>
+                        </ul>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>MIDI Output Devices (<span id="outputDeviceCount">0</span>)</h4>
+                        <ul id="outputDeviceList" class="device-list">
+                            <li class="no-devices">No devices detected</li>
+                        </ul>
+                    </div>
+
+                    <div class="diagnostic-actions">
+                        <button id="refreshMidiBtn" class="diagnostic-btn">Refresh Devices</button>
+                        <button id="requestMidiPermissionBtn" class="diagnostic-btn">Request MIDI Permission</button>
+                        <button id="testMidiOutputBtn" class="diagnostic-btn" disabled>Send Test Note (C4)</button>
+                    </div>
+
+                    <div class="diagnostic-section">
+                        <h4>Event Log</h4>
+                        <div id="midiEventLog" class="event-log">
+                            <div class="log-entry">Ready to diagnose MIDI...</div>
+                        </div>
+                        <button id="clearLogBtn" class="diagnostic-btn-small">Clear Log</button>
+                    </div>
+
+                    <div class="diagnostic-help">
+                        <strong>Troubleshooting Tips:</strong>
+                        <ul>
+                            <li>Ensure MIDI devices are physically connected and powered on</li>
+                            <li>Check that MIDI drivers are installed (Windows) or IAC Driver enabled (macOS)</li>
+                            <li>Try virtual MIDI ports: loopMIDI (Windows), IAC Driver (macOS), virmidi (Linux)</li>
+                            <li>Reload the page after connecting/configuring devices</li>
+                            <li>Check browser site permissions for MIDI access</li>
+                            <li>WebMIDI requires secure context (HTTPS or localhost)</li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                <a href="https://github.com/liotier/Ouarpeggiator" target="_blank" rel="noopener">GitHub</a> |
+                Based on <a href="https://liotier.github.io/AkaiMPC/AkaiMPCChordProgressionGenerator/" target="_blank" rel="noopener">Akai MPC Chord Progression Generator</a>
+                <span id="debugCommit" style="display:none"> | <code style="font-size:0.85em;color:#888" id="commitHash"></code></span>
+            </p>
+            <script>
+                if (location.href.includes('liotier.github.io/Ouarpeggiator/preview')) {
+                    fetch('commit.txt').then(r => r.ok ? r.text() : 'unknown').then(hash => {
+                        document.getElementById('commitHash').textContent = 'commit ' + hash.trim();
+                        document.getElementById('debugCommit').style.display = 'inline';
+                    }).catch(() => {});
+                }
+            </script>
+        </footer>
+    </div>
+
+    <!-- Application Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "Ouarpeggiator",
+  "short_name": "Ouarp",
+  "description": "Euclidean rhythm arpeggiator for chord progressions",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1a1a",
+  "theme_color": "#4a90e2",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
