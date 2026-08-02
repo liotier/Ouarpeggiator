@@ -23,17 +23,28 @@ import {
 
 const str = (hits, steps) => patternToString(euclidean(hits, steps));
 
-// Characterisation: these pin the generator's CURRENT output so any change to
-// it is a deliberate one. Note that several are rotations of the textbook
-// orientation (see the ROTATION CAVEAT in js/euclidean.js) — the cycle is
-// right, the entry point differs. Changing this would re-voice every existing
-// preset and shared link, so it is a product decision, not a bug fix.
-test('produces stable, known patterns', () => {
-    assert.equal(str(4, 12), 'x..x..x..x..', 'even 4-in-12 matches the textbook');
-    assert.equal(str(3, 8), 'x.x..x..', 'tresillo cycle, entered a step early');
-    assert.equal(str(5, 8), '.x.xx.xx', 'cinquillo cycle, entered a step early');
-    assert.equal(str(2, 3), '.xx');
-    assert.equal(str(10, 16), '.x.x.xx.xx.xx.xx', "the app's default density");
+// Every named rhythm the module claims to know, in the orientation published in
+// Toussaint (2005). If one of these changes, the generator has stopped
+// producing the traditional rhythm it advertises.
+test('reproduces the traditional rhythms in their textbook orientation', () => {
+    assert.equal(str(3, 8), 'x..x..x.', 'Cuban tresillo');
+    assert.equal(str(5, 8), 'x.xx.xx.', 'Cuban cinquillo');
+    assert.equal(str(7, 8), 'x.xxxxxx', 'Siciliano');
+    assert.equal(str(2, 5), 'x.x..', 'Khafif-e-ramal');
+    assert.equal(str(3, 7), 'x.x.x..', 'Ruchenitza');
+    assert.equal(str(4, 7), 'x.x.x.x', 'Aksak');
+    assert.equal(str(5, 7), 'x.xx.xx', 'Nawakhat');
+    assert.equal(str(3, 4), 'x.xx', 'Cumbia');
+    assert.equal(str(4, 9), 'x.x.x.x..', 'Aksak (9)');
+    assert.equal(str(5, 9), 'x.x.x.x.x', 'Agsag-samai');
+    assert.equal(str(4, 11), 'x..x..x..x.', 'Frank Zappa');
+    assert.equal(str(5, 11), 'x.x.x.x.x..', 'Moussorgsky');
+    assert.equal(str(5, 12), 'x..x.x..x.x.', 'Venda clapping');
+    assert.equal(str(7, 12), 'x.xx.x.xx.x.', 'West African bell');
+    assert.equal(str(5, 16), 'x..x..x..x..x...', 'Bossa nova');
+    assert.equal(str(7, 16), 'x..x.x.x..x.x.x.', 'Samba');
+    assert.equal(str(2, 3), 'x.x');
+    assert.equal(str(4, 12), 'x..x..x..x..');
 });
 
 test('places exactly the requested number of hits', () => {
@@ -65,16 +76,14 @@ test('distributes hits as evenly as the step count allows', () => {
     }
 });
 
-test('sparse patterns start on the downbeat; dense ones may not', () => {
-    // Documents a real asymmetry rather than asserting it is desirable: the
-    // hits > steps/2 complement branch can return a rotation that opens on a
-    // rest. Sparse patterns are unaffected.
-    for (let steps = 2; steps <= 24; steps++) {
-        for (let hits = 1; hits <= Math.floor(steps / 2); hits++) {
+test('always starts on an onset, at every density', () => {
+    // Toussaint's convention, and what makes the Rotation control meaningful:
+    // rotation 0 is the downbeat orientation, not an arbitrary entry point.
+    for (let steps = 1; steps <= 32; steps++) {
+        for (let hits = 1; hits <= steps; hits++) {
             assert.equal(euclidean(hits, steps)[0], true, `${hits}/${steps} starts on the downbeat`);
         }
     }
-    assert.equal(euclidean(5, 8)[0], false, 'dense patterns can open on a rest');
 });
 
 test('handles degenerate inputs without throwing', () => {
@@ -87,9 +96,9 @@ test('handles degenerate inputs without throwing', () => {
 
 test('rotation shifts the pattern without changing its content', () => {
     const p = euclidean(3, 8);
-    assert.equal(patternToString(rotatePattern(p, 0)), 'x.x..x..');
-    assert.equal(patternToString(rotatePattern(p, 1)), '.x.x..x.');
-    assert.equal(patternToString(rotatePattern(p, 8)), 'x.x..x..', 'a full turn is the identity');
+    assert.equal(patternToString(rotatePattern(p, 0)), 'x..x..x.');
+    assert.equal(patternToString(rotatePattern(p, 1)), '.x..x..x');
+    assert.equal(patternToString(rotatePattern(p, 8)), 'x..x..x.', 'a full turn is the identity');
     for (const r of [-3, -1, 0, 1, 5, 13]) {
         const rotated = rotatePattern(p, r);
         assert.equal(rotated.length, p.length, `length preserved at rotation ${r}`);
