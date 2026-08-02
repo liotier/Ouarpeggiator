@@ -193,17 +193,18 @@ directly.
 
 | Hits | Steps | Pattern | Name |
 |------|-------|---------|------|
-| 3 | 8 | `x.x..x..` | Cuban Tresillo |
-| 5 | 8 | `.x.xx.xx` | Cuban Cinquillo |
-| 7 | 16 | `x.x.x.x.x.x..x..` | Samba |
+| 3 | 8 | `x..x..x.` | Cuban Tresillo |
+| 5 | 8 | `x.xx.xx.` | Cuban Cinquillo |
+| 7 | 8 | `x.xxxxxx` | Siciliano |
+| 5 | 12 | `x..x.x..x.x.` | Venda clapping |
+| 7 | 12 | `x.xx.x.xx.x.` | West African bell |
 | 5 | 16 | `x..x..x..x..x...` | Bossa Nova |
-| 10 | 16 | `.x.x.xx.xx.xx.xx` | (the default) |
+| 7 | 16 | `x..x.x.x..x.x.x.` | Samba |
 
-Onsets are spaced as evenly as the step count allows, which is what makes these
-the traditional rhythms. Some come out rotated relative to the tables in
-Toussaint's paper — the cycle is the same, entered at a different point, and
-dense patterns can open on a rest. Use **Rotation** to place the downbeat where
-you want it.
+Onsets are spaced as evenly as the step count allows — that even spacing is
+what makes these the traditional rhythms — and a pattern always begins on an
+onset, matching the tables in Toussaint (2005). Use **Rotation** to move the
+downbeat from there.
 
 ## Related Projects
 

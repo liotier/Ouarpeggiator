@@ -14,25 +14,19 @@
  *
  * Guarantees exactly `hits` onsets in `steps` positions, spaced as evenly as
  * the step count allows — the gaps between consecutive onsets take at most two
- * distinct lengths, differing by one. That evenness is the defining property of
- * a Euclidean rhythm and is covered by tests/euclidean.test.mjs.
+ * distinct lengths, differing by one — and always starting on an onset.
  *
- * ROTATION CAVEAT: the output is not always the same rotation of that rhythm as
- * the tables in Toussaint (2005), which conventionally start on an onset. Dense
- * patterns (hits > steps/2) go through the complement branch below and can come
- * back starting on a rest — 3/8 comes out "x.x..x.." rather than the textbook
- * "x..x..x.", and 10/16 (this app's default) starts on a rest. The rhythm is the
- * same cycle either way, just entered at a different point, and the Rotation
- * control shifts it further. Normalising to the textbook orientation would
- * change the sound of every existing preset and shared link, so it is left
- * alone deliberately rather than by oversight.
+ * Output matches the published tables in Toussaint (2005), so the named rhythms
+ * in getPatternInfo() come out in their textbook orientation. Both properties
+ * are pinned by tests/euclidean.test.mjs.
  *
  * @param {number} hits - Number of pulses/onsets (k)
  * @param {number} steps - Total steps in pattern (n)
  * @returns {boolean[]} - Array where true = hit, false = rest
  *
  * @example
- * euclidean(3, 8)  // x.x..x..  — the tresillo cycle, entered a step early
+ * euclidean(3, 8)  // x..x..x.  — Cuban tresillo
+ * euclidean(5, 8)  // x.xx.xx.  — Cuban cinquillo
  * euclidean(4, 12) // x..x..x..x..
  */
 function euclidean(hits, steps) {
@@ -47,51 +41,40 @@ function euclidean(hits, steps) {
         return new Array(steps).fill(true);
     }
 
-    // Complementary property: For dense patterns (hits > steps/2),
-    // calculate where RESTS go, then invert. This maintains even distribution
-    // and avoids clumping at the start.
-    // Mathematical property: E(k, n) = complement of E(n-k, n)
-    if (hits > steps / 2) {
-        const rests = steps - hits;
-        const restPattern = euclidean(rests, steps);
-        // Invert: rests become hits, hits become rests
-        return restPattern.map(v => !v);
+    // A single rest is a degenerate case: there is only one such rhythm up to
+    // rotation, and the loop below would terminate immediately and leave every
+    // onset bunched at the front (xxx.). Toussaint's tables place the lone rest
+    // straight after the first onset — E(3,4) "x.xx" Cumbia, E(7,8) "x.xxxxxx"
+    // Siciliano — so construct that orientation directly.
+    if (steps - hits === 1) {
+        const p = new Array(steps).fill(true);
+        p[1] = false;
+        return p;
     }
 
-    // Build initial groups: hits as [1], rests as [0]
-    let pattern = [];
-    for (let i = 0; i < hits; i++) {
-        pattern.push([1]);
-    }
-    for (let i = 0; i < steps - hits; i++) {
-        pattern.push([0]);
-    }
+    // Bjorklund proper: start with `hits` onset groups and `steps - hits` rest
+    // groups, then repeatedly append the shorter run of groups onto the longer
+    // one, pairwise. The leftovers become the next round's shorter run. When one
+    // side is down to a single group there is nothing left to distribute, and
+    // concatenating what remains yields the maximally even pattern.
+    let onsetGroups = Array.from({ length: hits }, () => [true]);
+    let restGroups = Array.from({ length: steps - hits }, () => [false]);
 
-    // Iteratively distribute remainder groups using Euclidean division
-    let divisor = steps - hits;
-
-    while (divisor > 1) {
-        const dividend = pattern.length - divisor;
-        const iterations = Math.min(dividend, divisor);
-
-        // Append first 'iterations' groups to last 'divisor' groups
-        for (let i = 0; i < iterations; i++) {
-            pattern[pattern.length - divisor + i] = pattern[i].concat(pattern[pattern.length - divisor + i]);
+    while (Math.min(onsetGroups.length, restGroups.length) > 1) {
+        const pairs = Math.min(onsetGroups.length, restGroups.length);
+        const merged = [];
+        for (let i = 0; i < pairs; i++) {
+            merged.push(onsetGroups[i].concat(restGroups[i]));
         }
-
-        // Remove the groups that were appended
-        pattern = pattern.slice(iterations);
-
-        // Update divisor with remainder
-        const remainder = divisor - iterations;
-        if (remainder === 0) {
-            break;
-        }
-        divisor = remainder;
+        // Whichever side had groups to spare carries them into the next round.
+        const leftover = onsetGroups.length > restGroups.length
+            ? onsetGroups.slice(pairs)
+            : restGroups.slice(pairs);
+        onsetGroups = merged;
+        restGroups = leftover;
     }
 
-    // Flatten nested arrays and convert to booleans
-    return pattern.flat(Infinity).map(v => v === 1);
+    return [...onsetGroups.flat(), ...restGroups.flat()];
 }
 
 /**
