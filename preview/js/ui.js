@@ -192,6 +192,9 @@ function bindControls() {
     document.getElementById('freeRunning').addEventListener('change', function() {
         appState.freeRunning = this.checked;
         syncWorkerParam({ freeRunning: appState.freeRunning });
+        // The piano roll's hit overlay spaces its bars by the same rule the
+        // sequencer uses, so it has to be told the mode changed.
+        regeneratePattern();
     });
 
     // Timing

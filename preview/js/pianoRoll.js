@@ -78,7 +78,11 @@ const pianoRoll = {
 
     // Euclidean pattern for hit visualization
     euclideanPattern: [],
-    euclideanSteps: 16
+    euclideanSteps: 16,
+    // Mirrors the sequencer's free-running (polymeter) mode: bar-locked, a step
+    // is bar/steps; free-running, a step is a fixed 16th note. The overlay has
+    // to use the same rule or its hit bars drift away from the actual notes.
+    euclideanFreeRunning: false
 };
 
 // ============================================================================
@@ -325,7 +329,12 @@ function drawGrid(ctx, width, height) {
 
     // Draw Euclidean hit indicators
     if (pianoRoll.euclideanPattern.length > 0) {
-        const stepDuration = (60 / pianoRoll.bpm) * (4 / pianoRoll.euclideanSteps); // Duration of one Euclidean step in seconds
+        // Duration of one Euclidean step in seconds — must match sequencerCore's
+        // stepDurationMs(): a fixed 16th note when free-running, otherwise the
+        // bar divided by the step count.
+        const stepDuration = pianoRoll.euclideanFreeRunning
+            ? (60 / pianoRoll.bpm) / 4
+            : (60 / pianoRoll.bpm) * (4 / pianoRoll.euclideanSteps);
         const stepWidth = stepDuration * pianoRoll.pixelsPerSecond;
         const totalPatternDuration = stepDuration * pianoRoll.euclideanSteps;
 
@@ -540,9 +549,10 @@ export function setBPM(bpm) {
     pianoRoll.pixelsPerBeat = (pianoRoll.pixelsPerSecond * 60) / bpm;
 }
 
-export function setEuclideanPattern(pattern, steps) {
+export function setEuclideanPattern(pattern, steps, freeRunning = false) {
     pianoRoll.euclideanPattern = pattern;
     pianoRoll.euclideanSteps = steps;
+    pianoRoll.euclideanFreeRunning = !!freeRunning;
 }
 
 export function setScrollSpeed(speed) {

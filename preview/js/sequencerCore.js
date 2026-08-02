@@ -94,6 +94,14 @@ export function isStabSequencerActive(state) {
 }
 
 /**
+ * Clear any pad-click chord override. Called whenever the sequencer itself
+ * advances the chord — the override only holds until the next scheduled change.
+ */
+function clearChordOverride(state) {
+    state.chordOverrideIndex = null;
+}
+
+/**
  * Voice-leading-aware chord selection (used when the Voice Leading control is
  * 'smooth' or 'far'). Blends the shared harmonic score with an explicit
  * note-movement preference, then applies the same harmonic-adherence weighting
@@ -166,6 +174,9 @@ function padIndexForSymbol(state, symbol) {
 export function advanceBarChord(state) {
     if (state.chordProgression.length <= 1) return false;
 
+    // The sequencer is taking the wheel back from any pad-click override.
+    clearChordOverride(state);
+
     // In-order mode: play the selected progression as written, including its
     // repeated chords (e.g. the four bars of I7 opening a 12-bar blues), rather
     // than the harmonic wander. orderedProgression is the literal voiced
@@ -193,7 +204,11 @@ export function advanceBarChord(state) {
     // Voice-leading steering ('smooth'/'far') re-ranks candidates by note
     // movement on top of the harmonic score. 'none' keeps the shared harmonic
     // selector's exact behavior (which already weights voice leading at 40%).
-    if (state.voiceLeading === 'smooth' || state.voiceLeading === 'far') {
+    // An empty current chord (an "empty" pad) has no notes to measure movement
+    // from — voice-leading distance would come back NaN — so defer to the
+    // harmonic selector in that case.
+    if ((state.voiceLeading === 'smooth' || state.voiceLeading === 'far') &&
+        currentChordObj.notes.length > 0) {
         state.currentChordIndex = selectNextChordVoiceLed(state, paletteObjs, currentChordObj);
     } else {
         state.currentChordIndex = selectNextChordHarmonically(
@@ -223,6 +238,8 @@ export function advanceStabChord(state, sequencer) {
     let changed = false;
 
     if (changePattern[changeStepIndex]) {
+        // The sequencer is taking the wheel back from any pad-click override.
+        clearChordOverride(state);
         state.currentChordIndex = sequencer.getNextChord(state.chordProgression);
         changed = true;
     }
@@ -289,13 +306,18 @@ function stepDurationMs(state) {
 }
 
 /**
- * Swing timing offset in ms. Delays offbeat steps (odd step index); onbeats are
- * untouched. At swing=100 the offbeat is pushed a third of a step late (a ~2:1
- * long-short "triplet" shuffle), scaling linearly from 0.
+ * Swing timing offset in ms. Delays offbeat steps; onbeats are untouched. At
+ * swing=100 the offbeat is pushed a third of a step late (a ~2:1 long-short
+ * "triplet" shuffle), scaling linearly from 0.
+ *
+ * Parity comes from the *unwrapped* step index, not the pattern-relative one:
+ * with an odd step count the wrapped index repeats its parity across the loop
+ * point (…5, 6, then 0), which would land two un-swung steps in a row and make
+ * the shuffle stutter once per cycle. The unwrapped index keeps alternating.
  */
 function computeSwingOffset(state) {
     const swing = state.swing || 0;
-    if (swing <= 0 || state.euclideanStepIndex % 2 !== 1) return 0;
+    if (swing <= 0 || state.absoluteStepIndex % 2 !== 1) return 0;
     return (swing / 100) * (stepDurationMs(state) / 3);
 }
 
@@ -418,11 +440,19 @@ function orderStabNotes(state, notes) {
 }
 
 /**
- * The chord to sound this step. In-order mode plays the literal progression
- * (repeats preserved) straight from orderedProgression; every other mode plays
- * the current palette pad. Falls back to the palette if no ordered list exists.
+ * The chord to sound this step, in priority order:
+ *   1. a pad-click override (jumpToChord), which holds only until the sequencer
+ *      makes its next scheduled chord change;
+ *   2. in-order mode: the literal progression entry (repeats preserved), which
+ *      carries its own per-position voicing and so is not interchangeable with
+ *      the collapsed palette pad;
+ *   3. otherwise the current palette pad.
  */
 function currentPlayChord(state) {
+    const override = state.chordOverrideIndex;
+    if (override != null && state.chordProgression[override]) {
+        return state.chordProgression[override];
+    }
     if (state.chordOrderMode === 'inOrder' &&
         state.orderedProgression && state.orderedProgression.length > 0) {
         return state.orderedProgression[state.progressionPos % state.orderedProgression.length];
@@ -440,9 +470,11 @@ function currentPlayChord(state) {
  */
 export function computeStepNotes(state) {
     // Derive the pattern step index for this tick (bar-locked or free-running,
-    // see globalStepIndex), wrapped into the pattern length.
-    state.euclideanStepIndex =
-        globalStepIndex(state, state.tickCount) % state.euclidean.steps;
+    // see globalStepIndex). absoluteStepIndex is the unwrapped count since
+    // playback started (swing parity reads it); euclideanStepIndex is that
+    // wrapped into the pattern length (pattern lookup and curves read it).
+    state.absoluteStepIndex = globalStepIndex(state, state.tickCount);
+    state.euclideanStepIndex = state.absoluteStepIndex % state.euclidean.steps;
 
     const pattern = state.euclidean.pattern;
     const chord = currentPlayChord(state);

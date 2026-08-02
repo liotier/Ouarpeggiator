@@ -79,7 +79,11 @@ function renderPattern() {
     }
     // Update piano roll Euclidean hit indicators
     if (appState.pianoRollInitialized) {
-        PianoRoll.setEuclideanPattern(appState.euclidean.pattern, appState.euclidean.steps);
+        PianoRoll.setEuclideanPattern(
+            appState.euclidean.pattern,
+            appState.euclidean.steps,
+            appState.freeRunning
+        );
     }
 }
 
@@ -134,7 +138,6 @@ function initNoteSchedulerWorker() {
             const { type, note, velocity, gateLength, chordIndex } = e.data;
 
             if (type === 'noteOn') {
-                console.log('[Juno-106] Worker noteOn received:', note, 'vel:', velocity);
                 sendToJuno106({ type: 'noteOn', value: note });
                 // Update piano roll visualization
                 PianoRoll.addNote(note, velocity, gateLength, chordIndex);
@@ -192,6 +195,7 @@ function startPlayback() {
     appState.tickCount = 0;
     appState.euclideanStepIndex = 0;
     appState.progressionPos = 0;
+    appState.chordOverrideIndex = null;
 
     regeneratePattern();
 
@@ -223,9 +227,6 @@ function startPlayback() {
         initNoteSchedulerWorker();
 
         if (noteSchedulerWorker) {
-            console.log('[Juno-106] Starting worker, chords:', appState.chordProgression.length,
-                'mode:', appState.playbackMode, 'hits:', appState.euclidean.hits,
-                'steps:', appState.euclidean.steps);
             // Send full state to worker
             noteSchedulerWorker.postMessage({
                 type: 'updateState',
@@ -245,6 +246,7 @@ function startPlayback() {
                     progressionLength: appState.progressionLength,
                     orderedProgression: appState.orderedProgression,
                     progressionPos: appState.progressionPos,
+                    chordOverrideIndex: appState.chordOverrideIndex,
                     playbackMode: appState.playbackMode,
                     octaveSpread: appState.octaveSpread,
                     transposeOctaves: appState.transposeOctaves,
@@ -489,10 +491,7 @@ function clearJunoStatus() {
 }
 
 function launchJuno106() {
-    if (junoWindow && !junoWindow.closed) {
-        console.log('[Juno-106] launchJuno106: window already open, junoReady:', junoReady);
-        return;
-    }
+    if (junoWindow && !junoWindow.closed) return;
 
     // Starting a fresh window session — any notes tracked against the old
     // session are moot (nothing left to send an off to) and must not be
@@ -542,12 +541,16 @@ function syncWorkerParam(data) {
  * the OLD palette, which would point at the wrong chords once swapped in.
  */
 function syncChordProgressionToWorker() {
+    // A pad-click override holds a palette *index*; after a regeneration that
+    // index addresses a different chord, so it must not survive the swap.
+    appState.chordOverrideIndex = null;
     syncWorkerParam({
         chordProgression: appState.chordProgression,
         currentChordIndex: appState.currentChordIndex,
         progressionLength: appState.progressionLength,
         orderedProgression: appState.orderedProgression,
-        progressionPos: appState.progressionPos
+        progressionPos: appState.progressionPos,
+        chordOverrideIndex: null
     });
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
         noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });
@@ -568,8 +571,16 @@ function syncChordProgressionToWorker() {
 function jumpToChord(index) {
     if (index < 0 || index >= appState.chordProgression.length) return;
     appState.currentChordIndex = index;
+    // In-order mode sounds the literal progression entry rather than the pad at
+    // currentChordIndex, so moving the index alone would leave the click
+    // audibly inert. The override makes the pad win in every mode until the
+    // sequencer's next scheduled chord change.
+    appState.chordOverrideIndex = index;
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
-        noteSchedulerWorker.postMessage({ type: 'updateState', data: { currentChordIndex: index } });
+        noteSchedulerWorker.postMessage({
+            type: 'updateState',
+            data: { currentChordIndex: index, chordOverrideIndex: index }
+        });
     }
     renderChordGrid();
 }
@@ -593,6 +604,9 @@ function syncSequencerSettings() {
 
 function sendToJuno106(msg) {
     if (!junoWindow || junoWindow.closed) {
+        // The window was open (or never opened) and is now gone. Any notes
+        // still tracked as "on" can't be turned off there anymore, and must
+        // not be replayed against a future window, so drop them.
         if (activeJunoNotes.size > 0) activeJunoNotes.clear();
         const wasReady = junoReady;
         junoReady = false;
@@ -609,8 +623,6 @@ function sendToJuno106(msg) {
         console.warn('[Juno-106] sendToJuno106: window not available, msg dropped:', msg);
         return;
     }
-    console.log('[Juno-106] sendToJuno106:', msg.type, 'note:', msg.value,
-        'junoReady:', junoReady, 'windowClosed:', junoWindow.closed);
     if (msg.type === 'noteOn') activeJunoNotes.add(msg.value);
     else if (msg.type === 'noteOff') activeJunoNotes.delete(msg.value);
     junoWindow.postMessage(msg, 'https://liotier.github.io');
@@ -620,6 +632,22 @@ function sendToJuno106(msg) {
  * Play a single note via MIDI or Audio
  */
 function playNote(note, velocity, gateLength) {
+    // Retrigger: if this pitch is still sounding from an earlier step, release
+    // it now instead of leaving its note-off queued — otherwise that stale
+    // note-off lands mid-way through the new note and cuts it short. Reachable
+    // whenever gate + swing/humanize offset exceeds one step, or when a chord
+    // repeats. (Piano-roll entry is closed out by removeNote in the same way.)
+    for (let i = pendingNoteOffs.length - 1; i >= 0; i--) {
+        if (pendingNoteOffs[i].note !== note) continue;
+        const stale = pendingNoteOffs.splice(i, 1)[0];
+        if (stale.outputMode === 'midi' && MIDI.hasOutputDevice()) {
+            MIDI.sendNoteOff(stale.note);
+        } else if (stale.outputMode === 'juno106') {
+            sendToJuno106({ type: 'noteOff', value: stale.note });
+        }
+        PianoRoll.removeNote(stale.note);
+    }
+
     // Add to piano roll visualization
     PianoRoll.addNote(note, velocity, gateLength, appState.currentChordIndex);
 

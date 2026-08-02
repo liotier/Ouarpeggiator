@@ -51,6 +51,7 @@ let state = {
     progressionLength: 0,
     orderedProgression: [],
     progressionPos: 0,
+    chordOverrideIndex: null,
 
     // Chord progression sequencing (Stab Mode only) — Euclidean-pattern-driven
     // chord changes, independent of and in addition to the bar-based advance above
@@ -207,10 +208,6 @@ function executeStep() {
     }
 
     const result = computeStepNotes(state);
-    console.log('[Worker] step:', state.euclideanStepIndex, 'isRest:', result.isRest,
-        'notes:', result.isRest ? 0 : result.notes.length,
-        'chordIdx:', state.currentChordIndex,
-        'chords:', state.chordProgression.length);
     if (!result.isRest) {
         result.notes.forEach(scheduleNote);
     }
@@ -235,7 +232,15 @@ function scheduleNote(ev) {
  * Play a note
  */
 function playNote(note, velocity, gateLength) {
-    console.log('[Worker] playNote:', note, 'vel:', velocity, 'gate:', gateLength);
+    // Retrigger: release any still-pending instance of this pitch first, so its
+    // queued note-off can't land mid-way through the new note and cut it short
+    // (gate + swing/humanize offset can exceed one step; chords can repeat).
+    for (let i = pendingNoteOffs.length - 1; i >= 0; i--) {
+        if (pendingNoteOffs[i].note !== note) continue;
+        pendingNoteOffs.splice(i, 1);
+        self.postMessage({ type: 'noteOff', note });
+    }
+
     self.postMessage({
         type: 'noteOn',
         note: note,
@@ -263,6 +268,7 @@ self.onmessage = function(e) {
             state.tickCount = 0;
             state.euclideanStepIndex = 0;
             state.progressionPos = 0;
+            state.chordOverrideIndex = null;
             state.chordSequencing.stepIndex = 0;
             chordSequencer.reset();
             startClock();
@@ -278,10 +284,6 @@ self.onmessage = function(e) {
         case 'updateState': {
             // sequencerSettings targets the chordSequencer instance, not state
             const { sequencerSettings, ...stateData } = data;
-
-            console.log('[Worker] updateState: chords:', data.chordProgression?.length,
-                'mode:', data.playbackMode, 'euclidean:', data.euclidean,
-                'firstChord:', JSON.stringify(data.chordProgression?.[0]));
 
             // Merge state update
             Object.assign(state, stateData);

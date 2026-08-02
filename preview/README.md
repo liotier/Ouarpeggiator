@@ -38,20 +38,26 @@ The core innovation is combining:
 ### Pattern Generation
 - Euclidean rhythm generation with configurable hits/steps (1-32)
 - Pattern rotation for different rhythmic feels
+- **Free-run (polymeter)**: let the pattern advance on a fixed 16th-note grid instead of stretching to fill one bar, so a 7- or 13-step pattern phases against the beat instead of resetting every bar
 - Octave spread (1-4 octaves) for melodic range
+- **Note order**: up, down, up-down, down-up, as-played, converge, diverge or random — which chord tone lands on each successive step
 - Real-time visual pattern display
 
 ### Timing
 - **Master mode**: Internal clock with adjustable BPM (40-240)
 - **Slave mode**: Sync to external MIDI clock (24 PPQN)
-- Transport controls (Start/Stop)
+- Transport controls (Start/Stop), plus a panic button that silences every output
 - Configurable bars per chord (1, 2, 4, 8)
+- **Swing**: delays the offbeats, from straight through to a 2:1 triplet shuffle
 - Humanization timing offset
+- Live transpose, ±3 octaves, applied as you play
 
 ### Variation
+- **Chord order**: play the progression's chords in the order written (repeats and all), or let the harmonic engine pick each next chord from the palette
+- **Harmonic adherence**: how strictly that algorithmic choice follows harmonic rules, from the smoothest available move to a free wander
 - **Harmonic variation**: Probabilistic note substitution from progression pool
 - **Rhythmic variation**: Probabilistic rest insertion
-- **Voice leading**: Smooth, far, or no transition preference
+- **Voice leading**: steers the algorithmic chord choice toward the smallest note movement, the largest, or neither
 
 ### Output
 - **Velocity modes**: Fixed, random range, or curve (linear, exponential, sinusoidal, triangle)
@@ -59,10 +65,12 @@ The core innovation is combining:
 - Full MIDI output via WebMIDI
 
 ### Chord Progression
-- JSON-based chord input (arrays of MIDI note numbers)
+- Progression palettes built from 173 named templates across 22 genres, in any of the 12 keys — or every chord of a chosen scale, from 34 modes including ragas and symmetrical/jazz scales
+- Multiple voicing variants per palette (Smooth, Classic, Jazz, Modal, Experimental)
 - 4x4 MPC-style pad display with color-coded chord types
 - Real-time chord position tracking
-- Click-to-jump chord selection
+- Click-to-jump chord selection, live while playing
+- Settings persist in `localStorage` and in a shareable `?c=` link; installable as a PWA and usable offline
 
 ## Technology
 
@@ -76,29 +84,61 @@ The core innovation is combining:
 
 ```
 Ouarpeggiator/
-├── index.html              # Main HTML structure
+├── index.html                    # Main HTML structure
+├── manifest.json                 # PWA manifest
+├── service-worker.js             # Offline cache (network-first)
 ├── css/
-│   ├── layout.css          # Grid, responsive breakpoints
-│   └── styles.css          # Component styling, diagnostics UI
+│   ├── layout.css                # Grid, responsive breakpoints
+│   ├── main.css                  # Base element styling
+│   └── styles.css                # Component styling, diagnostics UI
 ├── js/
-│   ├── euclidean.js        # Bjorklund algorithm
-│   ├── midi.js             # WebMIDI with clock handling
-│   ├── midiDiagnostics.js  # MIDI troubleshooting UI
-│   ├── arpeggiator.js      # Note selection, variation logic
-│   ├── pianoRoll.js        # Visual pattern display
-│   ├── euclideanCircle.js  # Circular rhythm visualization
-│   ├── modules/
-│   │   ├── musicTheory.js  # Chord analysis, voice leading
-│   │   └── audio.js        # Browser tone synthesis
-│   └── main.js             # State management, clock
+│   ├── main.js                   # Entry point: init sequence, debug hooks
+│   ├── appState.js               # Shared mutable state singleton
+│   ├── sequencerCore.js          # Pure note-generation logic (no DOM/audio)
+│   ├── transport.js              # Clock, playback, output routing, Juno-106
+│   ├── ui.js                     # Control bindings
+│   ├── persistence.js            # localStorage + shareable ?c= URL
+│   ├── euclidean.js              # Bjorklund algorithm
+│   ├── chordProgression.js       # Palette generation, 4x4 pad grid
+│   ├── chordProgressionSequencer.js  # Stab-mode chord sequencing methods
+│   ├── chordMatcher.js           # "Contains these chords" suggestions
+│   ├── clockWorker.js            # Off-thread tick source
+│   ├── noteSchedulerWorker.js    # Off-thread sequencer (Juno-106 path)
+│   ├── pianoRoll.js              # Rolling piano-roll canvas
+│   ├── euclideanCircle.js        # Circular rhythm visualization (SVG)
+│   ├── midi.js                   # WebMIDI with clock handling
+│   ├── midiSetup.js              # Device enumeration + selector wiring
+│   ├── midiDiagnostics.js        # MIDI troubleshooting UI
+│   └── modules/
+│       ├── musicTheory.js        # Chord analysis, voice leading (shared verbatim
+│       │                         #   with the AkaiMPC generator — do not fork)
+│       └── audio.js              # Browser tone synthesis
+├── tests/                        # node --test, no dependencies (`npm test`)
+│   ├── sequencer-core.test.mjs
+│   └── euclidean.test.mjs
 ├── .github/workflows/
+│   ├── test.yml
+│   ├── build.yml
 │   ├── deploy-main-production.yml
 │   └── deploy-claude-preview.yml
-├── .deepscan.json          # DeepScan configuration
-├── .deepsource.toml        # DeepSource configuration
-├── sonar-project.properties # SonarQube configuration
+├── .deepscan.json                # DeepScan configuration
+├── .deepsource.toml              # DeepSource configuration
+├── sonar-project.properties      # SonarQube configuration
 └── LICENSE
 ```
+
+### Running the tests
+
+```bash
+npm test          # or: node --test 'tests/*.test.mjs'
+```
+
+The suite covers the sequencer core (step timing in both bar-locked and
+free-running modes, note order, swing, gate, chord motion, transpose) and the
+Euclidean generator (hit counts, even distribution, rotation). It has no
+dependencies and no browser: `sequencerCore.js` is deliberately free of DOM,
+audio and MIDI concerns, so the logic that decides what you hear is testable
+directly.
 
 ## Usage
 
@@ -153,10 +193,17 @@ Ouarpeggiator/
 
 | Hits | Steps | Pattern | Name |
 |------|-------|---------|------|
-| 3 | 8 | `x..x..x.` | Cuban Tresillo |
-| 5 | 8 | `x.xx.xx.` | Cuban Cinquillo |
-| 7 | 16 | `x.x.x.x.x.x.x.x.` | Samba |
+| 3 | 8 | `x.x..x..` | Cuban Tresillo |
+| 5 | 8 | `.x.xx.xx` | Cuban Cinquillo |
+| 7 | 16 | `x.x.x.x.x.x..x..` | Samba |
 | 5 | 16 | `x..x..x..x..x...` | Bossa Nova |
+| 10 | 16 | `.x.x.xx.xx.xx.xx` | (the default) |
+
+Onsets are spaced as evenly as the step count allows, which is what makes these
+the traditional rhythms. Some come out rotated relative to the tables in
+Toussaint's paper — the cycle is the same, entered at a different point, and
+dense patterns can open on a rest. Use **Rotation** to place the downbeat where
+you want it.
 
 ## Related Projects
 
