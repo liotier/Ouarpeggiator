@@ -1,0 +1,16 @@
+{
+  "name": "ouarpeggiator",
+  "version": "1.0.0",
+  "description": "Euclidean rhythm arpeggiator driven by a chord progression palette, for WebMIDI or a browser-tab Juno-106",
+  "license": "Unlicense",
+  "homepage": "https://liotier.github.io/Ouarpeggiator/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liotier/Ouarpeggiator.git"
+  },
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test 'tests/*.test.mjs'"
+  }
+}

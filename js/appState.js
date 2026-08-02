@@ -74,6 +74,9 @@ export const appState = {
     // e.g. the four I7 bars opening a 12-bar blues. Set at generation/switch.
     orderedProgression: [],
     progressionPos: 0,  // playback position within orderedProgression
+    // Pad-click override (jumpToChord): a palette index that outranks the
+    // sequencer's own choice until its next scheduled chord change. null = none.
+    chordOverrideIndex: null,
 
     // Chord variation
     harmonicAdherence: 70,  // 0-100, how strictly to follow harmonic rules

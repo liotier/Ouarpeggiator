@@ -12,15 +12,28 @@
 /**
  * Generate a Euclidean rhythm pattern using Bjorklund's algorithm
  *
+ * Guarantees exactly `hits` onsets in `steps` positions, spaced as evenly as
+ * the step count allows — the gaps between consecutive onsets take at most two
+ * distinct lengths, differing by one. That evenness is the defining property of
+ * a Euclidean rhythm and is covered by tests/euclidean.test.mjs.
+ *
+ * ROTATION CAVEAT: the output is not always the same rotation of that rhythm as
+ * the tables in Toussaint (2005), which conventionally start on an onset. Dense
+ * patterns (hits > steps/2) go through the complement branch below and can come
+ * back starting on a rest — 3/8 comes out "x.x..x.." rather than the textbook
+ * "x..x..x.", and 10/16 (this app's default) starts on a rest. The rhythm is the
+ * same cycle either way, just entered at a different point, and the Rotation
+ * control shifts it further. Normalising to the textbook orientation would
+ * change the sound of every existing preset and shared link, so it is left
+ * alone deliberately rather than by oversight.
+ *
  * @param {number} hits - Number of pulses/onsets (k)
  * @param {number} steps - Total steps in pattern (n)
  * @returns {boolean[]} - Array where true = hit, false = rest
  *
  * @example
- * euclidean(3, 8)  // [true, false, false, true, false, false, true, false] - Cuban tresillo
- * euclidean(5, 8)  // [true, false, true, true, false, true, true, false] - Cuban cinquillo
- * euclidean(7, 16) // Standard clave-like pattern
- * euclidean(4, 12) // [true, false, false, true, false, false, true, false, false, true, false, false]
+ * euclidean(3, 8)  // x.x..x..  — the tresillo cycle, entered a step early
+ * euclidean(4, 12) // x..x..x..x..
  */
 function euclidean(hits, steps) {
     // Edge cases

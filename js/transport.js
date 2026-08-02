@@ -79,7 +79,11 @@ function renderPattern() {
     }
     // Update piano roll Euclidean hit indicators
     if (appState.pianoRollInitialized) {
-        PianoRoll.setEuclideanPattern(appState.euclidean.pattern, appState.euclidean.steps);
+        PianoRoll.setEuclideanPattern(
+            appState.euclidean.pattern,
+            appState.euclidean.steps,
+            appState.freeRunning
+        );
     }
 }
 
@@ -191,6 +195,7 @@ function startPlayback() {
     appState.tickCount = 0;
     appState.euclideanStepIndex = 0;
     appState.progressionPos = 0;
+    appState.chordOverrideIndex = null;
 
     regeneratePattern();
 
@@ -241,6 +246,7 @@ function startPlayback() {
                     progressionLength: appState.progressionLength,
                     orderedProgression: appState.orderedProgression,
                     progressionPos: appState.progressionPos,
+                    chordOverrideIndex: appState.chordOverrideIndex,
                     playbackMode: appState.playbackMode,
                     octaveSpread: appState.octaveSpread,
                     transposeOctaves: appState.transposeOctaves,
@@ -535,12 +541,16 @@ function syncWorkerParam(data) {
  * the OLD palette, which would point at the wrong chords once swapped in.
  */
 function syncChordProgressionToWorker() {
+    // A pad-click override holds a palette *index*; after a regeneration that
+    // index addresses a different chord, so it must not survive the swap.
+    appState.chordOverrideIndex = null;
     syncWorkerParam({
         chordProgression: appState.chordProgression,
         currentChordIndex: appState.currentChordIndex,
         progressionLength: appState.progressionLength,
         orderedProgression: appState.orderedProgression,
-        progressionPos: appState.progressionPos
+        progressionPos: appState.progressionPos,
+        chordOverrideIndex: null
     });
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
         noteSchedulerWorker.postMessage({ type: 'regenerateSequencer' });
@@ -561,8 +571,16 @@ function syncChordProgressionToWorker() {
 function jumpToChord(index) {
     if (index < 0 || index >= appState.chordProgression.length) return;
     appState.currentChordIndex = index;
+    // In-order mode sounds the literal progression entry rather than the pad at
+    // currentChordIndex, so moving the index alone would leave the click
+    // audibly inert. The override makes the pad win in every mode until the
+    // sequencer's next scheduled chord change.
+    appState.chordOverrideIndex = index;
     if (appState.isPlaying && noteSchedulerWorker && useBroadcastChannel) {
-        noteSchedulerWorker.postMessage({ type: 'updateState', data: { currentChordIndex: index } });
+        noteSchedulerWorker.postMessage({
+            type: 'updateState',
+            data: { currentChordIndex: index, chordOverrideIndex: index }
+        });
     }
     renderChordGrid();
 }
@@ -614,6 +632,22 @@ function sendToJuno106(msg) {
  * Play a single note via MIDI or Audio
  */
 function playNote(note, velocity, gateLength) {
+    // Retrigger: if this pitch is still sounding from an earlier step, release
+    // it now instead of leaving its note-off queued — otherwise that stale
+    // note-off lands mid-way through the new note and cuts it short. Reachable
+    // whenever gate + swing/humanize offset exceeds one step, or when a chord
+    // repeats. (Piano-roll entry is closed out by removeNote in the same way.)
+    for (let i = pendingNoteOffs.length - 1; i >= 0; i--) {
+        if (pendingNoteOffs[i].note !== note) continue;
+        const stale = pendingNoteOffs.splice(i, 1)[0];
+        if (stale.outputMode === 'midi' && MIDI.hasOutputDevice()) {
+            MIDI.sendNoteOff(stale.note);
+        } else if (stale.outputMode === 'juno106') {
+            sendToJuno106({ type: 'noteOff', value: stale.note });
+        }
+        PianoRoll.removeNote(stale.note);
+    }
+
     // Add to piano roll visualization
     PianoRoll.addNote(note, velocity, gateLength, appState.currentChordIndex);
 
